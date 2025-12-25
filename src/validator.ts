@@ -144,7 +144,8 @@ export function validateScheduleInputs(
 
     // 고정된 하프(0.5) 인원(휴무는 이미 충돌 금지)
     const fixedHalfPeople = people.filter(p => !p.requestedDaysOff.includes(date) && p.halfRequests?.[date] !== undefined);
-    const fixedHalfUnits = fixedHalfPeople.length; // 1명 = 0.5 = 1 unit
+    // 하프는 2명(짝수)마다 1명으로 환산됨. 내부 단위는 half-units(0.5단위->1)
+    const fixedHalfUnits = Math.floor(fixedHalfPeople.length / 2) * 2; // 예: 1명->0, 2명->2
 
     // 풀근무 후보: 휴무가 아니고, 하프도 아닌 사람 (1.0 = 2 units)
     const availableFullForDay = people.filter(p => !p.requestedDaysOff.includes(date) && p.halfRequests?.[date] === undefined);
@@ -153,7 +154,7 @@ export function validateScheduleInputs(
     if (remainingUnits < 0) {
       errors.push({
         type: 'insufficient',
-        message: `${date}일: 하프 인원(${fixedHalfPeople.length}명 = ${fixedHalfUnits / 2}인)가 필요 인원(${requiredStaff}인)을 초과합니다.`
+        message: `${date}일: 하프 인원(${fixedHalfPeople.length}명, 짝수로 환산 ${fixedHalfUnits / 2}인)이 필요 인원(${requiredStaff}인)을 초과합니다.`
       });
       continue;
     }
@@ -174,7 +175,8 @@ export function validateScheduleInputs(
     }
 
     // 3교대 조건: 근무 인원(헤드카운트) 3명 이상 또는 하프 2명 이상
-    const plannedHeadcount = fixedHalfPeople.length + requiredFullCount;
+    // 헤드카운트는 짝수 하프(한 쌍)를 1명으로 환산하여 계산
+    const plannedHeadcount = requiredFullCount + Math.floor(fixedHalfPeople.length / 2);
     const needsThreeShift = plannedHeadcount >= 3 || fixedHalfPeople.length >= 2;
 
     const fixedHasOpen = fixedHalfPeople.some(p => p.halfRequests?.[date] === 'open');
