@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type ChangeEvent } from 'react';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
-import { loadIngredients, saveIngredient, deleteIngredient } from '../storage';
+import { loadIngredients, saveIngredients, deleteIngredient } from '../storage';
 import type { Ingredient } from '../types';
 
 export function IngredientManagementPage() {
@@ -58,7 +58,16 @@ export function IngredientManagementPage() {
       unitPrice
     };
 
-    saveIngredient(ingredientToSave);
+    const existingIngredients = loadIngredients();
+    const existingIndex = existingIngredients.findIndex(i => i.id === ingredientToSave.id);
+    
+    if (existingIndex >= 0) {
+      existingIngredients[existingIndex] = ingredientToSave;
+    } else {
+      existingIngredients.push(ingredientToSave);
+    }
+    
+    saveIngredients(existingIngredients);
     loadData();
     setShowAddForm(false);
     setEditingIngredient(null);
@@ -86,6 +95,53 @@ export function IngredientManagementPage() {
     setEditingIngredient(updated);
   };
 
+  const handleCSVUpload = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result as string;
+      const lines = text.split('\n').filter(line => line.trim());
+      
+      if (lines.length < 2) {
+        alert('CSV 파일 형식이 올바르지 않습니다.');
+        return;
+      }
+
+      // 헤더 제거
+      const dataLines = lines.slice(1);
+      const newIngredients: Ingredient[] = [];
+      const existingIngredients = loadIngredients();
+
+      dataLines.forEach((line, index) => {
+        // CSV 형식: 이름,가격,구매단위
+        const [name, priceStr, purchaseUnitStr] = line.split(',').map(s => s.trim());
+        
+        if (!name) return;
+        
+        const price = parseFloat(priceStr || '0');
+        const purchaseUnit = parseFloat(purchaseUnitStr || '1');
+        const unitPrice = purchaseUnit > 0 ? price / purchaseUnit : 0;
+        
+        newIngredients.push({
+          id: String(Date.now() + index),
+          name,
+          price,
+          purchaseUnit,
+          unitPrice
+        });
+      });
+
+      saveIngredients([...existingIngredients, ...newIngredients]);
+      loadData();
+      alert(`${newIngredients.length}개의 재료가 추가되었습니다.`);
+    };
+
+    reader.readAsText(file, 'UTF-8');
+    e.target.value = ''; // 파일 input 초기화
+  };
+
   return (
     <div className="container">
       <h1>재료 관리</h1>
@@ -94,6 +150,15 @@ export function IngredientManagementPage() {
         <Button variant="primary" onClick={handleAddIngredient}>
           재료 추가
         </Button>
+        <label className="btn btn-secondary" style={{ cursor: 'pointer' }}>
+          CSV 업로드
+          <input
+            type="file"
+            accept=".csv"
+            onChange={handleCSVUpload}
+            style={{ display: 'none' }}
+          />
+        </label>
       </div>
 
       {showAddForm && editingIngredient && (
