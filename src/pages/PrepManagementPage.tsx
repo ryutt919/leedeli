@@ -315,7 +315,7 @@ export function PrepManagementPage() {
   return (
     <div className="container">
       <h1>프렙 관리</h1>
-
+      <p>csv 구조 : 이름,재료명,수량,보충날짜1(2025-12-20)..</p>
       <div className="actions" style={{ marginBottom: '1.5rem' }}>
         <Button variant="primary" onClick={handleAddPrep}>
           프렙 추가

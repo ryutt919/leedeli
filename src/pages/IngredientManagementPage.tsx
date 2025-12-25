@@ -145,7 +145,7 @@ export function IngredientManagementPage() {
   return (
     <div className="container">
       <h1>재료 관리</h1>
-
+      <p>csv 구조 : 이름,가격,구매단위</p>
       <div className="actions" style={{ marginBottom: '1.5rem' }}>
         <Button variant="primary" onClick={handleAddIngredient}>
           재료 추가
