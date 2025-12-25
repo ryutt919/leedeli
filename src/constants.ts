@@ -27,3 +27,7 @@ export const STORAGE_KEY = 'leedeli_schedules';
 // 근무 규칙 로컬 스토리지 키
 export const WORK_RULES_STORAGE_KEY = 'leedeli_work_rules';
 export const STAFF_CONFIG_KEY = 'leedeli_staff_config';
+
+// 프렙 및 재료 스토리지 키
+export const PREPS_STORAGE_KEY = 'leedeli_preps';
+export const INGREDIENTS_STORAGE_KEY = 'leedeli_ingredients';
