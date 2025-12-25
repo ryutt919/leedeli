@@ -275,7 +275,7 @@ export function CreateSchedulePage() {
         </Card>
       )}
 
-      <div className="actions">
+      <div className="actions actions-bottom-gap">
         <Button onClick={handleGenerate} variant="primary">
           스케줄 생성
         </Button>

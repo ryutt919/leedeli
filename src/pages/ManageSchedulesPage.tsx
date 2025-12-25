@@ -3,9 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
-import { Schedule } from '../types';
+import { Person, Schedule } from '../types';
 import { loadSchedules, deleteSchedule } from '../storage';
 import { exportSchedulesToExcelCsv } from '../generator';
+import { getDaysInMonth } from '../validator';
 
 export function ManageSchedulesPage() {
   const navigate = useNavigate();
@@ -37,6 +38,56 @@ export function ManageSchedulesPage() {
       return;
     }
     exportSchedulesToExcelCsv(filtered);
+  };
+
+  const renderCalendar = (s: Schedule) => {
+    const daysInMonth = getDaysInMonth(s.year, s.month);
+    const firstWeekday = new Date(s.year, s.month - 1, 1).getDay();
+    const totalCells = firstWeekday + daysInMonth;
+    const weekCount = Math.ceil(totalCells / 7);
+    const cells = Array.from({ length: weekCount * 7 }, (_, i) => {
+      const dayNum = i - firstWeekday + 1;
+      return dayNum >= 1 && dayNum <= daysInMonth ? dayNum : null;
+    });
+
+    const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+
+    return (
+      <div className="calendar">
+        {dayNames.map((name: string) => (
+          <div key={name} className="calendar-header">
+            {name}
+          </div>
+        ))}
+
+        {cells.map((dayNum: number | null, idx: number) => {
+          if (!dayNum) {
+            return <div key={`e-${idx}`} className="calendar-cell empty" />;
+          }
+
+          const assignment = s.assignments.find(a => a.date === dayNum);
+          const openPeople = assignment ? assignment.people.filter(p => p.shift === 'open') : [];
+          const closePeople = assignment ? assignment.people.filter(p => p.shift === 'close') : [];
+
+          const dateObj = new Date(s.year, s.month - 1, dayNum);
+          const isWeekend = dateObj.getDay() === 0 || dateObj.getDay() === 6;
+
+          return (
+            <div key={dayNum} className={`calendar-cell ${isWeekend ? 'weekend' : ''}`}>
+              <div className="calendar-date">{dayNum}</div>
+              <div className="calendar-line">
+                <span className="calendar-label">오픈</span>
+                <span>{openPeople.map(p => p.personName).join(', ') || '-'}</span>
+              </div>
+              <div className="calendar-line">
+                <span className="calendar-label">마감</span>
+                <span>{closePeople.map(p => p.personName).join(', ') || '-'}</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
   };
 
   const getFilteredSchedules = () => {
@@ -105,7 +156,7 @@ export function ManageSchedulesPage() {
               <div className="schedule-summary">
                 <div className="summary-item">
                   <strong>근무 인원:</strong>
-                  <span>{schedule.people.map(p => p.name).join(', ')}</span>
+                  <span>{schedule.people.map((p: Person) => p.name).join(', ')}</span>
                 </div>
                 <div className="summary-item">
                   <strong>생성일:</strong>
@@ -117,38 +168,38 @@ export function ManageSchedulesPage() {
                 </div>
               </div>
 
-              <div className="schedule-table-wrapper">
-                <table className="schedule-table compact">
-                  <thead>
-                    <tr>
-                      <th>날짜</th>
-                      <th>오픈</th>
-                      <th>마감</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {schedule.assignments.slice(0, 10).map(day => {
-                      const openPeople = day.people.filter(p => p.shift === 'open');
-                      const closePeople = day.people.filter(p => p.shift === 'close');
-                      
-                      return (
-                        <tr key={day.date}>
-                          <td>{day.date}일</td>
-                          <td>{openPeople.map(p => p.personName).join(', ')}</td>
-                          <td>{closePeople.map(p => p.personName).join(', ')}</td>
-                        </tr>
-                      );
-                    })}
-                    {schedule.assignments.length > 10 && (
-                      <tr>
-                        <td colSpan={3} className="more-info">
-                          ... 외 {schedule.assignments.length - 10}일
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
+              <h4 className="subsection-title">인원별 근무 통계</h4>
+              <div className="stats-grid">
+                {schedule.people.map((person: Person) => {
+                  const workDays = schedule.assignments
+                    .filter(day => day.people.some(p => p.personId === person.id))
+                    .map(day => day.date);
+                  const offDays = person.requestedDaysOff;
+
+                  return (
+                    <div key={person.id} className="person-stats">
+                      <h4>{person.name}</h4>
+                      <div className="stat-item">
+                        <strong>근무일수:</strong>
+                        <span>{workDays.length}일</span>
+                      </div>
+                      <div className="stat-item">
+                        <strong>휴무일수:</strong>
+                        <span>{offDays.length}일</span>
+                      </div>
+                      {offDays.length > 0 && (
+                        <div className="stat-item">
+                          <strong>휴무일:</strong>
+                          <span>{offDays.sort((a, b) => a - b).join(', ')}일</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
+
+              <h4 className="subsection-title">달력 전체 보기</h4>
+              <div className="calendar-wrapper">{renderCalendar(schedule)}</div>
 
               <div className="actions">
                 <Button onClick={() => handleDelete(schedule.id)} variant="danger">
