@@ -10,8 +10,6 @@ import { validateScheduleInputs, getDaysInMonth } from '../validator';
 import { generateSchedule, validateGeneratedSchedule, ScheduleGenerationError, exportSchedulesToExcelCsv } from '../generator';
 import { saveSchedule } from '../storage';
 
-type ScheduleViewMode = 'table' | 'calendar';
-
 export function CreateSchedulePage() {
   const navigate = useNavigate();
   const currentYear = new Date().getFullYear();
@@ -23,7 +21,6 @@ export function CreateSchedulePage() {
   const [people, setPeople] = useState<Person[]>([]);
   const [errors, setErrors] = useState<ValidationError[]>([]);
   const [schedule, setSchedule] = useState<Schedule | null>(null);
-  const [viewMode, setViewMode] = useState<ScheduleViewMode>('table');
 
   // 인원 수 변경 시 배열 초기화
   const handlePeopleCountChange = (count: string) => {
@@ -87,7 +84,6 @@ export function CreateSchedulePage() {
       }
 
       setSchedule(newSchedule);
-      setViewMode('table');
       setErrors([]);
     } catch (err) {
       if (err instanceof ScheduleGenerationError) {
@@ -207,7 +203,7 @@ export function CreateSchedulePage() {
         />
 
         <div className="people-list">
-          {people.map((person, index) => (
+          {people.map((person: Person, index: number) => (
             <div key={person.id} className="person-editor">
               <h4>인원 {index + 1}</h4>
               
@@ -289,7 +285,7 @@ export function CreateSchedulePage() {
         <>
           <Card title="인원별 근무 통계">
             <div className="stats-grid">
-              {schedule.people.map(person => {
+              {schedule.people.map((person: Person) => {
                 const workDays = schedule.assignments.filter(day =>
                   day.people.some(p => p.personId === person.id)
                 ).map(day => day.date);
@@ -320,53 +316,12 @@ export function CreateSchedulePage() {
 
           <Card title={`${schedule.year}년 ${schedule.month}월 스케줄`}>
           <div className="actions">
-            <Button
-              onClick={() => setViewMode(viewMode === 'table' ? 'calendar' : 'table')}
-              variant="secondary"
-            >
-              {viewMode === 'table' ? '달력형식으로 보기' : '표로 보기'}
-            </Button>
             <Button onClick={handleExportExcel} variant="secondary">
               엑셀(CSV) 내보내기
             </Button>
           </div>
 
-          {viewMode === 'table' ? (
-            <div className="schedule-table-wrapper">
-              <table className="schedule-table">
-                <thead>
-                  <tr>
-                    <th>날짜</th>
-                    <th>요일</th>
-                    <th>오픈조 (07:00)</th>
-                    <th>마감조 (11:00)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {schedule.assignments.map(day => {
-                    const date = new Date(schedule.year, schedule.month - 1, day.date);
-                    const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
-                    const dayName = dayNames[date.getDay()];
-                    const isWeekend = date.getDay() === 0 || date.getDay() === 6;
-
-                    const openPeople = day.people.filter(p => p.shift === 'open');
-                    const closePeople = day.people.filter(p => p.shift === 'close');
-
-                    return (
-                      <tr key={day.date} className={isWeekend ? 'weekend' : ''}>
-                        <td>{day.date}일</td>
-                        <td>{dayName}</td>
-                        <td>{openPeople.map(p => p.personName).join(', ') || '-'}</td>
-                        <td>{closePeople.map(p => p.personName).join(', ') || '-'}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="calendar-wrapper">{renderCalendar(schedule)}</div>
-          )}
+          <div className="calendar-wrapper">{renderCalendar(schedule)}</div>
 
           <div className="actions">
             <Button onClick={handleSave} variant="primary">

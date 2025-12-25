@@ -170,46 +170,35 @@ function csvEscape(value: string): string {
 }
 
 export function exportSchedulesToExcelCsv(schedules: Schedule[]): void {
-  const header = [
-    'year',
-    'month',
-    'date',
-    'weekday',
-    'open',
-    'close',
-    'all'
-  ];
+  const rows: string[] = [];
 
-  const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
-  const rows: string[] = [header.map(csvEscape).join(',')];
+  schedules.forEach((schedule, scheduleIndex) => {
+    if (scheduleIndex > 0) rows.push('');
 
-  schedules.forEach(schedule => {
-    schedule.assignments.forEach(day => {
-      const dateObj = new Date(schedule.year, schedule.month - 1, day.date);
-      const weekday = dayNames[dateObj.getDay()];
+    const monthLabel = `${schedule.year}.${String(schedule.month).padStart(2, '0')}`;
+    const header = [monthLabel, ...schedule.people.map(p => p.name)];
+    rows.push(header.map(csvEscape).join(','));
 
-      const openNames = day.people
-        .filter(p => p.shift === 'open')
-        .map(p => p.personName)
-        .join(' / ');
-      const closeNames = day.people
-        .filter(p => p.shift === 'close')
-        .map(p => p.personName)
-        .join(' / ');
-      const allNames = day.people.map(p => `${p.personName}(${p.shift})`).join(' / ');
+    const daysInMonth = getDaysInMonth(schedule.year, schedule.month);
 
-      rows.push(
-        [
-          String(schedule.year),
-          String(schedule.month),
-          String(day.date),
-          weekday,
-          openNames,
-          closeNames,
-          allNames
-        ].map(csvEscape).join(',')
-      );
-    });
+    for (let day = 1; day <= daysInMonth; day++) {
+      const assignment = schedule.assignments.find(a => a.date === day);
+      const assignedByPersonId = new Map<string, 'open' | 'close'>();
+      if (assignment) {
+        assignment.people.forEach(p => {
+          assignedByPersonId.set(p.personId, p.shift);
+        });
+      }
+
+      const perPerson = schedule.people.map(p => {
+        const shift = assignedByPersonId.get(p.id);
+        if (shift === 'open') return '오픈';
+        if (shift === 'close') return '마감';
+        return '휴무';
+      });
+
+      rows.push([String(day), ...perPerson].map(csvEscape).join(','));
+    }
   });
 
   // Excel 한글 깨짐 방지용 BOM
