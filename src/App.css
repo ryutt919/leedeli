@@ -11,6 +11,7 @@
   --secondary: #64748b;
   --danger: #ef4444;
   --danger-dark: #dc2626;
+  --warning: #f59e0b;
   --success: #10b981;
   --bg: #f8fafc;
   --surface: #ffffff;
@@ -357,6 +358,39 @@ body {
   color: var(--text);
 }
 
+.request-mode {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.request-mode-btn {
+  padding: 0.4rem 0.75rem;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.request-mode-btn:hover {
+  border-color: var(--primary);
+}
+
+.request-mode-btn.active {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+
+.request-mode-btn.half.active {
+  background: var(--warning);
+  border-color: var(--warning);
+}
+
 .days-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
@@ -381,6 +415,16 @@ body {
   background: var(--primary);
   color: white;
   border-color: var(--primary);
+}
+
+.day-btn.half-selected {
+  background: var(--warning);
+  color: #fff;
+  border-color: var(--warning);
+}
+
+.half-shift-picker {
+  margin-top: 0.75rem;
 }
 
 /* Errors */

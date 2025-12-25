@@ -28,6 +28,38 @@ export function validateScheduleInputs(
     if (!person.name.trim()) {
       errors.push({ type: 'name', message: `${index + 1}번째 인원의 이름을 입력해주세요.` });
     }
+
+    // 휴무/하프 충돌 금지
+    const halfDays = Object.keys(person.halfRequests).map(d => parseInt(d));
+    const conflictDays = halfDays.filter(d => person.requestedDaysOff.includes(d));
+    if (conflictDays.length > 0) {
+      errors.push({
+        type: 'conflict',
+        message: `${person.name || `${index + 1}번째 인원`}의 ${conflictDays.sort((a, b) => a - b).join(', ')}일은 휴무와 하프를 동시에 선택할 수 없습니다.`
+      });
+    }
+
+    // 하프 시프트 유효성(오픈/마감은 가능 여부 필요)
+    halfDays.forEach(day => {
+      const shift = person.halfRequests[day];
+      if (shift === 'open' && !person.canOpen) {
+        errors.push({ type: 'conflict', message: `${person.name || `${index + 1}번째 인원`}의 ${day}일 하프는 오픈으로 선택했지만 오픈 근무가 불가능합니다.` });
+      }
+      if (shift === 'close' && !person.canClose) {
+        errors.push({ type: 'conflict', message: `${person.name || `${index + 1}번째 인원`}의 ${day}일 하프는 마감으로 선택했지만 마감 근무가 불가능합니다.` });
+      }
+    });
+
+    // 오픈/마감 필수인 사람은 하프 요청이 해당 시프트와 충돌하면 안 됨
+    halfDays.forEach(day => {
+      const shift = person.halfRequests[day];
+      if (person.mustOpen && shift !== 'open') {
+        errors.push({ type: 'conflict', message: `${person.name || `${index + 1}번째 인원`}은 오픈 필수인데 ${day}일 하프가 오픈이 아닙니다.` });
+      }
+      if (person.mustClose && shift !== 'close') {
+        errors.push({ type: 'conflict', message: `${person.name || `${index + 1}번째 인원`}은 마감 필수인데 ${day}일 하프가 마감이 아닙니다.` });
+      }
+    });
   });
 
   // 오픈/마감 가능 인원 검증
@@ -65,6 +97,15 @@ export function validateScheduleInputs(
   
   for (let date = 1; date <= daysInMonth; date++) {
     const availableForDay = people.filter(p => !p.requestedDaysOff.includes(date));
+
+    // 해당 날짜에 고정된 하프 요청 인원 수 체크
+    const fixedHalfCount = people.filter(p => p.halfRequests[date] !== undefined).length;
+    if (fixedHalfCount > rules.DAILY_STAFF) {
+      errors.push({
+        type: 'insufficient',
+        message: `${date}일: 하프 요청 인원이 ${fixedHalfCount}명으로 1일 근무 인원(${rules.DAILY_STAFF}명)을 초과합니다.`
+      });
+    }
     
     if (availableForDay.length < rules.DAILY_STAFF) {
       errors.push({

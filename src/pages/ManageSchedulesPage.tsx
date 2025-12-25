@@ -67,6 +67,7 @@ export function ManageSchedulesPage() {
 
           const assignment = s.assignments.find(a => a.date === dayNum);
           const openPeople = assignment ? assignment.people.filter(p => p.shift === 'open') : [];
+          const middlePeople = assignment ? assignment.people.filter(p => p.shift === 'middle') : [];
           const closePeople = assignment ? assignment.people.filter(p => p.shift === 'close') : [];
 
           const dateObj = new Date(s.year, s.month - 1, dayNum);
@@ -78,6 +79,10 @@ export function ManageSchedulesPage() {
               <div className="calendar-line">
                 <span className="calendar-label">오픈</span>
                 <span>{openPeople.map(p => p.personName).join(', ') || '-'}</span>
+              </div>
+              <div className="calendar-line">
+                <span className="calendar-label">미들</span>
+                <span>{middlePeople.map(p => p.personName).join(', ') || '-'}</span>
               </div>
               <div className="calendar-line">
                 <span className="calendar-label">마감</span>

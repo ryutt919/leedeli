@@ -45,6 +45,27 @@ export function validateGeneratedSchedule(schedule: Schedule): ValidationError[]
         message: `${day.date}일: 마감조에 배정된 인원이 없습니다.`
       });
     }
+
+    // 하프 요청이 있다면 해당 시프트로 배정되었는지 확인
+    schedule.people.forEach(person => {
+      const requested = person.halfRequests?.[day.date];
+      if (requested === undefined) return;
+
+      const assigned = day.people.find(p => p.personId === person.id);
+      if (!assigned) {
+        errors.push({
+          type: 'half-not-assigned',
+          message: `${day.date}일: ${person.name}님의 하프(${requested}) 요청이 배정되지 않았습니다.`
+        });
+        return;
+      }
+      if (assigned.shift !== requested) {
+        errors.push({
+          type: 'half-shift-mismatch',
+          message: `${day.date}일: ${person.name}님의 하프 시프트가 요청(${requested})과 다릅니다. (배정: ${assigned.shift})`
+        });
+      }
+    });
   });
 
   return errors;
@@ -64,19 +85,36 @@ export function generateSchedule(year: number, month: number, people: Person[]):
     };
 
     // 해당 날짜에 근무 가능한 사람 필터링
-    const availablePeople = people.filter(person => 
-      !person.requestedDaysOff.includes(date)
-    );
+    const availablePeople = people.filter(person => !person.requestedDaysOff.includes(date));
+
+    // 하프 요청은 먼저 고정 배정
+    availablePeople.forEach(person => {
+      const requestedShift = person.halfRequests?.[date];
+      if (requestedShift === undefined) return;
+
+      // 오픈/마감은 가능 여부 필요 (미들은 제한 없음)
+      if (requestedShift === 'open' && !person.canOpen) return;
+      if (requestedShift === 'close' && !person.canClose) return;
+
+      dayAssignment.people.push({
+        personId: person.id,
+        personName: person.name,
+        shift: requestedShift
+      });
+    });
 
     // 필수 오픈 인원 중 한 명 배치 (휴무가 아닌 경우)
     const mustOpenPeople = availablePeople.filter(p => p.mustOpen && p.canOpen);
     if (mustOpenPeople.length > 0) {
       const person = mustOpenPeople[0];
-      dayAssignment.people.push({
-        personId: person.id,
-        personName: person.name,
-        shift: 'open'
-      });
+      const already = dayAssignment.people.find(p => p.personId === person.id);
+      if (!already) {
+        dayAssignment.people.push({
+          personId: person.id,
+          personName: person.name,
+          shift: 'open'
+        });
+      }
     }
 
     // 필수 마감 인원 중 한 명 배치 (휴무가 아닌 경우)
@@ -92,36 +130,36 @@ export function generateSchedule(year: number, month: number, people: Person[]):
       }
     }
 
-    // 나머지 인원 배치 (총 3명까지)
-    const alreadyAssigned = dayAssignment.people.map(p => p.personId);
-    const remainingPeople = availablePeople.filter(p => !alreadyAssigned.includes(p.id));
+    // 나머지 인원 배치 (규칙 인원 수까지)
+    const alreadyAssigned = new Set(dayAssignment.people.map(p => p.personId));
+    const remainingPeople = availablePeople.filter(p => !alreadyAssigned.has(p.id));
 
-    while (dayAssignment.people.length < rules.DAILY_STAFF && remainingPeople.length > 0) {
-      const person = remainingPeople.shift()!;
-      
-      // 오픈이 부족하면 오픈 가능한 사람 배치
+    while (dayAssignment.people.length < rules.DAILY_STAFF) {
       const openCount = dayAssignment.people.filter(p => p.shift === 'open').length;
       const closeCount = dayAssignment.people.filter(p => p.shift === 'close').length;
 
-      let shift: ShiftType;
-      if (openCount === 0 && person.canOpen) {
-        shift = 'open';
-      } else if (closeCount === 0 && person.canClose) {
-        shift = 'close';
-      } else if (person.canOpen && person.canClose) {
-        shift = openCount <= closeCount ? 'open' : 'close';
-      } else if (person.canOpen) {
-        shift = 'open';
-      } else if (person.canClose) {
-        shift = 'close';
+      let neededShift: ShiftType;
+      if (openCount === 0) neededShift = 'open';
+      else if (closeCount === 0) neededShift = 'close';
+      else neededShift = 'middle';
+
+      let pickIndex = -1;
+      if (neededShift === 'open') {
+        pickIndex = remainingPeople.findIndex(p => p.canOpen);
+      } else if (neededShift === 'close') {
+        pickIndex = remainingPeople.findIndex(p => p.canClose);
       } else {
-        continue;
+        pickIndex = remainingPeople.findIndex(() => true);
       }
+
+      if (pickIndex === -1) break;
+
+      const person = remainingPeople.splice(pickIndex, 1)[0];
 
       dayAssignment.people.push({
         personId: person.id,
         personName: person.name,
-        shift
+        shift: neededShift
       });
     }
 
@@ -148,6 +186,26 @@ export function generateSchedule(year: number, month: number, people: Person[]):
         message: `${date}일: 마감조에 배정된 인원이 없습니다.`
       });
     }
+
+    // 하프 요청 충족 여부(방어적)
+    people.forEach(person => {
+      const requestedShift = person.halfRequests?.[date];
+      if (requestedShift === undefined) return;
+      const assigned = dayAssignment.people.find(p => p.personId === person.id);
+      if (!assigned) {
+        generationErrors.push({
+          type: 'half-not-assigned',
+          message: `${date}일: ${person.name}님의 하프(${requestedShift}) 요청이 배정되지 않았습니다.`
+        });
+        return;
+      }
+      if (assigned.shift !== requestedShift) {
+        generationErrors.push({
+          type: 'half-shift-mismatch',
+          message: `${date}일: ${person.name}님의 하프 시프트가 요청(${requestedShift})과 다릅니다. (배정: ${assigned.shift})`
+        });
+      }
+    });
 
     assignments.push(dayAssignment);
   }
@@ -186,7 +244,7 @@ export function exportSchedulesToExcelCsv(schedules: Schedule[]): void {
 
     for (let day = 1; day <= daysInMonth; day++) {
       const assignment = schedule.assignments.find(a => a.date === day);
-      const assignedByPersonId = new Map<string, 'open' | 'close'>();
+      const assignedByPersonId = new Map<string, ShiftType>();
       if (assignment) {
         assignment.people.forEach(p => {
           assignedByPersonId.set(p.personId, p.shift);
@@ -196,6 +254,7 @@ export function exportSchedulesToExcelCsv(schedules: Schedule[]): void {
       const perPerson = schedule.people.map(p => {
         const shift = assignedByPersonId.get(p.id);
         if (shift === 'open') return '오픈';
+        if (shift === 'middle') return '미들';
         if (shift === 'close') return '마감';
         return '휴무';
       });
@@ -232,7 +291,7 @@ export function exportSchedulesToXlsx(schedules: Schedule[]): void {
 
     for (let day = 1; day <= daysInMonth; day++) {
       const assignment = schedule.assignments.find(a => a.date === day);
-      const assignedByPersonId = new Map<string, 'open' | 'close'>();
+      const assignedByPersonId = new Map<string, ShiftType>();
       if (assignment) {
         assignment.people.forEach(p => assignedByPersonId.set(p.personId, p.shift));
       }
@@ -240,6 +299,7 @@ export function exportSchedulesToXlsx(schedules: Schedule[]): void {
       const row = [day.toString(), ...schedule.people.map(p => {
         const shift = assignedByPersonId.get(p.id);
         if (shift === 'open') return '오픈';
+        if (shift === 'middle') return '미들';
         if (shift === 'close') return '마감';
         return '휴무';
       })];

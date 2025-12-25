@@ -5,10 +5,12 @@ import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { Select } from '../components/Select';
 import { Checkbox } from '../components/Checkbox';
-import { Person, Schedule, ValidationError } from '../types';
+import { Person, Schedule, ShiftType, ValidationError } from '../types';
 import { validateScheduleInputs, getDaysInMonth } from '../validator';
 import { generateSchedule, validateGeneratedSchedule, ScheduleGenerationError, exportSchedulesToXlsx } from '../generator';
 import { saveSchedule } from '../storage';
+
+type RequestMode = 'off' | 'half';
 
 export function CreateSchedulePage() {
   const navigate = useNavigate();
@@ -21,6 +23,8 @@ export function CreateSchedulePage() {
   const [people, setPeople] = useState<Person[]>([]);
   const [errors, setErrors] = useState<ValidationError[]>([]);
   const [schedule, setSchedule] = useState<Schedule | null>(null);
+  const [requestModes, setRequestModes] = useState<Record<string, RequestMode>>({});
+  const [activeHalfDay, setActiveHalfDay] = useState<Record<string, number | null>>({});
 
   // 인원 수 변경 시 배열 초기화
   const handlePeopleCountChange = (count: string) => {
@@ -39,7 +43,8 @@ export function CreateSchedulePage() {
           canClose: true,
           mustOpen: false,
           mustClose: false,
-          requestedDaysOff: []
+          requestedDaysOff: [],
+          halfRequests: {}
         });
       }
     }
@@ -53,13 +58,69 @@ export function CreateSchedulePage() {
     setPeople(newPeople);
   };
 
-  // 휴무일 토글
-  const toggleDayOff = (personIndex: number, day: number) => {
+  const getRequestMode = (personId: string): RequestMode => requestModes[personId] ?? 'off';
+
+  const setRequestMode = (personId: string, mode: RequestMode) => {
+    setRequestModes(prev => ({ ...prev, [personId]: mode }));
+  };
+
+  // 휴무/하프 날짜 선택
+  const toggleRequestDay = (personIndex: number, day: number) => {
     const person = people[personIndex];
-    const newDaysOff = person.requestedDaysOff.includes(day)
-      ? person.requestedDaysOff.filter((d: number) => d !== day)
-      : [...person.requestedDaysOff, day];
-    updatePerson(personIndex, { requestedDaysOff: newDaysOff });
+    const mode = getRequestMode(person.id);
+
+    if (mode === 'off') {
+      const newDaysOff = person.requestedDaysOff.includes(day)
+        ? person.requestedDaysOff.filter((d: number) => d !== day)
+        : [...person.requestedDaysOff, day];
+
+      const newHalfRequests = { ...person.halfRequests };
+      if (newDaysOff.includes(day)) {
+        delete newHalfRequests[day];
+        setActiveHalfDay(prev => (prev[person.id] === day ? { ...prev, [person.id]: null } : prev));
+      }
+
+      updatePerson(personIndex, {
+        requestedDaysOff: newDaysOff,
+        halfRequests: newHalfRequests
+      });
+      return;
+    }
+
+    // half 모드
+    const isHalfSelected = person.halfRequests[day] !== undefined;
+    const isActive = activeHalfDay[person.id] === day;
+
+    // 이미 선택된 날짜인데 비활성 상태면, 활성화만 (해제 X)
+    if (isHalfSelected && !isActive) {
+      setActiveHalfDay(prev => ({ ...prev, [person.id]: day }));
+      return;
+    }
+
+    const newHalfRequests = { ...person.halfRequests };
+    if (isHalfSelected && isActive) {
+      // 활성 상태에서 한 번 더 누르면 해제
+      delete newHalfRequests[day];
+      setActiveHalfDay(prev => ({ ...prev, [person.id]: null }));
+    } else {
+      // 신규 선택 시 기본값은 'middle'
+      newHalfRequests[day] = 'middle';
+      setActiveHalfDay(prev => ({ ...prev, [person.id]: day }));
+    }
+
+    // 하프 선택 시 동일 날짜 휴무는 제거
+    const newDaysOff = person.requestedDaysOff.filter(d => d !== day);
+
+    updatePerson(personIndex, {
+      requestedDaysOff: newDaysOff,
+      halfRequests: newHalfRequests
+    });
+  };
+
+  const setHalfShiftForDay = (personIndex: number, day: number, shift: ShiftType) => {
+    const person = people[personIndex];
+    const newHalfRequests = { ...person.halfRequests, [day]: shift };
+    updatePerson(personIndex, { halfRequests: newHalfRequests });
   };
 
   // 스케줄 생성
@@ -135,6 +196,7 @@ export function CreateSchedulePage() {
 
           const assignment = s.assignments.find(a => a.date === dayNum);
           const openPeople = assignment ? assignment.people.filter(p => p.shift === 'open') : [];
+          const middlePeople = assignment ? assignment.people.filter(p => p.shift === 'middle') : [];
           const closePeople = assignment ? assignment.people.filter(p => p.shift === 'close') : [];
 
           const dateObj = new Date(s.year, s.month - 1, dayNum);
@@ -147,6 +209,10 @@ export function CreateSchedulePage() {
               <div className="calendar-line">
                 <span className="calendar-label">오픈</span>
                 <span>{openPeople.map(p => p.personName).join(', ') || '-'}</span>
+              </div>
+              <div className="calendar-line">
+                <span className="calendar-label">미들</span>
+                <span>{middlePeople.map(p => p.personName).join(', ') || '-'}</span>
               </div>
               <div className="calendar-line">
                 <span className="calendar-label">마감</span>
@@ -241,19 +307,52 @@ export function CreateSchedulePage() {
               </div>
 
               <div className="days-off-selector">
-                <label>휴무 요청일</label>
+                <label>휴무/하프 선택</label>
+
+                <div className="request-mode">
+                  <button
+                    type="button"
+                    className={`request-mode-btn ${getRequestMode(person.id) === 'off' ? 'active' : ''}`}
+                    onClick={() => setRequestMode(person.id, 'off')}
+                  >
+                    휴무
+                  </button>
+                  <button
+                    type="button"
+                    className={`request-mode-btn half ${getRequestMode(person.id) === 'half' ? 'active' : ''}`}
+                    onClick={() => setRequestMode(person.id, 'half')}
+                  >
+                    하프
+                  </button>
+                </div>
+
                 <div className="days-grid">
                   {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(day => (
                     <button
                       key={day}
                       type="button"
-                      className={`day-btn ${person.requestedDaysOff.includes(day) ? 'selected' : ''}`}
-                      onClick={() => toggleDayOff(index, day)}
+                      className={`day-btn ${person.requestedDaysOff.includes(day) ? 'selected' : ''} ${person.halfRequests[day] !== undefined ? 'half-selected' : ''}`}
+                      onClick={() => toggleRequestDay(index, day)}
                     >
                       {day}
                     </button>
                   ))}
                 </div>
+
+                {getRequestMode(person.id) === 'half' && activeHalfDay[person.id] != null && person.halfRequests[activeHalfDay[person.id] as number] !== undefined && (
+                  <div className="half-shift-picker">
+                    <Select
+                      label={`${activeHalfDay[person.id]}일 하프 타임`}
+                      value={person.halfRequests[activeHalfDay[person.id] as number]}
+                      onChange={(v) => setHalfShiftForDay(index, activeHalfDay[person.id] as number, v as ShiftType)}
+                      options={[
+                        { value: 'open', label: '오픈' },
+                        { value: 'middle', label: '미들' },
+                        { value: 'close', label: '마감' }
+                      ]}
+                    />
+                  </div>
+                )}
               </div>
             </div>
           ))}

@@ -1,5 +1,5 @@
 // 근무 타입
-export type ShiftType = 'open' | 'close';
+export type ShiftType = 'open' | 'middle' | 'close';
 
 // 인원 정보
 export interface Person {
@@ -10,6 +10,7 @@ export interface Person {
   mustOpen: boolean;
   mustClose: boolean;
   requestedDaysOff: number[];
+  halfRequests: Record<number, ShiftType>;
 }
 
 // 날짜별 배정
