@@ -498,6 +498,33 @@ body {
   color: rgba(255, 255, 255, 0.95);
 }
 
+/* summary parts */
+.summary-text {
+  color: inherit;
+}
+.summary-name {
+  font-weight: 800;
+  margin-right: 0.15rem;
+}
+.summary-status.off {
+  color: #2563eb; /* 파란색 (휴무) */
+  font-weight: 800;
+}
+.summary-status.half {
+  color: #d97706; /* 주황색 (하프) */
+  font-weight: 800;
+}
+.summary-shift {
+  color: var(--text-secondary);
+  font-weight: 700;
+  margin-left: 0.1rem;
+}
+
+.request-day-cell.selected .summary-status,
+.request-day-cell.half-selected .summary-status {
+  color: rgba(255, 255, 255, 0.95) !important;
+}
+
 .request-day-cell:hover {
   border-color: var(--primary);
 }

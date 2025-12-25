@@ -15,8 +15,9 @@ type RequestMode = 'off' | 'half';
 
 type DayRequestSummary = {
   key: string;
-  text: string;
+  name: string;
   kind: 'off' | 'half';
+  shiftLabel?: string;
 };
 
 export function CreateSchedulePage() {
@@ -427,12 +428,12 @@ export function CreateSchedulePage() {
           const summaries: DayRequestSummary[] = people
             .map((p: Person) => {
               if (p.requestedDaysOff.includes(dayNum)) {
-                return { key: `${p.id}-off`, text: `(${p.name}/휴무)`, kind: 'off' as const };
+                return { key: `${p.id}-off`, name: p.name, kind: 'off' as const };
               }
               const hs = p.halfRequests?.[dayNum];
               if (hs !== undefined) {
                 const hsLabel = hs === 'open' ? '오픈' : hs === 'middle' ? '미들' : '마감';
-                return { key: `${p.id}-half`, text: `(${p.name}/하프/${hsLabel})`, kind: 'half' as const };
+                return { key: `${p.id}-half`, name: p.name, kind: 'half' as const, shiftLabel: hsLabel };
               }
               return null;
             })
@@ -466,7 +467,19 @@ export function CreateSchedulePage() {
               {summaries.length > 0 && (
                 <div className="request-summaries" onClick={(e: MouseEvent<HTMLDivElement>) => e.stopPropagation()}>
                   {summaries.map((s: DayRequestSummary) => (
-                    <div key={s.key} className={`request-summary ${s.kind}`}> {s.text} </div>
+                    <div key={s.key} className={`request-summary ${s.kind}`}>
+                      <span className="summary-text">(</span>
+                      <span className="summary-name">{s.name}</span>
+                      <span className="summary-text">/</span>
+                      <span className={`summary-status ${s.kind}`}>{s.kind === 'off' ? '휴무' : '하프'}</span>
+                      {s.shiftLabel && (
+                        <>
+                          <span className="summary-text">/</span>
+                          <span className="summary-shift">{s.shiftLabel}</span>
+                        </>
+                      )}
+                      <span className="summary-text">)</span>
+                    </div>
                   ))}
                 </div>
               )}
