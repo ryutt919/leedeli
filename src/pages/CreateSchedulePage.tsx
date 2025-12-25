@@ -238,6 +238,15 @@ export function CreateSchedulePage() {
     setSchedule(null);
   };
 
+  // 달력의 휴무 및 하프 요청을 모두 초기화
+  const handleResetRequests = () => {
+    if (!confirm('모든 휴무/하프 요청을 초기화하시겠습니까?')) return;
+    const cleared = people.map(p => ({ ...p, requestedDaysOff: [], halfRequests: {} }));
+    setPeople(cleared);
+    setSchedule(null);
+    alert('모든 휴무/하프 요청을 초기화했습니다.');
+  };
+
   const formatStaff = (value: number): string => {
     const s = value.toString();
     return s.endsWith('.0') ? s.slice(0, -2) : s;
@@ -676,6 +685,12 @@ export function CreateSchedulePage() {
               >
                 하프
               </button>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+              <Button variant="danger" onClick={handleResetRequests}>
+                초기화 (휴무/하프 모두 제거)
+              </Button>
             </div>
 
             <div className="calendar-wrapper">
