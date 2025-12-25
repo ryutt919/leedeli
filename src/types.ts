@@ -61,31 +61,3 @@ export interface StaffConfig {
   middlePriority?: number;
   closePriority?: number;
 }
-
-// 재료
-export interface Ingredient {
-  id: string;
-  name: string;
-  price: number; // 구매 가격
-  purchaseUnit: number; // 구매 단위 (예: 1kg, 500g 등)
-  unitPrice: number; // 단위 가격 (price / purchaseUnit)
-}
-
-// 프렙 재료 (프렙에 사용되는 재료와 수량)
-export interface PrepIngredient {
-  ingredientId: string;
-  ingredientName: string;
-  quantity: number; // 사용량
-}
-
-// 프렙
-export interface Prep {
-  id: string;
-  name: string;
-  ingredients: PrepIngredient[]; // 재료 목록
-  nextReplenishDate?: string; // 다음 보충 예상 날짜 (YYYY-MM-DD) - 계산된 값
-  replenishHistory: string[]; // 보충 이력 (YYYY-MM-DD 형식의 날짜 배열, 오름차순 정렬)
-  totalCost: number; // 프렙 총 재료 비용
-  createdAt: string;
-  updatedAt: string;
-}
