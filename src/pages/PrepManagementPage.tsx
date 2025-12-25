@@ -2,7 +2,7 @@ import { useState, useEffect, type ChangeEvent } from 'react';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
-import { loadPreps, savePrep, deletePrep } from '../storage';
+import { loadPreps, savePreps, deletePrep } from '../storage';
 import { loadIngredients } from '../storage';
 import type { Prep, PrepIngredient, Ingredient } from '../types';
 
@@ -125,7 +125,16 @@ export function PrepManagementPage() {
       updatedAt: new Date().toISOString()
     };
 
-    savePrep(prepToSave);
+    const existingPreps = loadPreps();
+    const existingIndex = existingPreps.findIndex(p => p.id === prepToSave.id);
+    
+    if (existingIndex >= 0) {
+      existingPreps[existingIndex] = prepToSave;
+    } else {
+      existingPreps.push(prepToSave);
+    }
+    
+    savePreps(existingPreps);
     loadData();
     setShowAddForm(false);
     setEditingPrep(null);
@@ -143,7 +152,12 @@ export function PrepManagementPage() {
       updatedAt: new Date().toISOString()
     };
 
-    savePrep(updatedPrep);
+    const existingPreps = loadPreps();
+    const index = existingPreps.findIndex(p => p.id === prepId);
+    if (index >= 0) {
+      existingPreps[index] = updatedPrep;
+      savePreps(existingPreps);
+    }
     loadData();
   };
 
@@ -159,7 +173,12 @@ export function PrepManagementPage() {
       updatedAt: new Date().toISOString()
     };
 
-    savePrep(updatedPrep);
+    const existingPreps = loadPreps();
+    const index = existingPreps.findIndex(p => p.id === prepId);
+    if (index >= 0) {
+      existingPreps[index] = updatedPrep;
+      savePreps(existingPreps);
+    }
     loadData();
   };
 
@@ -224,50 +243,67 @@ export function PrepManagementPage() {
       // 헤더 제거
       const dataLines = lines.slice(1);
       const newPreps: Prep[] = [];
+      const existingPreps = loadPreps();
 
       dataLines.forEach((line, index) => {
-        const [name, nextReplenishDate, ...ingredientData] = line.split(',').map(s => s.trim());
+        // CSV 형식: 이름,재료명,수량,보충날짜1,보충날짜2,...
+        const parts = line.split(',').map(s => s.trim());
         
-        if (!name) return;
+        if (parts.length < 3) return; // 최소 이름, 재료명, 수량 필요
+        
+        const [name, ingredientName, quantityStr, ...replenishDates] = parts;
+        
+        if (!name || !ingredientName) return;
 
-        const prepIngredients: PrepIngredient[] = [];
-        // 재료 데이터는 "재료명:수량" 형식으로 가정
-        for (let i = 0; i < ingredientData.length; i += 2) {
-          const ingredientName = ingredientData[i];
-          const quantity = parseFloat(ingredientData[i + 1] || '0');
-          
-          if (ingredientName) {
-            const ingredient = ingredients.find(ing => ing.name === ingredientName);
-            if (ingredient) {
-              prepIngredients.push({
-                ingredientId: ingredient.id,
-                ingredientName: ingredient.name,
-                quantity
-              });
-            }
-          }
+        const quantity = parseFloat(quantityStr || '0');
+        const ingredient = ingredients.find(ing => ing.name === ingredientName);
+        
+        if (!ingredient) {
+          console.warn(`재료를 찾을 수 없습니다: ${ingredientName}`);
+          return;
         }
 
+        const prepIngredients: PrepIngredient[] = [{
+          ingredientId: ingredient.id,
+          ingredientName: ingredient.name,
+          quantity
+        }];
+
+        // 보충 날짜 파싱 (YYYY-MM-DD 형식)
+        const validReplenishDates = replenishDates
+          .filter(d => d && /^\d{4}-\d{2}-\d{2}$/.test(d))
+          .sort();
+
         const totalCost = calculateTotalCost(prepIngredients);
+        const replenishHistory = validReplenishDates;
         
         newPreps.push({
           id: String(Date.now() + index),
           name,
           ingredients: prepIngredients,
-          replenishHistory: [],
-          nextReplenishDate: nextReplenishDate || undefined,
+          replenishHistory,
+          nextReplenishDate: calculateExpectedReplenishDate({ 
+            replenishHistory, 
+            id: '', 
+            name: '', 
+            ingredients: [], 
+            totalCost: 0, 
+            createdAt: '', 
+            updatedAt: '' 
+          }) || undefined,
           totalCost,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
         });
       });
 
-      newPreps.forEach(prep => savePrep(prep));
+      savePreps([...existingPreps, ...newPreps]);
       loadData();
       alert(`${newPreps.length}개의 프렙이 추가되었습니다.`);
     };
 
     reader.readAsText(file, 'UTF-8');
+    e.target.value = ''; // 파일 input 초기화
   };
 
   const formatDate = (dateString?: string) => {
@@ -416,156 +452,130 @@ export function PrepManagementPage() {
           <div className="empty-message">등록된 프렙이 없습니다.</div>
         ) : (
           preps.map(prep => (
-            <Card key={prep.id} title={prep.name}>
-              {!expandedPreps.has(prep.id) ? (
-                <div>
-                  <div className="summary-item">
-                    <strong>다음 보충 예상 날짜:</strong>
-                    <span>{formatDate(prep.nextReplenishDate)}</span>
-                    {prep.replenishHistory.length >= 2 && (
-                      <span style={{ marginLeft: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
-                        (평균 간격: {calculateAverageReplenishInterval(prep.replenishHistory)}일)
-                      </span>
-                    )}
+            <Card key={prep.id}>
+              <div>
+                {/* 카드 헤더 - 항상 표시 */}
+                <div 
+                  onClick={() => toggleExpand(prep.id)} 
+                  style={{ 
+                    cursor: 'pointer', 
+                    padding: '1rem',
+                    marginBottom: expandedPreps.has(prep.id) ? '1rem' : '0',
+                    borderRadius: '8px',
+                    background: expandedPreps.has(prep.id) ? 'transparent' : 'var(--bg)'
+                  }}
+                >
+                  <div style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center',
+                    marginBottom: '0.5rem'
+                  }}>
+                    <h3 style={{ margin: 0, fontSize: '1.25rem' }}>{prep.name}</h3>
                   </div>
-                  <div className="summary-item" style={{ marginTop: '0.5rem' }}>
-                    <strong>프렙 총 재료 비용:</strong>
-                    <span>{prep.totalCost.toLocaleString('ko-KR')}원</span>
-                  </div>
-                  <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'var(--bg)', borderRadius: '8px' }}>
-                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end' }}>
-                      <div className="input-group" style={{ flex: 1 }}>
-                        <label style={{ fontSize: '0.875rem' }}>보충 날짜 추가</label>
-                        <Input
-                          type="date"
-                          value=""
-                          onChange={(e) => {
-                            if (e.target.value) {
-                              handleAddReplenishDate(prep.id, e.target.value);
-                              e.target.value = '';
-                            }
-                          }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                  <div className="actions" style={{ marginTop: '1rem' }}>
-                    <Button variant="primary" onClick={() => toggleExpand(prep.id)}>
-                      자세히 보기
-                    </Button>
-                    <Button variant="secondary" onClick={() => handleEditPrep(prep)}>
-                      수정
-                    </Button>
-                    <Button variant="danger" onClick={() => handleDeletePrep(prep.id)}>
-                      삭제
-                    </Button>
+                  <div style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between',
+                    fontSize: '0.875rem',
+                    color: 'var(--text-secondary)'
+                  }}>
+                    <span>다음 보충 예상 날짜: {formatDate(prep.nextReplenishDate)}</span>
+                    <span style={{ fontWeight: 'bold' }}>
+                      프렙 총 재료 비용: {prep.totalCost.toLocaleString('ko-KR')}원
+                    </span>
                   </div>
                 </div>
-              ) : (
-                <div>
-                  <div className="summary-item">
-                    <strong>다음 보충 예상 날짜:</strong>
-                    <span>{formatDate(prep.nextReplenishDate)}</span>
-                    {prep.replenishHistory.length >= 2 && (
-                      <span style={{ marginLeft: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
-                        (평균 간격: {calculateAverageReplenishInterval(prep.replenishHistory)}일)
-                      </span>
-                    )}
-                  </div>
-                  <div className="summary-item" style={{ marginTop: '0.5rem' }}>
-                    <strong>프렙 총 재료 비용:</strong>
-                    <span>{prep.totalCost.toLocaleString('ko-KR')}원</span>
-                  </div>
 
-                  <div className="subsection-title" style={{ marginTop: '1.5rem' }}>보충 이력</div>
-                  <div style={{ marginBottom: '1rem', padding: '1rem', background: 'var(--bg)', borderRadius: '8px' }}>
-                    {prep.replenishHistory.length === 0 ? (
-                      <p style={{ color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>보충 이력이 없습니다.</p>
-                    ) : (
-                      <div style={{ marginBottom: '1rem' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                          {prep.replenishHistory.map((date, idx) => (
-                            <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'space-between' }}>
-                              <span>{formatDate(date)}</span>
-                              <Button 
-                                variant="danger" 
-                                onClick={() => handleRemoveReplenishDate(prep.id, date)}
-                                style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem' }}
-                              >
-                                삭제
-                              </Button>
-                            </div>
-                          ))}
-                        </div>
-                        {prep.replenishHistory.length >= 2 && (
-                          <div style={{ marginTop: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
-                            평균 보충 간격: {calculateAverageReplenishInterval(prep.replenishHistory)}일
+                {/* 상세 정보 - 펼쳐졌을 때만 표시 */}
+                {expandedPreps.has(prep.id) && (
+                  <div>
+                    <div className="subsection-title">보충 이력</div>
+                    <div style={{ marginBottom: '1rem', padding: '1rem', background: 'var(--bg)', borderRadius: '8px' }}>
+                      {prep.replenishHistory.length === 0 ? (
+                        <p style={{ color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>보충 이력이 없습니다.</p>
+                      ) : (
+                        <div style={{ marginBottom: '1rem' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                            {prep.replenishHistory.map((date, idx) => (
+                              <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'space-between' }}>
+                                <span>{formatDate(date)}</span>
+                                <Button 
+                                  variant="danger" 
+                                  onClick={() => handleRemoveReplenishDate(prep.id, date)}
+                                  style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem' }}
+                                >
+                                  삭제
+                                </Button>
+                              </div>
+                            ))}
                           </div>
-                        )}
+                          {prep.replenishHistory.length >= 2 && (
+                            <div style={{ marginTop: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
+                              평균 보충 간격: {calculateAverageReplenishInterval(prep.replenishHistory)}일
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end' }}>
+                        <div className="input-group" style={{ flex: 1 }}>
+                          <label style={{ fontSize: '0.875rem' }}>보충 날짜 추가</label>
+                          <Input
+                            type="date"
+                            value=""
+                            onChange={(e) => {
+                              if (e.target.value) {
+                                handleAddReplenishDate(prep.id, e.target.value);
+                                e.target.value = '';
+                              }
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="subsection-title" style={{ marginTop: '1.5rem' }}>재료 목록</div>
+                    {prep.ingredients.length === 0 ? (
+                      <p style={{ color: 'var(--text-secondary)' }}>등록된 재료가 없습니다.</p>
+                    ) : (
+                      <div className="schedule-table-wrapper">
+                        <table className="schedule-table">
+                          <thead>
+                            <tr>
+                              <th>재료명</th>
+                              <th>수량</th>
+                              <th>단위 가격</th>
+                              <th>총 가격</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {prep.ingredients.map((prepIng, index) => {
+                              const ingredient = ingredients.find(i => i.id === prepIng.ingredientId);
+                              const itemTotal = ingredient ? ingredient.unitPrice * prepIng.quantity : 0;
+                              return (
+                                <tr key={index}>
+                                  <td>{prepIng.ingredientName || '알 수 없음'}</td>
+                                  <td>{prepIng.quantity}</td>
+                                  <td>{ingredient ? `${ingredient.unitPrice.toLocaleString('ko-KR')}원` : '-'}</td>
+                                  <td>{itemTotal.toLocaleString('ko-KR')}원</td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
                       </div>
                     )}
-                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end' }}>
-                      <div className="input-group" style={{ flex: 1 }}>
-                        <label style={{ fontSize: '0.875rem' }}>보충 날짜 추가</label>
-                        <Input
-                          type="date"
-                          value=""
-                          onChange={(e) => {
-                            if (e.target.value) {
-                              handleAddReplenishDate(prep.id, e.target.value);
-                              e.target.value = '';
-                            }
-                          }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="subsection-title" style={{ marginTop: '1.5rem' }}>재료 목록</div>
-                  {prep.ingredients.length === 0 ? (
-                    <p style={{ color: 'var(--text-secondary)' }}>등록된 재료가 없습니다.</p>
-                  ) : (
-                    <div className="schedule-table-wrapper">
-                      <table className="schedule-table">
-                        <thead>
-                          <tr>
-                            <th>재료명</th>
-                            <th>수량</th>
-                            <th>단위 가격</th>
-                            <th>총 가격</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {prep.ingredients.map((prepIng, index) => {
-                            const ingredient = ingredients.find(i => i.id === prepIng.ingredientId);
-                            const itemTotal = ingredient ? ingredient.unitPrice * prepIng.quantity : 0;
-                            return (
-                              <tr key={index}>
-                                <td>{prepIng.ingredientName || '알 수 없음'}</td>
-                                <td>{prepIng.quantity}</td>
-                                <td>{ingredient ? `${ingredient.unitPrice.toLocaleString('ko-KR')}원` : '-'}</td>
-                                <td>{itemTotal.toLocaleString('ko-KR')}원</td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
 
-                  <div className="actions" style={{ marginTop: '1rem' }}>
-                    <Button variant="primary" onClick={() => toggleExpand(prep.id)}>
-                      접기
-                    </Button>
-                    <Button variant="secondary" onClick={() => handleEditPrep(prep)}>
-                      수정
-                    </Button>
-                    <Button variant="danger" onClick={() => handleDeletePrep(prep.id)}>
-                      삭제
-                    </Button>
+                    <div className="actions" style={{ marginTop: '1rem' }}>
+                      <Button variant="secondary" onClick={() => handleEditPrep(prep)}>
+                        수정
+                      </Button>
+                      <Button variant="danger" onClick={() => handleDeletePrep(prep.id)}>
+                        삭제
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </Card>
           ))
         )}

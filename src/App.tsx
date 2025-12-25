@@ -17,7 +17,7 @@ function App() {
           <div className="nav-links">
             <Link to="/">홈</Link>
             <Link to="/create">스케줄 생성</Link>
-            <Link to="/manage">관리/조회</Link>
+            <Link to="/manage">스케줄 관리/조회</Link>
             <Link to="/preps">프렙관리</Link>
             <Link to="/ingredients">재료관리</Link>
           </div>

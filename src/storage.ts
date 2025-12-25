@@ -1,5 +1,5 @@
-import { Schedule, Person, ShiftType, StaffConfig } from './types';
-import { STORAGE_KEY, STAFF_CONFIG_KEY } from './constants';
+import { Schedule, Person, ShiftType, StaffConfig, Prep, Ingredient } from './types';
+import { STORAGE_KEY, STAFF_CONFIG_KEY, PREPS_STORAGE_KEY, INGREDIENTS_STORAGE_KEY } from './constants';
 
 function normalizePerson(raw: Person): Person {
   const canOpen = typeof raw.canOpen === 'boolean' ? raw.canOpen : true;
@@ -161,4 +161,46 @@ export function migrateStaffFromSchedules(): StaffConfig[] {
     });
   });
   return Object.values(map);
+}
+
+// --- Prep storage ---
+export function loadPreps(): Prep[] {
+  const data = localStorage.getItem(PREPS_STORAGE_KEY);
+  if (!data) return [];
+  try {
+    const parsed = JSON.parse(data) as Prep[];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+export function savePreps(preps: Prep[]): void {
+  localStorage.setItem(PREPS_STORAGE_KEY, JSON.stringify(preps));
+}
+
+export function deletePrep(id: string): void {
+  const preps = loadPreps().filter(p => p.id !== id);
+  savePreps(preps);
+}
+
+// --- Ingredient storage ---
+export function loadIngredients(): Ingredient[] {
+  const data = localStorage.getItem(INGREDIENTS_STORAGE_KEY);
+  if (!data) return [];
+  try {
+    const parsed = JSON.parse(data) as Ingredient[];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveIngredients(ingredients: Ingredient[]): void {
+  localStorage.setItem(INGREDIENTS_STORAGE_KEY, JSON.stringify(ingredients));
+}
+
+export function deleteIngredient(id: string): void {
+  const ingredients = loadIngredients().filter(i => i.id !== id);
+  saveIngredients(ingredients);
 }

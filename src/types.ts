@@ -61,3 +61,31 @@ export interface StaffConfig {
   middlePriority?: number;
   closePriority?: number;
 }
+
+// 재료
+export interface Ingredient {
+  id: string;
+  name: string;
+  price: number;
+  purchaseUnit: number;
+  unitPrice: number;
+}
+
+// 프렙 재료
+export interface PrepIngredient {
+  ingredientId: string;
+  ingredientName: string;
+  quantity: number;
+}
+
+// 프렙
+export interface Prep {
+  id: string;
+  name: string;
+  ingredients: PrepIngredient[];
+  replenishHistory: string[]; // 보충 날짜 배열 (ISO 8601 형식)
+  nextReplenishDate?: string; // 다음 보충 예상 날짜 (ISO 8601 형식)
+  totalCost: number;
+  createdAt: string;
+  updatedAt: string;
+}

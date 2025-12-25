@@ -55,6 +55,22 @@ export function HomePage() {
             <Button variant="secondary">관리하기</Button>
           </Link>
         </Card>
+
+        <Card title="프렙 관리">
+          <p>프렙 재료 목록과 보충 이력을 관리합니다.</p>
+          <p>보충 날짜 추가, 예상 보충 날짜 확인, 재료비 계산 등을 제공합니다.</p>
+          <Link to="/preps">
+            <Button variant="primary">프렙 관리하기</Button>
+          </Link>
+        </Card>
+
+        <Card title="재료 관리">
+          <p>재료 정보를 등록하고 관리합니다.</p>
+          <p>가격, 구매 단위, 단위 가격 등을 관리하며 CSV 업로드를 지원합니다.</p>
+          <Link to="/ingredients">
+            <Button variant="secondary">재료 관리하기</Button>
+          </Link>
+        </Card>
       </div>
 
       <div className="info-section">
