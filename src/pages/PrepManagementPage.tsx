@@ -4,7 +4,7 @@ import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { loadPreps, savePreps, deletePrep } from '../storage';
 import { loadIngredients } from '../storage';
-import { exportPrepsToXlsx } from '../generator';
+import { exportPrepsToXlsx, exportPrepsToCsv } from '../generator';
 import type { Prep, PrepIngredient, Ingredient } from '../types';
 
 export function PrepManagementPage() {
@@ -316,7 +316,7 @@ export function PrepManagementPage() {
   return (
     <div className="container">
       <h1>프렙 관리</h1>
-      <p>csv 구조 : 이름,재료명,수량,보충날짜1(2025-12-20)..</p>
+       <p>csv 구조 : 이름,재료명,수량,보충날짜1(2025-12-20)..</p>
       <div className="actions" style={{ marginBottom: '1.5rem' }}>
         <Button variant="primary" onClick={handleAddPrep}>
           프렙 추가
@@ -332,6 +332,9 @@ export function PrepManagementPage() {
         </label>
         <Button variant="secondary" onClick={() => exportPrepsToXlsx(preps)}>
           엑셀 내보내기
+        </Button>
+        <Button variant="secondary" onClick={() => exportPrepsToCsv(preps)}>
+          CSV 내보내기
         </Button>
       </div>
 

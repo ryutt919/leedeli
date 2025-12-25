@@ -3,7 +3,7 @@ import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { loadIngredients, saveIngredients, deleteIngredient } from '../storage';
-import { exportIngredientsToXlsx } from '../generator';
+import { exportIngredientsToXlsx, exportIngredientsToCsv } from '../generator';
 import type { Ingredient } from '../types';
 
 export function IngredientManagementPage() {
@@ -146,7 +146,7 @@ export function IngredientManagementPage() {
   return (
     <div className="container">
       <h1>재료 관리</h1>
-      <p>csv 구조 : 이름,가격,구매단위</p>
+       <p>csv 구조 : 이름,가격,구매단위</p>
       <div className="actions" style={{ marginBottom: '1.5rem' }}>
         <Button variant="primary" onClick={handleAddIngredient}>
           재료 추가
@@ -162,6 +162,9 @@ export function IngredientManagementPage() {
         </label>
         <Button variant="secondary" onClick={() => exportIngredientsToXlsx(ingredients)}>
           엑셀 내보내기
+        </Button>
+        <Button variant="secondary" onClick={() => exportIngredientsToCsv(ingredients)}>
+          CSV 내보내기
         </Button>
       </div>
 

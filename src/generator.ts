@@ -517,25 +517,43 @@ export function exportSchedulesToXlsx(schedules: Schedule[]): void {
 export function exportPrepsToXlsx(preps: Prep[]): void {
   const wb = XLSX.utils.book_new();
 
+  // Determine max number of replenish dates across all preps
+  let maxDates = 0;
+  preps.forEach(p => {
+    if (p.replenishHistory && p.replenishHistory.length > maxDates) maxDates = p.replenishHistory.length;
+  });
+
+  // Header: 이름, 재료명, 수량, 보충날짜1...
+  const header = ['이름', '재료명', '수량'];
+  for (let i = 1; i <= maxDates; i++) header.push(`보충날짜${i}`);
+
+  const aoa: any[][] = [];
+  aoa.push(header);
+
+  // For preps with multiple ingredients, emit one row per ingredient
   preps.forEach(prep => {
-    const aoa: any[][] = [];
-    aoa.push(['프렙 이름', prep.name]);
-    aoa.push([]);
-    aoa.push(['재료명', '수량', '단위 가격', '총 가격']);
+    if (!prep.ingredients || prep.ingredients.length === 0) {
+      const row = [prep.name, '', '', ...Array(maxDates).fill('')];
+      aoa.push(row);
+      return;
+    }
 
     prep.ingredients.forEach(ing => {
-      aoa.push([ing.ingredientName || '', ing.quantity, '', '']);
+      const dates = prep.replenishHistory || [];
+      const row = [
+        prep.name,
+        ing.ingredientName || '',
+        typeof ing.quantity === 'number' ? ing.quantity : String(ing.quantity ?? ''),
+        ...dates.slice(0, maxDates),
+      ];
+      // pad dates to maxDates
+      while (row.length < 3 + maxDates) row.push('');
+      aoa.push(row);
     });
-
-    aoa.push([]);
-    aoa.push(['보충 이력', ...(prep.replenishHistory || [])]);
-    aoa.push(['다음 보충 예상', prep.nextReplenishDate || '']);
-    aoa.push(['프렙 총 재료 비용', prep.totalCost?.toString() ?? '']);
-
-    const ws = XLSX.utils.aoa_to_sheet(aoa);
-    const sheetName = prep.name && prep.name.length > 0 ? prep.name.substring(0, 31) : 'prep';
-    XLSX.utils.book_append_sheet(wb, ws, sheetName);
   });
+
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  XLSX.utils.book_append_sheet(wb, ws, 'preps');
 
   const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
   const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
@@ -544,6 +562,62 @@ export function exportPrepsToXlsx(preps: Prep[]): void {
   const link = document.createElement('a');
   link.href = url;
   link.download = `leedeli_preps_${new Date().toISOString().split('T')[0]}.xlsx`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+export function exportPrepsToCsv(preps: Prep[]): void {
+  // CSV format: 이름,재료명,수량,보충날짜1,보충날짜2,...
+  const rows: string[] = [];
+  const escape = (v: string) => `"${v.replace(/"/g, '""')}"`;
+
+  preps.forEach(prep => {
+    if (!prep.ingredients || prep.ingredients.length === 0) {
+      const row = [prep.name, '', ''];
+      rows.push(row.map(r => escape(String(r))).join(','));
+      return;
+    }
+    prep.ingredients.forEach(ing => {
+      const base = [prep.name, ing.ingredientName || '', String(ing.quantity ?? '')];
+      const dates = prep.replenishHistory || [];
+      const row = [...base, ...dates];
+      rows.push(row.map(r => escape(String(r))).join(','));
+    });
+  });
+
+  const bom = '\uFEFF';
+  const csv = bom + rows.join('\r\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `leedeli_preps_${new Date().toISOString().split('T')[0]}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+export function exportIngredientsToCsv(ingredients: Ingredient[]): void {
+  // CSV format: 이름,가격,구매단위
+  const rows: string[] = [];
+  const escape = (v: string) => `"${v.replace(/"/g, '""')}"`;
+  // header
+  rows.push(['이름', '가격', '구매단위'].map(escape).join(','));
+  ingredients.forEach(i => {
+    const row = [i.name, String(i.price ?? ''), String(i.purchaseUnit ?? '')];
+    rows.push(row.map(r => escape(String(r))).join(','));
+  });
+
+  const bom = '\uFEFF';
+  const csv = bom + rows.join('\r\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `leedeli_ingredients_${new Date().toISOString().split('T')[0]}.csv`;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
