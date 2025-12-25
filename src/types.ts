@@ -10,7 +10,6 @@ export interface Person {
   mustOpen: boolean;
   mustClose: boolean;
   requestedDaysOff: number[];
-  workDaysPerWeek: number;
 }
 
 // 날짜별 배정

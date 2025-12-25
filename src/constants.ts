@@ -4,8 +4,7 @@ export const WORK_RULES = {
   CLOSE_TIME: '11:00',
   DAILY_STAFF: 3,
   WORK_HOURS: 8,
-  BREAK_HOURS: 1,
-  DEFAULT_WORK_DAYS_PER_WEEK: 5
+  BREAK_HOURS: 1
 };
 
 // 로컬 스토리지 키

@@ -40,8 +40,7 @@ export function CreateSchedulePage() {
           canClose: true,
           mustOpen: false,
           mustClose: false,
-          requestedDaysOff: [],
-          workDaysPerWeek: WORK_RULES.DEFAULT_WORK_DAYS_PER_WEEK
+          requestedDaysOff: []
         });
       }
     }
@@ -169,15 +168,6 @@ export function CreateSchedulePage() {
                 />
               </div>
 
-              <Input
-                type="number"
-                label="주 근무일수"
-                value={person.workDaysPerWeek}
-                onChange={(v) => updatePerson(index, { workDaysPerWeek: parseInt(v) || 5 })}
-                min={1}
-                max={7}
-              />
-
               <div className="days-off-selector">
                 <label>휴무 요청일</label>
                 <div className="days-grid">
@@ -199,7 +189,10 @@ export function CreateSchedulePage() {
       </Card>
 
       {errors.length > 0 && (
-        <Card title="오류">
+        <Card title="❌ 스케줄 생성 불가">
+          <p style={{ marginBottom: '1rem', color: 'var(--danger)', fontWeight: 'bold' }}>
+            다음 문제를 해결한 후 다시 시도해주세요:
+          </p>
           <div className="errors">
             {errors.map((error, i) => (
               <div key={i} className="error-message">
@@ -217,7 +210,39 @@ export function CreateSchedulePage() {
       </div>
 
       {schedule && (
-        <Card title={`${schedule.year}년 ${schedule.month}월 스케줄`}>
+        <>
+          <Card title="인원별 근무 통계">
+            <div className="stats-grid">
+              {schedule.people.map(person => {
+                const workDays = schedule.assignments.filter(day =>
+                  day.people.some(p => p.personId === person.id)
+                ).map(day => day.date);
+                const offDays = person.requestedDaysOff;
+                
+                return (
+                  <div key={person.id} className="person-stats">
+                    <h4>{person.name}</h4>
+                    <div className="stat-item">
+                      <strong>근무일수:</strong>
+                      <span>{workDays.length}일</span>
+                    </div>
+                    <div className="stat-item">
+                      <strong>휴무일수:</strong>
+                      <span>{offDays.length}일</span>
+                    </div>
+                    {offDays.length > 0 && (
+                      <div className="stat-item">
+                        <strong>휴무일:</strong>
+                        <span>{offDays.sort((a, b) => a - b).join(', ')}일</span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
+
+          <Card title={`${schedule.year}년 ${schedule.month}월 스케줄`}>
           <div className="schedule-table-wrapper">
             <table className="schedule-table">
               <thead>
@@ -256,6 +281,7 @@ export function CreateSchedulePage() {
             </Button>
           </div>
         </Card>
+        </>
       )}
     </div>
   );
