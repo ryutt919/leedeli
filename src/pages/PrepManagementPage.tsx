@@ -4,6 +4,7 @@ import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { loadPreps, savePreps, deletePrep } from '../storage';
 import { loadIngredients } from '../storage';
+import { exportPrepsToXlsx } from '../generator';
 import type { Prep, PrepIngredient, Ingredient } from '../types';
 
 export function PrepManagementPage() {
@@ -329,6 +330,9 @@ export function PrepManagementPage() {
             style={{ display: 'none' }}
           />
         </label>
+        <Button variant="secondary" onClick={() => exportPrepsToXlsx(preps)}>
+          엑셀 내보내기
+        </Button>
       </div>
 
       {showAddForm && editingPrep && (

@@ -1,4 +1,4 @@
-import { Person, DayAssignment, Schedule, ShiftType, ValidationError } from './types';
+import { Person, DayAssignment, Schedule, ShiftType, ValidationError, Prep, Ingredient } from './types';
 import { getDaysInMonth } from './validator';
 import * as XLSX from 'xlsx';
 import { getWorkRules } from './workRules';
@@ -508,6 +508,66 @@ export function exportSchedulesToXlsx(schedules: Schedule[]): void {
   const link = document.createElement('a');
   link.href = url;
   link.download = `leedeli_schedules_${new Date().toISOString().split('T')[0]}.xlsx`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+export function exportPrepsToXlsx(preps: Prep[]): void {
+  const wb = XLSX.utils.book_new();
+
+  preps.forEach(prep => {
+    const aoa: any[][] = [];
+    aoa.push(['프렙 이름', prep.name]);
+    aoa.push([]);
+    aoa.push(['재료명', '수량', '단위 가격', '총 가격']);
+
+    prep.ingredients.forEach(ing => {
+      aoa.push([ing.ingredientName || '', ing.quantity, '', '']);
+    });
+
+    aoa.push([]);
+    aoa.push(['보충 이력', ...(prep.replenishHistory || [])]);
+    aoa.push(['다음 보충 예상', prep.nextReplenishDate || '']);
+    aoa.push(['프렙 총 재료 비용', prep.totalCost?.toString() ?? '']);
+
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    const sheetName = prep.name && prep.name.length > 0 ? prep.name.substring(0, 31) : 'prep';
+    XLSX.utils.book_append_sheet(wb, ws, sheetName);
+  });
+
+  const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+  const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const url = URL.createObjectURL(blob);
+
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `leedeli_preps_${new Date().toISOString().split('T')[0]}.xlsx`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+export function exportIngredientsToXlsx(ingredients: Ingredient[]): void {
+  const wb = XLSX.utils.book_new();
+  const aoa: any[][] = [];
+  aoa.push(['이름', '구매 가격', '구매 단위', '단위 가격']);
+  ingredients.forEach(i => {
+    aoa.push([i.name, i.price, i.purchaseUnit, i.unitPrice]);
+  });
+
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  XLSX.utils.book_append_sheet(wb, ws, 'ingredients');
+
+  const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+  const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const url = URL.createObjectURL(blob);
+
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `leedeli_ingredients_${new Date().toISOString().split('T')[0]}.xlsx`;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);

@@ -3,6 +3,7 @@ import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { loadIngredients, saveIngredients, deleteIngredient } from '../storage';
+import { exportIngredientsToXlsx } from '../generator';
 import type { Ingredient } from '../types';
 
 export function IngredientManagementPage() {
@@ -159,6 +160,9 @@ export function IngredientManagementPage() {
             style={{ display: 'none' }}
           />
         </label>
+        <Button variant="secondary" onClick={() => exportIngredientsToXlsx(ingredients)}>
+          엑셀 내보내기
+        </Button>
       </div>
 
       {showAddForm && editingIngredient && (
