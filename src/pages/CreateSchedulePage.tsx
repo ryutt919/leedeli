@@ -317,7 +317,7 @@ export function CreateSchedulePage() {
           <Card title={`${schedule.year}년 ${schedule.month}월 스케줄`}>
           <div className="actions">
             <Button onClick={handleExportExcel} variant="secondary">
-              엑셀(CSV) 내보내기
+              엑셀 내보내기
             </Button>
           </div>
 

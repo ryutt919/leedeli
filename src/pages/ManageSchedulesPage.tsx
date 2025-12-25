@@ -137,7 +137,7 @@ export function ManageSchedulesPage() {
         </div>
         <div className="actions">
           <Button onClick={handleExport} variant="secondary">
-            엑셀(CSV) 내보내기
+            엑셀 내보내기
           </Button>
         </div>
       </Card>
