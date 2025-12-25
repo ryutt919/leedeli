@@ -5,7 +5,7 @@ import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { Person, Schedule } from '../types';
 import { loadSchedules, deleteSchedule } from '../storage';
-import { exportSchedulesToExcelCsv } from '../generator';
+import { exportSchedulesToXlsx } from '../generator';
 import { getDaysInMonth } from '../validator';
 
 export function ManageSchedulesPage() {
@@ -37,7 +37,7 @@ export function ManageSchedulesPage() {
       alert('내보낼 스케줄이 없습니다.');
       return;
     }
-    exportSchedulesToExcelCsv(filtered);
+    exportSchedulesToXlsx(filtered);
   };
 
   const renderCalendar = (s: Schedule) => {

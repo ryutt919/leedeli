@@ -7,7 +7,7 @@ import { Select } from '../components/Select';
 import { Checkbox } from '../components/Checkbox';
 import { Person, Schedule, ValidationError } from '../types';
 import { validateScheduleInputs, getDaysInMonth } from '../validator';
-import { generateSchedule, validateGeneratedSchedule, ScheduleGenerationError, exportSchedulesToExcelCsv } from '../generator';
+import { generateSchedule, validateGeneratedSchedule, ScheduleGenerationError, exportSchedulesToXlsx } from '../generator';
 import { saveSchedule } from '../storage';
 
 export function CreateSchedulePage() {
@@ -107,7 +107,7 @@ export function CreateSchedulePage() {
 
   const handleExportExcel = () => {
     if (!schedule) return;
-    exportSchedulesToExcelCsv([schedule]);
+    exportSchedulesToXlsx([schedule]);
   };
 
   const renderCalendar = (s: Schedule) => {

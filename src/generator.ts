@@ -1,6 +1,7 @@
 import { Person, DayAssignment, Schedule, ShiftType, ValidationError } from './types';
 import { WORK_RULES } from './constants';
 import { getDaysInMonth } from './validator';
+import * as XLSX from 'xlsx';
 
 export class ScheduleGenerationError extends Error {
   public readonly errors: ValidationError[];
@@ -210,6 +211,52 @@ export function exportSchedulesToExcelCsv(schedules: Schedule[]): void {
   const link = document.createElement('a');
   link.href = url;
   link.download = `leedeli_schedules_${new Date().toISOString().split('T')[0]}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+export function exportSchedulesToXlsx(schedules: Schedule[]): void {
+  const wb = XLSX.utils.book_new();
+
+  schedules.forEach((schedule, idx) => {
+    const monthLabel = `${schedule.year}.${String(schedule.month).padStart(2, '0')}`;
+    const header = [monthLabel, ...schedule.people.map(p => p.name)];
+
+    const daysInMonth = getDaysInMonth(schedule.year, schedule.month);
+    const aoa: any[][] = [];
+    aoa.push(header);
+
+    for (let day = 1; day <= daysInMonth; day++) {
+      const assignment = schedule.assignments.find(a => a.date === day);
+      const assignedByPersonId = new Map<string, 'open' | 'close'>();
+      if (assignment) {
+        assignment.people.forEach(p => assignedByPersonId.set(p.personId, p.shift));
+      }
+
+      const row = [day.toString(), ...schedule.people.map(p => {
+        const shift = assignedByPersonId.get(p.id);
+        if (shift === 'open') return '오픈';
+        if (shift === 'close') return '마감';
+        return '휴무';
+      })];
+
+      aoa.push(row);
+    }
+
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    const sheetName = `${schedule.year}_${String(schedule.month).padStart(2, '0')}`;
+    XLSX.utils.book_append_sheet(wb, ws, sheetName);
+  });
+
+  const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+  const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const url = URL.createObjectURL(blob);
+
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `leedeli_schedules_${new Date().toISOString().split('T')[0]}.xlsx`;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
