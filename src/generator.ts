@@ -26,7 +26,7 @@ export function validateGeneratedSchedule(schedule: Schedule): ValidationError[]
 
     const halfCount = day.people.filter(p => p.isHalf).length;
     const fullCount = day.people.filter(p => !p.isHalf).length;
-    const assignedUnits = fullCount * 2 + halfCount;
+    const assignedUnits = fullCount * 2 + Math.floor(halfCount / 2) * 2;
 
     const openCount = day.people.filter(p => p.shift === 'open').length;
     const middleCount = day.people.filter(p => p.shift === 'middle').length;
@@ -149,23 +149,13 @@ export function generateSchedule(
     // 풀근무 후보: 휴무가 아니고, 하프 요청이 없는 사람
     const availableFullPeople = availablePeople.filter(p => p.halfRequests?.[date] === undefined);
 
-    const halfRequestCount = dayAssignment.people.filter(p => p.isHalf).length;
-    // 하프는 짝수만 인정 (홀수면 버림)
-    const fixedHalfCount = Math.floor(halfRequestCount / 2) * 2;
-    
-    // 홀수 하프는 배정에서 제거
-    if (halfRequestCount > fixedHalfCount) {
-      const halfPeople = dayAssignment.people.filter(p => p.isHalf);
-      const keepHalf = halfPeople.slice(0, fixedHalfCount);
-      dayAssignment.people = [...dayAssignment.people.filter(p => !p.isHalf), ...keepHalf];
-    }
-    
-    const remainingUnits = requiredUnits - fixedHalfCount;
+    const fixedHalfCount = dayAssignment.people.filter(p => p.isHalf).length;
+    const remainingUnits = requiredUnits - Math.floor(fixedHalfCount / 2) * 2;
 
     if (remainingUnits < 0) {
       generationErrors.push({
         type: 'insufficient-staff',
-        message: `${date}일: 하프 인원(${fixedHalfCount}명 = ${fixedHalfCount / 2}인)가 필요 인원(${requiredStaff}인)을 초과합니다.`
+        message: `${date}일: 하프 인원(${fixedHalfCount}명 = ${Math.floor(fixedHalfCount / 2)}인)가 필요 인원(${requiredStaff}인)을 초과합니다.`
       });
       assignments.push(dayAssignment);
       continue;
@@ -277,7 +267,7 @@ export function generateSchedule(
     // 생성 결과(해당 날짜)가 규칙을 만족하는지 즉시 검증
     const halfCountAfter = dayAssignment.people.filter(p => p.isHalf).length;
     const fullCountAfter = dayAssignment.people.filter(p => !p.isHalf).length;
-    const assignedUnitsAfter = fullCountAfter * 2 + halfCountAfter;
+    const assignedUnitsAfter = fullCountAfter * 2 + Math.floor(halfCountAfter / 2) * 2;
 
     const openCount = dayAssignment.people.filter(p => p.shift === 'open').length;
     const middleCount = dayAssignment.people.filter(p => p.shift === 'middle').length;
