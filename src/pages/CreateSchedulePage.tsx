@@ -169,16 +169,13 @@ export function CreateSchedulePage() {
     setDailyStaffByDate((prev: Record<number, number>) => {
       const base = rules.DAILY_STAFF_BASE;
       const max = rules.DAILY_STAFF_MAX;
-      const baseUnits = Math.round(base * 2);
-      const maxUnits = Math.round(max * 2);
 
       const current = prev[day] ?? base;
-      const currentUnits = Math.round(current * 2);
-
-      const nextUnits = currentUnits < maxUnits ? currentUnits + 1 : baseUnits;
-      const nextValue = nextUnits / 2;
-
       const next = { ...prev };
+
+      // 1 단위로 증가, 최대치 초과 시 기본값으로
+      const nextValue = current < max ? current + 1 : base;
+
       if (nextValue === base) {
         delete next[day];
       } else {
@@ -338,6 +335,7 @@ export function CreateSchedulePage() {
           const canHalfClose = !!person && person.canClose;
 
           const staffForDay = dailyStaffByDate[dayNum] ?? rules.DAILY_STAFF_BASE;
+          const isBaseStaff = staffForDay === rules.DAILY_STAFF_BASE;
 
           const summaries: DayRequestSummary[] = people
             .map((p: Person) => {
@@ -368,7 +366,7 @@ export function CreateSchedulePage() {
                 <div className="calendar-date">{dayNum}</div>
                 <button
                   type="button"
-                  className="staff-toggle"
+                  className={`staff-toggle ${isBaseStaff ? '' : 'custom-staff'}`}
                   onClick={(e: MouseEvent<HTMLButtonElement>) => {
                     e.stopPropagation();
                     incrementDailyStaff(dayNum);

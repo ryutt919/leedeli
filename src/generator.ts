@@ -26,7 +26,7 @@ export function validateGeneratedSchedule(schedule: Schedule): ValidationError[]
 
     const halfCount = day.people.filter(p => p.isHalf).length;
     const fullCount = day.people.filter(p => !p.isHalf).length;
-    const assignedUnits = fullCount * 2 + halfCount;
+    const assignedUnits = fullCount * 2 + Math.floor(halfCount / 2) * 2;
 
     const openCount = day.people.filter(p => p.shift === 'open').length;
     const middleCount = day.people.filter(p => p.shift === 'middle').length;
@@ -150,12 +150,12 @@ export function generateSchedule(
     const availableFullPeople = availablePeople.filter(p => p.halfRequests?.[date] === undefined);
 
     const fixedHalfCount = dayAssignment.people.filter(p => p.isHalf).length;
-    const remainingUnits = requiredUnits - fixedHalfCount;
+    const remainingUnits = requiredUnits - Math.floor(fixedHalfCount / 2) * 2;
 
     if (remainingUnits < 0) {
       generationErrors.push({
         type: 'insufficient-staff',
-        message: `${date}일: 하프 인원(${fixedHalfCount}명 = ${fixedHalfCount / 2}인)가 필요 인원(${requiredStaff}인)을 초과합니다.`
+        message: `${date}일: 하프 인원(${fixedHalfCount}명 = ${Math.floor(fixedHalfCount / 2)}인)가 필요 인원(${requiredStaff}인)을 초과합니다.`
       });
       assignments.push(dayAssignment);
       continue;
@@ -267,7 +267,7 @@ export function generateSchedule(
     // 생성 결과(해당 날짜)가 규칙을 만족하는지 즉시 검증
     const halfCountAfter = dayAssignment.people.filter(p => p.isHalf).length;
     const fullCountAfter = dayAssignment.people.filter(p => !p.isHalf).length;
-    const assignedUnitsAfter = fullCountAfter * 2 + halfCountAfter;
+    const assignedUnitsAfter = fullCountAfter * 2 + Math.floor(halfCountAfter / 2) * 2;
 
     const openCount = dayAssignment.people.filter(p => p.shift === 'open').length;
     const middleCount = dayAssignment.people.filter(p => p.shift === 'middle').length;
