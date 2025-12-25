@@ -1,5 +1,5 @@
-import { useState, type KeyboardEvent, type MouseEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState, type KeyboardEvent, type MouseEvent } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
@@ -8,7 +8,7 @@ import { Checkbox } from '../components/Checkbox';
 import { Person, Schedule, ShiftType, ValidationError } from '../types';
 import { validateScheduleInputs, getDaysInMonth } from '../validator';
 import { generateSchedule, validateGeneratedSchedule, ScheduleGenerationError, exportSchedulesToXlsx } from '../generator';
-import { saveSchedule } from '../storage';
+import { getScheduleById, saveSchedule } from '../storage';
 import { getWorkRules } from '../workRules';
 
 type RequestMode = 'off' | 'half';
@@ -20,6 +20,7 @@ type DayRequestSummary = {
 };
 
 export function CreateSchedulePage() {
+  const location = useLocation();
   const navigate = useNavigate();
   const currentYear = new Date().getFullYear();
   const currentMonth = new Date().getMonth() + 1;
@@ -34,14 +35,38 @@ export function CreateSchedulePage() {
   const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
   const [requestMode, setRequestMode] = useState<RequestMode>('off');
   const [dailyStaffByDate, setDailyStaffByDate] = useState<Record<number, number>>({});
+  const [editingScheduleId, setEditingScheduleId] = useState<string | null>(null);
+  const [editingCreatedAt, setEditingCreatedAt] = useState<string | null>(null);
 
   const rules = getWorkRules();
+
+  useEffect(() => {
+    const state = location.state as { editScheduleId?: string } | null;
+    const id = state?.editScheduleId;
+    if (!id) return;
+
+    const existing = getScheduleById(id);
+    if (!existing) return;
+
+    setEditingScheduleId(existing.id);
+    setEditingCreatedAt(existing.createdAt);
+    setYear(existing.year);
+    setMonth(existing.month);
+    setPeople(existing.people);
+    setPeopleCount(existing.people.length);
+    setDailyStaffByDate(existing.dailyStaffByDate ?? {});
+    setConfirmed(true);
+    setSelectedPersonId(existing.people[0]?.id ?? null);
+    setSchedule(existing);
+    setErrors([]);
+  }, [location.state]);
 
   // 인원 수 변경 시 배열 초기화
   const handlePeopleCountChange = (count: string) => {
     const num = parseInt(count) || 0;
     setPeopleCount(num);
     setConfirmed(false);
+    setSchedule(null);
     
     const newPeople: Person[] = [];
     for (let i = 0; i < num; i++) {
@@ -52,9 +77,11 @@ export function CreateSchedulePage() {
           id: crypto.randomUUID(),
           name: '',
           canOpen: true,
+          canMiddle: true,
           canClose: true,
           mustOpen: false,
           mustClose: false,
+          preferredShift: 'middle',
           requestedDaysOff: [],
           halfRequests: {}
         });
@@ -70,6 +97,7 @@ export function CreateSchedulePage() {
     newPeople[index] = { ...newPeople[index], ...updates };
     setPeople(newPeople);
     if (resetConfirm) setConfirmed(false);
+    setSchedule(null);
   };
 
   const canConfirm = people.length > 0 && people.every((p: Person) => p.name.trim().length > 0);
@@ -112,7 +140,13 @@ export function CreateSchedulePage() {
     if (newHalfRequests[day] !== undefined) {
       delete newHalfRequests[day];
     } else {
-      newHalfRequests[day] = 'middle';
+      // 기본 하프 시프트: 선호 > 가능 여부 고려
+      if (person.preferredShift === 'open' && person.canOpen) newHalfRequests[day] = 'open';
+      else if (person.preferredShift === 'middle' && person.canMiddle) newHalfRequests[day] = 'middle';
+      else if (person.preferredShift === 'close' && person.canClose) newHalfRequests[day] = 'close';
+      else if (person.canMiddle) newHalfRequests[day] = 'middle';
+      else if (person.canOpen) newHalfRequests[day] = 'open';
+      else newHalfRequests[day] = 'close';
     }
     const newDaysOff = person.requestedDaysOff.filter((d: number) => d !== day);
     updatePerson(personIndex, { requestedDaysOff: newDaysOff, halfRequests: newHalfRequests }, false);
@@ -126,16 +160,33 @@ export function CreateSchedulePage() {
     updatePerson(personIndex, { halfRequests: { ...person.halfRequests, [day]: shift } }, false);
   };
 
-  const toggleDailyStaff3 = (day: number) => {
+  const formatStaff = (value: number): string => {
+    const s = value.toString();
+    return s.endsWith('.0') ? s.slice(0, -2) : s;
+  };
+
+  const incrementDailyStaff = (day: number) => {
     setDailyStaffByDate((prev: Record<number, number>) => {
-      const current = prev[day];
-      if (current === 3) {
-        const next = { ...prev };
+      const base = rules.DAILY_STAFF_BASE;
+      const max = rules.DAILY_STAFF_MAX;
+      const baseUnits = Math.round(base * 2);
+      const maxUnits = Math.round(max * 2);
+
+      const current = prev[day] ?? base;
+      const currentUnits = Math.round(current * 2);
+
+      const nextUnits = currentUnits < maxUnits ? currentUnits + 1 : baseUnits;
+      const nextValue = nextUnits / 2;
+
+      const next = { ...prev };
+      if (nextValue === base) {
         delete next[day];
-        return next;
+      } else {
+        next[day] = nextValue;
       }
-      return { ...prev, [day]: 3 };
+      return next;
     });
+    setSchedule(null);
   };
 
   // 스케줄 생성
@@ -149,7 +200,15 @@ export function CreateSchedulePage() {
     }
 
     try {
-      const newSchedule = generateSchedule(year, month, people, dailyStaffByDate);
+      const generated = generateSchedule(year, month, people, dailyStaffByDate);
+      const newSchedule = editingScheduleId
+        ? {
+            ...generated,
+            id: editingScheduleId,
+            createdAt: editingCreatedAt ?? generated.createdAt,
+            updatedAt: new Date().toISOString()
+          }
+        : generated;
 
       // 생성된 스케줄 검증(방어적)
       const generationErrors = validateGeneratedSchedule(newSchedule);
@@ -274,7 +333,11 @@ export function CreateSchedulePage() {
           const isHalf = !!person && person.halfRequests[dayNum] !== undefined;
           const halfShift = person ? person.halfRequests[dayNum] : undefined;
 
-          const staffForDay = dailyStaffByDate[dayNum] ?? rules.DAILY_STAFF;
+          const canHalfOpen = !!person && person.canOpen;
+          const canHalfMiddle = !!person && person.canMiddle;
+          const canHalfClose = !!person && person.canClose;
+
+          const staffForDay = dailyStaffByDate[dayNum] ?? rules.DAILY_STAFF_BASE;
 
           const summaries: DayRequestSummary[] = people
             .map((p: Person) => {
@@ -308,10 +371,10 @@ export function CreateSchedulePage() {
                   className="staff-toggle"
                   onClick={(e: MouseEvent<HTMLButtonElement>) => {
                     e.stopPropagation();
-                    toggleDailyStaff3(dayNum);
+                    incrementDailyStaff(dayNum);
                   }}
                 >
-                  {staffForDay}인
+                  {formatStaff(staffForDay)}인
                 </button>
               </div>
 
@@ -329,6 +392,7 @@ export function CreateSchedulePage() {
                     type="button"
                     className={`half-shift-btn ${halfShift === 'open' ? 'active' : ''}`}
                     onClick={() => setHalfShiftForSelected(dayNum, 'open')}
+                    disabled={!canHalfOpen}
                   >
                     오픈
                   </button>
@@ -336,6 +400,7 @@ export function CreateSchedulePage() {
                     type="button"
                     className={`half-shift-btn ${halfShift === 'middle' ? 'active' : ''}`}
                     onClick={() => setHalfShiftForSelected(dayNum, 'middle')}
+                    disabled={!canHalfMiddle}
                   >
                     미들
                   </button>
@@ -343,6 +408,7 @@ export function CreateSchedulePage() {
                     type="button"
                     className={`half-shift-btn ${halfShift === 'close' ? 'active' : ''}`}
                     onClick={() => setHalfShiftForSelected(dayNum, 'close')}
+                    disabled={!canHalfClose}
                   >
                     마감
                   </button>
@@ -417,11 +483,27 @@ export function CreateSchedulePage() {
                   label="오픈 가능"
                 />
                 <Checkbox
+                  checked={person.canMiddle}
+                  onChange={(v) => updatePerson(index, { canMiddle: v })}
+                  label="미들 가능"
+                />
+                <Checkbox
                   checked={person.canClose}
                   onChange={(v) => updatePerson(index, { canClose: v })}
                   label="마감 가능"
                 />
               </div>
+
+              <Select
+                label="선호 시프트"
+                value={person.preferredShift}
+                onChange={(v) => updatePerson(index, { preferredShift: v as ShiftType })}
+                options={[
+                  { value: 'open', label: '오픈' },
+                  { value: 'middle', label: '미들' },
+                  { value: 'close', label: '마감' }
+                ]}
+              />
 
               <div className="checkbox-group">
                 <Checkbox
@@ -512,26 +594,43 @@ export function CreateSchedulePage() {
           <Card title="인원별 근무 통계">
             <div className="stats-grid">
               {schedule.people.map((person: Person) => {
-                const workDays = schedule.assignments.filter(day =>
-                  day.people.some(p => p.personId === person.id)
-                ).map(day => day.date);
+                const fullWorkDays = schedule.assignments
+                  .filter(day => day.people.some(p => p.personId === person.id && !p.isHalf))
+                  .map(day => day.date);
+
+                const halfDays = schedule.assignments
+                  .filter(day => day.people.some(p => p.personId === person.id && !!p.isHalf))
+                  .map(day => day.date);
+
+                const workEquivalent = fullWorkDays.length + halfDays.length * 0.5;
                 const offDays = person.requestedDaysOff;
+                const offEquivalent = offDays.length + halfDays.length * 0.5;
                 
                 return (
                   <div key={person.id} className="person-stats">
                     <h4>{person.name}</h4>
                     <div className="stat-item">
-                      <strong>근무일수:</strong>
-                      <span>{workDays.length}일</span>
+                      <strong>근무(환산):</strong>
+                      <span>{formatStaff(workEquivalent)}일</span>
                     </div>
                     <div className="stat-item">
-                      <strong>휴무일수:</strong>
-                      <span>{offDays.length}일</span>
+                      <strong>하프:</strong>
+                      <span>{halfDays.length}일</span>
+                    </div>
+                    <div className="stat-item">
+                      <strong>휴무(환산):</strong>
+                      <span>{formatStaff(offEquivalent)}일</span>
                     </div>
                     {offDays.length > 0 && (
                       <div className="stat-item">
                         <strong>휴무일:</strong>
                         <span>{offDays.sort((a, b) => a - b).join(', ')}일</span>
+                      </div>
+                    )}
+                    {halfDays.length > 0 && (
+                      <div className="stat-item">
+                        <strong>하프일:</strong>
+                        <span>{halfDays.sort((a, b) => a - b).join(', ')}일</span>
                       </div>
                     )}
                   </div>

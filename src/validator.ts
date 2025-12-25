@@ -107,7 +107,6 @@ export function validateScheduleInputs(
 
   // 오픈/마감 가능 인원 검증
   const canOpenPeople = people.filter(p => p.canOpen);
-  const canMiddlePeople = people.filter(p => p.canMiddle);
   const canClosePeople = people.filter(p => p.canClose);
 
   if (canOpenPeople.length === 0) {
@@ -115,9 +114,6 @@ export function validateScheduleInputs(
   }
   if (canClosePeople.length === 0) {
     errors.push({ type: 'shift', message: '마감 근무가 가능한 인원이 최소 1명은 필요합니다.' });
-  }
-  if (canMiddlePeople.length === 0) {
-    errors.push({ type: 'shift', message: '미들 근무가 가능한 인원이 최소 1명은 필요합니다.' });
   }
 
   // 필수 인원이 해당 시프트 가능한지 검증
@@ -197,6 +193,20 @@ export function validateScheduleInputs(
     }
     if (needsThreeShift && !canCoverMiddle) {
       errors.push({ type: 'no-middle', message: `${date}일: 3교대 조건인데 미들을 배정할 수 있는 인원이 없습니다.` });
+    }
+
+    // 하프 고정 배치로 인해 필수 시프트(오픈/마감/미들)를 채울 풀근무 슬롯이 부족한지(필요조건) 체크
+    const requiredShifts: ShiftType[] = needsThreeShift ? ['open', 'middle', 'close'] : ['open', 'close'];
+    const covered = new Set<ShiftType>();
+    if (fixedHasOpen) covered.add('open');
+    if (fixedHasMiddle) covered.add('middle');
+    if (fixedHasClose) covered.add('close');
+    const remainingShifts = requiredShifts.filter(s => !covered.has(s));
+    if (remainingShifts.length > requiredFullCount) {
+      errors.push({
+        type: 'insufficient',
+        message: `${date}일: 하프 고정 배치로 인해 필수 시프트(${remainingShifts.join('/')})를 채울 풀근무 인원이 부족합니다.`
+      });
     }
     
     // 필수 인원이 설정되어 있다면, 해당 날짜에 필수 인원 중 최소 1명이 가능한지 확인

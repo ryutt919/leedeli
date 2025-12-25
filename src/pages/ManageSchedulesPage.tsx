@@ -178,21 +178,32 @@ export function ManageSchedulesPage() {
               <h4 className="subsection-title">인원별 근무 통계</h4>
               <div className="stats-grid">
                 {schedule.people.map((person: Person) => {
-                  const workDays = schedule.assignments
-                    .filter(day => day.people.some(p => p.personId === person.id))
+                  const fullWorkDays = schedule.assignments
+                    .filter(day => day.people.some(p => p.personId === person.id && !p.isHalf))
                     .map(day => day.date);
+
+                  const halfDays = schedule.assignments
+                    .filter(day => day.people.some(p => p.personId === person.id && !!p.isHalf))
+                    .map(day => day.date);
+
+                  const workEquivalent = fullWorkDays.length + halfDays.length * 0.5;
                   const offDays = person.requestedDaysOff;
+                  const offEquivalent = offDays.length + halfDays.length * 0.5;
 
                   return (
                     <div key={person.id} className="person-stats">
                       <h4>{person.name}</h4>
                       <div className="stat-item">
-                        <strong>근무일수:</strong>
-                        <span>{workDays.length}일</span>
+                        <strong>근무(환산):</strong>
+                        <span>{workEquivalent}일</span>
                       </div>
                       <div className="stat-item">
-                        <strong>휴무일수:</strong>
-                        <span>{offDays.length}일</span>
+                        <strong>하프:</strong>
+                        <span>{halfDays.length}일</span>
+                      </div>
+                      <div className="stat-item">
+                        <strong>휴무(환산):</strong>
+                        <span>{offEquivalent}일</span>
                       </div>
                       {offDays.length > 0 && (
                         <div className="stat-item">
@@ -209,6 +220,9 @@ export function ManageSchedulesPage() {
               <div className="calendar-wrapper">{renderCalendar(schedule)}</div>
 
               <div className="actions">
+                <Button onClick={() => navigate('/create', { state: { editScheduleId: schedule.id } })} variant="secondary">
+                  수정
+                </Button>
                 <Button onClick={() => handleDelete(schedule.id)} variant="danger">
                   삭제
                 </Button>

@@ -18,18 +18,28 @@ export function validateGeneratedSchedule(schedule: Schedule): ValidationError[]
   const rules = getWorkRules();
   const dailyStaffByDate = schedule.dailyStaffByDate ?? {};
 
+  const toHalfUnits = (value: number): number => Math.round(value * 2);
+
   schedule.assignments.forEach(day => {
-    const requiredStaff = dailyStaffByDate[day.date] ?? rules.DAILY_STAFF;
-    const fullPeople = day.people.filter(p => !p.isHalf);
-    const openCount = fullPeople.filter(p => p.shift === 'open').length;
-    const closeCount = fullPeople.filter(p => p.shift === 'close').length;
-    const totalCount = fullPeople.length;
+    const requiredStaff = dailyStaffByDate[day.date] ?? rules.DAILY_STAFF_BASE;
+    const requiredUnits = toHalfUnits(requiredStaff);
+
+    const halfCount = day.people.filter(p => p.isHalf).length;
+    const fullCount = day.people.filter(p => !p.isHalf).length;
+    const assignedUnits = fullCount * 2 + halfCount;
+
+    const openCount = day.people.filter(p => p.shift === 'open').length;
+    const middleCount = day.people.filter(p => p.shift === 'middle').length;
+    const closeCount = day.people.filter(p => p.shift === 'close').length;
+
+    const headcount = day.people.length;
+    const needsThreeShift = headcount >= 3 || halfCount >= 2;
 
     // 총 인원 체크
-    if (totalCount !== requiredStaff) {
+    if (assignedUnits !== requiredUnits) {
       errors.push({
         type: 'insufficient-staff',
-        message: `${day.date}일: 배정된 풀근무 인원이 ${totalCount}명입니다. (필요: ${requiredStaff}명)`
+        message: `${day.date}일: 배정된 근무 인원(환산)이 ${assignedUnits / 2}명입니다. (필요: ${requiredStaff}명)`
       });
     }
 
@@ -38,6 +48,14 @@ export function validateGeneratedSchedule(schedule: Schedule): ValidationError[]
       errors.push({
         type: 'no-opener-assigned',
         message: `${day.date}일: 오픈조에 배정된 인원이 없습니다.`
+      });
+    }
+
+    // 3교대 조건이면 미들 최소 1명
+    if (needsThreeShift && middleCount === 0) {
+      errors.push({
+        type: 'no-middle-assigned',
+        message: `${day.date}일: 3교대 조건인데 미들조에 배정된 인원이 없습니다.`
       });
     }
 
@@ -91,9 +109,17 @@ export function generateSchedule(
   const generationErrors: ValidationError[] = [];
   const rules = getWorkRules();
 
+  const toHalfUnits = (value: number): number => Math.round(value * 2);
+
+  const pickPreferred = (candidates: Person[], shift: ShiftType): number => {
+    const preferredIndex = candidates.findIndex(p => p.preferredShift === shift);
+    return preferredIndex >= 0 ? preferredIndex : 0;
+  };
+
   // 각 날짜별로 배정
   for (let date = 1; date <= daysInMonth; date++) {
-    const requiredStaff = dailyStaffByDate[date] ?? rules.DAILY_STAFF;
+    const requiredStaff = dailyStaffByDate[date] ?? rules.DAILY_STAFF_BASE;
+    const requiredUnits = toHalfUnits(requiredStaff);
     const dayAssignment: DayAssignment = {
       date,
       people: []
@@ -102,13 +128,14 @@ export function generateSchedule(
     // 해당 날짜에 근무 가능한 사람(휴무 제외)
     const availablePeople = people.filter(person => !person.requestedDaysOff.includes(date));
 
-    // 하프 요청은 먼저 고정 배정 (하프는 근무 인원으로 미포함)
+    // 하프 요청은 먼저 고정 배정 (하프는 0.5 인원)
     availablePeople.forEach(person => {
       const requestedShift = person.halfRequests?.[date];
       if (requestedShift === undefined) return;
 
-      // 오픈/마감은 가능 여부 필요 (미들은 제한 없음)
+      // 오픈/미들/마감 가능 여부 필요
       if (requestedShift === 'open' && !person.canOpen) return;
+      if (requestedShift === 'middle' && !person.canMiddle) return;
       if (requestedShift === 'close' && !person.canClose) return;
 
       dayAssignment.people.push({
@@ -121,6 +148,31 @@ export function generateSchedule(
 
     // 풀근무 후보: 휴무가 아니고, 하프 요청이 없는 사람
     const availableFullPeople = availablePeople.filter(p => p.halfRequests?.[date] === undefined);
+
+    const fixedHalfCount = dayAssignment.people.filter(p => p.isHalf).length;
+    const remainingUnits = requiredUnits - fixedHalfCount;
+
+    if (remainingUnits < 0) {
+      generationErrors.push({
+        type: 'insufficient-staff',
+        message: `${date}일: 하프 인원(${fixedHalfCount}명 = ${fixedHalfCount / 2}인)가 필요 인원(${requiredStaff}인)을 초과합니다.`
+      });
+      assignments.push(dayAssignment);
+      continue;
+    }
+    if (remainingUnits % 2 !== 0) {
+      generationErrors.push({
+        type: 'insufficient-staff',
+        message: `${date}일: 필요 인원(${requiredStaff}인)을 맞추기 위해 하프(0.5 단위)가 추가로 필요합니다.`
+      });
+      assignments.push(dayAssignment);
+      continue;
+    }
+
+    const requiredFullCount = remainingUnits / 2;
+
+    const plannedHeadcount = requiredFullCount + fixedHalfCount;
+    const needsThreeShift = plannedHeadcount >= 3 || fixedHalfCount >= 2;
 
     // 필수 오픈 인원 중 한 명 배치 (풀근무 후보)
     const mustOpenPeople = availableFullPeople.filter(p => p.mustOpen && p.canOpen);
@@ -151,57 +203,92 @@ export function generateSchedule(
       }
     }
 
-    // 나머지 풀근무 인원 배치 (requiredStaff까지)
+    // 나머지 풀근무 인원 배치 (requiredFullCount까지)
     const alreadyAssignedFull = new Set(dayAssignment.people.filter(p => !p.isHalf).map(p => p.personId));
     const remainingPeople = availableFullPeople.filter(p => !alreadyAssignedFull.has(p.id));
 
-    while (dayAssignment.people.filter(p => !p.isHalf).length < requiredStaff) {
-      const fullPeopleNow = dayAssignment.people.filter(p => !p.isHalf);
-      const openCount = fullPeopleNow.filter(p => p.shift === 'open').length;
-      const closeCount = fullPeopleNow.filter(p => p.shift === 'close').length;
+    while (dayAssignment.people.filter(p => !p.isHalf).length < requiredFullCount) {
+      const openCountAll = dayAssignment.people.filter(p => p.shift === 'open').length;
+      const middleCountAll = dayAssignment.people.filter(p => p.shift === 'middle').length;
+      const closeCountAll = dayAssignment.people.filter(p => p.shift === 'close').length;
 
       let neededShift: ShiftType;
-      if (openCount === 0) neededShift = 'open';
-      else if (closeCount === 0) neededShift = 'close';
-      else neededShift = 'middle';
-
-      let pickIndex = -1;
-      if (neededShift === 'open') {
-        pickIndex = remainingPeople.findIndex(p => p.canOpen);
-      } else if (neededShift === 'close') {
-        pickIndex = remainingPeople.findIndex(p => p.canClose);
-      } else {
-        pickIndex = remainingPeople.findIndex(() => true);
+      if (openCountAll === 0) neededShift = 'open';
+      else if (closeCountAll === 0) neededShift = 'close';
+      else if (needsThreeShift && middleCountAll === 0) neededShift = 'middle';
+      else {
+        // 기본은 2교대(오픈/마감), 3교대 조건일 때만 오픈/미들/마감 균형 배치
+        if (!needsThreeShift) {
+          neededShift = openCountAll <= closeCountAll ? 'open' : 'close';
+        } else {
+          const counts: Array<{ shift: ShiftType; count: number }> = [
+            { shift: 'open', count: openCountAll },
+            { shift: 'middle', count: middleCountAll },
+            { shift: 'close', count: closeCountAll }
+          ];
+          counts.sort((a, b) => a.count - b.count);
+          neededShift = counts[0].shift;
+        }
       }
 
-      if (pickIndex === -1) break;
+      const eligible = remainingPeople.filter(p => {
+        if (neededShift === 'open') return p.canOpen;
+        if (neededShift === 'middle') return p.canMiddle;
+        return p.canClose;
+      });
 
-      const person = remainingPeople.splice(pickIndex, 1)[0];
+      if (eligible.length === 0) {
+        generationErrors.push({
+          type: 'insufficient-staff',
+          message: `${date}일: ${neededShift} 배정이 가능한 풀근무 인원이 부족합니다.`
+        });
+        break;
+      }
+
+      const pick = pickPreferred(eligible, neededShift);
+      const pickedId = eligible[pick].id;
+      const pickIndexInRemaining = remainingPeople.findIndex(p => p.id === pickedId);
+      const person = remainingPeople.splice(pickIndexInRemaining, 1)[0];
+
+      // 2교대 조건일 때는 풀근무 배정은 오픈/마감만(미들은 하프 요청으로만 허용)
+      let finalShift: ShiftType = neededShift;
+      if (!needsThreeShift && finalShift === 'middle') {
+        finalShift = person.preferredShift === 'close' && person.canClose ? 'close' : 'open';
+      }
 
       dayAssignment.people.push({
         personId: person.id,
         personName: person.name,
-        shift: neededShift,
+        shift: finalShift,
         isHalf: false
       });
     }
 
     // 생성 결과(해당 날짜)가 규칙을 만족하는지 즉시 검증
-    const fullPeopleAfter = dayAssignment.people.filter(p => !p.isHalf);
-    const openCount = fullPeopleAfter.filter(p => p.shift === 'open').length;
-    const closeCount = fullPeopleAfter.filter(p => p.shift === 'close').length;
-    const totalCount = fullPeopleAfter.length;
+    const halfCountAfter = dayAssignment.people.filter(p => p.isHalf).length;
+    const fullCountAfter = dayAssignment.people.filter(p => !p.isHalf).length;
+    const assignedUnitsAfter = fullCountAfter * 2 + halfCountAfter;
 
-    if (totalCount !== requiredStaff) {
+    const openCount = dayAssignment.people.filter(p => p.shift === 'open').length;
+    const middleCount = dayAssignment.people.filter(p => p.shift === 'middle').length;
+    const closeCount = dayAssignment.people.filter(p => p.shift === 'close').length;
+
+    if (assignedUnitsAfter !== requiredUnits) {
       generationErrors.push({
         type: 'insufficient-staff',
-        message: `${date}일: 배정된 풀근무 인원이 ${totalCount}명입니다. (필요: ${requiredStaff}명)`
+        message: `${date}일: 배정된 근무 인원(환산)이 ${assignedUnitsAfter / 2}명입니다. (필요: ${requiredStaff}명)`
       });
     }
     if (openCount === 0) {
       generationErrors.push({
         type: 'no-opener-assigned',
         message: `${date}일: 오픈조에 배정된 인원이 없습니다.`
+      });
+    }
+    if (needsThreeShift && middleCount === 0) {
+      generationErrors.push({
+        type: 'no-middle-assigned',
+        message: `${date}일: 3교대 조건인데 미들조에 배정된 인원이 없습니다.`
       });
     }
     if (closeCount === 0) {

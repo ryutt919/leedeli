@@ -429,9 +429,9 @@ body {
 
 .staff-toggle {
   padding: 0.2rem 0.5rem;
-  border: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.18);
-  color: inherit;
+  border: 1px solid var(--success);
+  background: var(--surface);
+  color: var(--success);
   border-radius: 999px;
   cursor: pointer;
   font-size: 0.75rem;
@@ -439,7 +439,14 @@ body {
 }
 
 .staff-toggle:hover {
-  border-color: rgba(255, 255, 255, 0.75);
+  border-color: var(--success);
+}
+
+.request-day-cell.selected .staff-toggle,
+.request-day-cell.half-selected .staff-toggle {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.85);
+  color: rgba(255, 255, 255, 0.95);
 }
 
 .request-summaries {
@@ -515,6 +522,11 @@ body {
   border: 1px solid var(--border);
   background: var(--surface);
   border-radius: 999px;
+
+.half-shift-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
   cursor: pointer;
   transition: all 0.2s;
   font-size: 0.875rem;
