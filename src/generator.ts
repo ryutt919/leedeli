@@ -26,7 +26,7 @@ export function validateGeneratedSchedule(schedule: Schedule): ValidationError[]
 
     const halfCount = day.people.filter(p => p.isHalf).length;
     const fullCount = day.people.filter(p => !p.isHalf).length;
-    const assignedUnits = fullCount * 2 + Math.floor(halfCount / 2) * 2;
+    const assignedUnits = fullCount * 2 + halfCount;
 
     const openCount = day.people.filter(p => p.shift === 'open').length;
     const middleCount = day.people.filter(p => p.shift === 'middle').length;
@@ -267,7 +267,7 @@ export function generateSchedule(
     // 생성 결과(해당 날짜)가 규칙을 만족하는지 즉시 검증
     const halfCountAfter = dayAssignment.people.filter(p => p.isHalf).length;
     const fullCountAfter = dayAssignment.people.filter(p => !p.isHalf).length;
-    const assignedUnitsAfter = fullCountAfter * 2 + Math.floor(halfCountAfter / 2) * 2;
+    const assignedUnitsAfter = fullCountAfter * 2 + halfCountAfter;
 
     const openCount = dayAssignment.people.filter(p => p.shift === 'open').length;
     const middleCount = dayAssignment.people.filter(p => p.shift === 'middle').length;
