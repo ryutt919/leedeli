@@ -110,7 +110,7 @@ export function PrepManagementPage() {
   };
   const normalizeField = (s?: string) => (s || '').replace(/\uFEFF/g, '').replace(/^"|"$/g, '').trim();
 
-  // CSV 업로드: 같은 프렙명은 하나로 합치고, 누락 재료는 자동 생성(중복시 확인)
+  // CSV 업로드
   const handleCSVUpload = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]; if (!file) return; const reader = new FileReader();
     reader.onload = (event) => {
@@ -126,7 +126,6 @@ export function PrepManagementPage() {
         const nameRaw = normalizeField(parts[0]); const ingredientNameRaw = normalizeField(parts[1]); const quantityStr = normalizeField(parts[2]); const replenishDatesRaw = parts.slice(3).map(normalizeField).filter(Boolean);
         if (!nameRaw || !ingredientNameRaw) { failures.push(`행 ${idx + 2}: 이름 또는 재료명 누락`); return; }
         const quantity = parseFloat(quantityStr || '0');
-        // ingredient find/create
         let ingredient = ingredientList.find(ing => ing.name === ingredientNameRaw);
         if (!ingredient) {
           const existingByName = ingredientList.find(ing => ing.name.toLowerCase() === ingredientNameRaw.toLowerCase());
@@ -300,7 +299,6 @@ export function PrepManagementPage() {
           preps.map(prep => (
             <Card key={prep.id}>
               <div>
-                {/* 카드 헤더 - 항상 표시 */}
                 <div 
                   onClick={() => toggleExpand(prep.id)} 
                   style={{ 
@@ -311,20 +309,10 @@ export function PrepManagementPage() {
                     background: expandedPreps.has(prep.id) ? 'transparent' : 'var(--bg)'
                   }}
                 >
-                  <div style={{ 
-                    display: 'flex', 
-                    justifyContent: 'space-between', 
-                    alignItems: 'center',
-                    marginBottom: '0.5rem'
-                  }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                     <h3 style={{ margin: 0, fontSize: '1.25rem' }}>{prep.name}</h3>
                   </div>
-                  <div style={{ 
-                    display: 'flex', 
-                    justifyContent: 'space-between',
-                    fontSize: '0.875rem',
-                    color: 'var(--text-secondary)'
-                  }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
                     <span>다음 보충 예상 날짜: {formatDate(prep.nextReplenishDate)}</span>
                     <span style={{ fontWeight: 'bold' }}>
                       프렙 총 재료 비용: {prep.totalCost.toLocaleString('ko-KR')}원
@@ -332,7 +320,6 @@ export function PrepManagementPage() {
                   </div>
                 </div>
 
-                {/* 상세 정보 - 펼쳐졌을 때만 표시 */}
                 {expandedPreps.has(prep.id) && (
                   <div>
                     <div className="subsection-title">보충 이력</div>
@@ -378,7 +365,7 @@ export function PrepManagementPage() {
                         </div>
                       </div>
                     </div>
-                    
+
                     <div className="subsection-title" style={{ marginTop: '1.5rem' }}>재료 목록</div>
                     {prep.ingredients.length === 0 ? (
                       <p style={{ color: 'var(--text-secondary)' }}>등록된 재료가 없습니다.</p>
