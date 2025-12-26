@@ -154,9 +154,9 @@ export function PrepManagementPage() {
     reader.readAsText(file, 'UTF-8'); e.target.value = '';
   };
 
-  const handleApplyPreview = (actions: Record<number, CsvAction>) => {
-    if (!previewItems || previewItems.length === 0) return;
-    const result = applyPreviewActionsForPreps(previewItems, actions);
+  const handleApplyPreview = (items: CsvPreviewItem[], actions: Record<number, CsvAction>) => {
+    if (!items || items.length === 0) return;
+    const result = applyPreviewActionsForPreps(items, actions);
     setShowPreview(false);
     setPreviewItems([]);
     loadData();

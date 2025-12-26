@@ -186,9 +186,9 @@ export function IngredientManagementPage() {
     e.target.value = ''; // 파일 input 초기화
   };
 
-  const handleApplyPreview = (actions: Record<number, CsvAction>) => {
-    if (!previewItems || previewItems.length === 0) return;
-    const result = applyPreviewActionsForIngredients(previewItems, actions);
+  const handleApplyPreview = (items: CsvPreviewItem[], actions: Record<number, CsvAction>) => {
+    if (!items || items.length === 0) return;
+    const result = applyPreviewActionsForIngredients(items, actions);
     setShowPreview(false);
     setPreviewItems([]);
     loadData();
