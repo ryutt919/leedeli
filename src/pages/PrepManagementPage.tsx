@@ -2,8 +2,10 @@ import { useState, useEffect, type ChangeEvent } from 'react';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
-import { loadPreps, savePreps, deletePrep } from '../storage';
+import { loadPreps, savePreps, deletePrep, applyPreviewActionsForPreps } from '../storage';
 import { loadIngredients, saveIngredients } from '../storage';
+import CsvPreviewModal from '../components/CsvPreviewModal';
+import type { CsvPreviewItem, CsvAction } from '../types';
 import { exportPrepsToXlsx, exportPrepsToCsv } from '../generator';
 import type { Prep, PrepIngredient, Ingredient } from '../types';
 
@@ -13,6 +15,8 @@ export function PrepManagementPage() {
   const [expandedPreps, setExpandedPreps] = useState<Set<string>>(new Set());
   const [editingPrep, setEditingPrep] = useState<Prep | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [previewItems, setPreviewItems] = useState<CsvPreviewItem[]>([]);
+  const [showPreview, setShowPreview] = useState(false);
 
   useEffect(() => { loadData(); }, []);
 
@@ -114,50 +118,52 @@ export function PrepManagementPage() {
   const handleCSVUpload = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]; if (!file) return; const reader = new FileReader();
     reader.onload = (event) => {
-      const text = event.target?.result as string; const lines = text.split(/\r?\n/).filter(line => line.trim());
+      const text = event.target?.result as string;
+      const lines = text.split(/\r?\n/).filter(line => line.trim());
       if (lines.length < 2) { alert('CSV 파일 형식이 올바르지 않습니다.'); return; }
-      const dataLines = lines.slice(1);
-      const existingPreps = loadPreps(); const currentIngredients = loadIngredients(); const ingredientList: Ingredient[] = [...currentIngredients]; const failures: string[] = []; let idCounter = Date.now();
 
-      const prepMap = new Map<string, { id: string; name: string; ingredients: PrepIngredient[]; replenishSet: Set<string>; createdAt: string; updatedAt: string; }>();
+      const dataLines = lines.slice(1);
+      const existingIngredients = loadIngredients();
+      const existingNameMap: Record<string, number> = {};
+      existingIngredients.forEach((ing, i) => { existingNameMap[(ing.name || '').toLowerCase()] = i; });
+
+      const items: CsvPreviewItem[] = [];
 
       dataLines.forEach((line, idx) => {
-        const parts = parseCsvLine(line); if (parts.length < 3) { failures.push(`행 ${idx + 2}: 필드 수 부족`); return; }
-        const nameRaw = normalizeField(parts[0]); const ingredientNameRaw = normalizeField(parts[1]); const quantityStr = normalizeField(parts[2]); const replenishDatesRaw = parts.slice(3).map(normalizeField).filter(Boolean);
-        if (!nameRaw || !ingredientNameRaw) { failures.push(`행 ${idx + 2}: 이름 또는 재료명 누락`); return; }
-        const quantity = parseFloat(quantityStr || '0');
-        // ingredient find/create
-        let ingredient = ingredientList.find(ing => ing.name === ingredientNameRaw);
-        if (!ingredient) {
-          const existingByName = ingredientList.find(ing => ing.name.toLowerCase() === ingredientNameRaw.toLowerCase());
-          if (existingByName) {
-            const doOverwrite = confirm(`재료 '${ingredientNameRaw}'이(가) 이미 존재합니다. 덮어쓰시겠습니까?`);
-            if (doOverwrite) { existingByName.name = ingredientNameRaw; existingByName.price = 0 as any; existingByName.purchaseUnit = 1 as any; existingByName.unitPrice = 0 as any; ingredient = existingByName; } else { ingredient = existingByName; }
-          } else {
-            idCounter += 1; const newIng: Ingredient = { id: String(idCounter), name: ingredientNameRaw, price: 0, purchaseUnit: 1, unitPrice: 0 }; ingredientList.push(newIng); ingredient = newIng;
-          }
-        }
+        const parts = parseCsvLine(line);
+        const nameRaw = normalizeField(parts[0]);
+        const ingredientNameRaw = normalizeField(parts[1]);
+        const quantityStr = normalizeField(parts[2]);
+        const replenishDatesRaw = parts.slice(3).map(normalizeField).filter(Boolean);
+        const rowNumber = idx + 2;
+        const parsed: Record<string, any> = { prepName: nameRaw, ingredientName: ingredientNameRaw, quantity: quantityStr, replenishDates: replenishDatesRaw };
+        const validationErrors: string[] = [];
+        if (!nameRaw) validationErrors.push('프렙명 누락');
+        if (!ingredientNameRaw) validationErrors.push('재료명 누락');
+        if (quantityStr && isNaN(parseFloat(quantityStr))) validationErrors.push('수량 숫자 형식 오류');
 
-        let prepEntry = prepMap.get(nameRaw);
-        if (!prepEntry) { prepEntry = { id: String(idCounter++), name: nameRaw, ingredients: [], replenishSet: new Set<string>(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }; prepMap.set(nameRaw, prepEntry); }
+        const detectedMatch = undefined;
+        const recommendedAction: CsvAction = 'create';
 
-        const existingPi = prepEntry.ingredients.find(pi => pi.ingredientId === ingredient.id);
-        if (existingPi) existingPi.quantity = (existingPi.quantity || 0) + quantity; else prepEntry.ingredients.push({ ingredientId: ingredient.id, ingredientName: ingredient.name, quantity });
-        replenishDatesRaw.forEach(d => { if (/^\d{4}-\d{2}-\d{2}$/.test(d)) prepEntry!.replenishSet.add(d); });
+        items.push({ rowNumber, raw: line, parsed, detectedMatch, recommendedAction, validationErrors });
       });
 
-      const newPreps: Prep[] = Array.from(prepMap.values()).map(p => {
-        const replenishHistory = Array.from(p.replenishSet).sort(); const totalCost = calculateTotalCostForPrep(p.ingredients, ingredientList);
-        return { id: p.id, name: p.name, ingredients: p.ingredients, replenishHistory, nextReplenishDate: calculateExpectedReplenishDate({ id: p.id, name: p.name, ingredients: p.ingredients, replenishHistory, totalCost, createdAt: p.createdAt, updatedAt: p.updatedAt }) || undefined, totalCost, createdAt: p.createdAt, updatedAt: p.updatedAt } as Prep;
-      });
-
-      saveIngredients(ingredientList); savePreps([...existingPreps, ...newPreps]); loadData(); const successCount = newPreps.length; if (failures.length === 0) alert(`${successCount}개의 프렙이 추가되었습니다.`); else alert(`${successCount}개 추가, ${failures.length}개 실패:\n${failures.slice(0,5).join('\n')}`);
+      setPreviewItems(items);
+      setShowPreview(true);
     };
     reader.readAsText(file, 'UTF-8'); e.target.value = '';
   };
 
+  const handleApplyPreview = (actions: Record<number, CsvAction>) => {
+    if (!previewItems || previewItems.length === 0) return;
+    const result = applyPreviewActionsForPreps(previewItems, actions);
+    setShowPreview(false);
+    setPreviewItems([]);
+    loadData();
+    alert(`${result.created || 0}개의 프렙이 생성/병합되었습니다.`);
+  };
+
   const handleResetPreps = () => { if (!confirm('정말 모든 프렙을 초기화하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) return; if (!confirm('진짜로 초기화?')) return; savePreps([]); loadData(); alert('모든 프렙이 초기화되었습니다.'); };
-  const handleResetIngredients = () => { if (!confirm('정말 모든 재료를 초기화하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) return; if (!confirm('진짜로 초기화?')) return; saveIngredients([]); loadData(); alert('모든 재료가 초기화되었습니다.'); };
 
   const formatDate = (dateString?: string) => { if (!dateString) return '미설정'; const date = new Date(dateString); return date.toLocaleDateString('ko-KR'); };
 
@@ -174,8 +180,8 @@ export function PrepManagementPage() {
         <Button variant="secondary" onClick={() => exportPrepsToXlsx(preps)}>엑셀 내보내기</Button>
         <Button variant="secondary" onClick={() => exportPrepsToCsv(preps)}>CSV 내보내기</Button>
         <Button variant="danger" onClick={handleResetPreps} style={{ marginLeft: 8 }}>프렙 초기화</Button>
-        <Button variant="danger" onClick={handleResetIngredients} style={{ marginLeft: 8 }}>재료 초기화</Button>
       </div>
+      <CsvPreviewModal items={previewItems} open={showPreview} onClose={() => setShowPreview(false)} onApply={handleApplyPreview} />
 
       {showAddForm && editingPrep && (
         <Card title={editingPrep.id ? '프렙 수정' : '프렙 추가'}>

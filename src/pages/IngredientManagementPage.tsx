@@ -2,7 +2,9 @@ import { useState, useEffect, type ChangeEvent } from 'react';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
-import { loadIngredients, saveIngredients, deleteIngredient } from '../storage';
+import { loadIngredients, saveIngredients, deleteIngredient, loadPreps, savePreps, applyPreviewActionsForIngredients } from '../storage';
+import CsvPreviewModal from '../components/CsvPreviewModal';
+import type { CsvPreviewItem, CsvAction } from '../types';
 import { exportIngredientsToXlsx, exportIngredientsToCsv } from '../generator';
 import type { Ingredient } from '../types';
 
@@ -10,6 +12,8 @@ export function IngredientManagementPage() {
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [editingIngredient, setEditingIngredient] = useState<Ingredient | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [previewItems, setPreviewItems] = useState<CsvPreviewItem[]>([]);
+  const [showPreview, setShowPreview] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -81,6 +85,23 @@ export function IngredientManagementPage() {
     }
   };
 
+  const handleResetIngredients = async () => {
+    if (!confirm('모든 재료를 초기화하시겠습니까?')) return;
+    if (!confirm('정말로 모든 재료와 준비 목록의 재료를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) return;
+
+    // 모든 재료 초기화
+    saveIngredients([]);
+
+    // 모든 prep의 재료 목록 초기화 및 비용 리셋
+    const preps = loadPreps();
+    const now = new Date().toISOString();
+    const updatedPreps = preps.map(p => ({ ...p, ingredients: [], totalCost: 0, updatedAt: now }));
+    savePreps(updatedPreps);
+
+    loadData();
+    alert('모든 재료와 준비 목록의 재료가 초기화되었습니다.');
+  };
+
   const handleFieldChange = (field: keyof Ingredient, value: string | number) => {
     if (!editingIngredient) return;
     
@@ -115,7 +136,6 @@ export function IngredientManagementPage() {
     };
 
     const normalizeField = (s?: string) => (s || '').replace(/\uFEFF/g, '').replace(/^"|"$/g, '').trim();
-
     const reader = new FileReader();
     reader.onload = (event) => {
       const text = event.target?.result as string;
@@ -126,8 +146,11 @@ export function IngredientManagementPage() {
       }
 
       const dataLines = lines.slice(1);
-      const newIngredients: Ingredient[] = [];
       const existingIngredients = loadIngredients();
+      const existingNameMap: Record<string, number> = {};
+      existingIngredients.forEach((ing, i) => { existingNameMap[(ing.name || '').toLowerCase()] = i; });
+
+      const items: CsvPreviewItem[] = [];
       const failures: string[] = [];
 
       dataLines.forEach((line, idx) => {
@@ -136,34 +159,41 @@ export function IngredientManagementPage() {
         const priceStr = normalizeField(parts[1]);
         const purchaseUnitStr = normalizeField(parts[2]);
 
-        if (!name) { failures.push(`행 ${idx + 2}: 이름 누락`); return; }
+        const rowNumber = idx + 2; // header를 제외한 원본 행 번호
+        const parsed: Record<string, string | number> = {
+          name,
+          price: priceStr || '',
+          purchaseUnit: purchaseUnitStr || ''
+        };
 
+        const validationErrors: string[] = [];
+        if (!name) validationErrors.push('이름 누락');
         const price = parseFloat(priceStr || '0');
         const purchaseUnit = parseFloat(purchaseUnitStr || '1');
-        if (isNaN(price) || isNaN(purchaseUnit)) { failures.push(`행 ${idx + 2}: 숫자 형식 오류`); return; }
-        const unitPrice = purchaseUnit > 0 ? price / purchaseUnit : 0;
+        if (isNaN(price) || isNaN(purchaseUnit)) validationErrors.push('숫자 형식 오류');
 
-        newIngredients.push({
-          id: String(Date.now() + idx),
-          name,
-          price,
-          purchaseUnit,
-          unitPrice
-        });
+        const key = (name || '').toLowerCase();
+        const detectedMatch = existingNameMap.hasOwnProperty(key) ? { type: 'name_exact' as const, id: existingIngredients[existingNameMap[key]].id } : undefined;
+        const recommendedAction: CsvAction = detectedMatch ? 'update' : 'create';
+
+        items.push({ rowNumber, raw: line, parsed, detectedMatch, recommendedAction, validationErrors });
       });
 
-      saveIngredients([...existingIngredients, ...newIngredients]);
-      loadData();
-      const successCount = newIngredients.length;
-      if (failures.length === 0) {
-        alert(`${successCount}개의 재료가 추가되었습니다.`);
-      } else {
-        alert(`${successCount}개 추가, ${failures.length}개 실패:\n${failures.slice(0,5).join('\n')}`);
-      }
+      setPreviewItems(items);
+      setShowPreview(true);
     };
 
     reader.readAsText(file, 'UTF-8');
     e.target.value = ''; // 파일 input 초기화
+  };
+
+  const handleApplyPreview = (actions: Record<number, CsvAction>) => {
+    if (!previewItems || previewItems.length === 0) return;
+    const result = applyPreviewActionsForIngredients(previewItems, actions);
+    setShowPreview(false);
+    setPreviewItems([]);
+    loadData();
+    alert(`${result.created || 0}개 생성, ${result.updated || 0}개 갱신, ${result.skipped || 0}개 건너뜀`);
   };
 
   return (
@@ -190,6 +220,7 @@ export function IngredientManagementPage() {
           CSV 내보내기
         </Button>
       </div>
+      <CsvPreviewModal items={previewItems} open={showPreview} onClose={() => setShowPreview(false)} onApply={handleApplyPreview} />
 
       {showAddForm && editingIngredient && (
         <Card title={editingIngredient.id ? '재료 수정' : '재료 추가'}>

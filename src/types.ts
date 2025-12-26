@@ -89,3 +89,15 @@ export interface Prep {
   createdAt: string;
   updatedAt: string;
 }
+
+// CSV 프리뷰 관련 타입
+export type CsvAction = 'create' | 'update' | 'merge' | 'skip';
+
+export interface CsvPreviewItem {
+  rowNumber: number; // 원본 CSV 상의 행 번호(1-based)
+  raw: string; // 원본 행 텍스트
+  parsed: Record<string, string | number | string[]>; // 파싱된 필드들 (키는 페이지별 규약)
+  detectedMatch?: { type: 'id' | 'name_exact' | 'name_ci'; id?: string };
+  recommendedAction: CsvAction;
+  validationErrors: string[];
+}

@@ -204,3 +204,153 @@ export function deleteIngredient(id: string): void {
   const ingredients = loadIngredients().filter(i => i.id !== id);
   saveIngredients(ingredients);
 }
+
+// --- Helpers for preview/apply workflow ---
+export function upsertIngredient(ing: Ingredient): { type: 'created' | 'updated'; id: string } {
+  const ingredients = loadIngredients();
+  const idx = ingredients.findIndex(i => i.id === ing.id || i.name.toLowerCase() === ing.name.toLowerCase());
+  if (idx >= 0) {
+    ingredients[idx] = { ...ingredients[idx], ...ing };
+    saveIngredients(ingredients);
+    return { type: 'updated', id: ingredients[idx].id };
+  }
+  const newId = ing.id || String(Date.now());
+  const newIng = { ...ing, id: newId };
+  ingredients.push(newIng);
+  saveIngredients(ingredients);
+  return { type: 'created', id: newId };
+}
+
+// previewItems: CsvPreviewItem[], actions: Record<rowNumber, CsvAction>
+export function applyPreviewActionsForIngredients(previewItems: any[], actions: Record<number, string>) {
+  const results = { created: 0, updated: 0, skipped: 0 };
+  const ingredients = loadIngredients();
+
+  previewItems.forEach((item: any) => {
+    const act = actions[item.rowNumber] as string;
+    if (act === 'skip') { results.skipped += 1; return; }
+
+    const parsed = item.parsed || {};
+    const name = String(parsed.name || '').trim();
+    const price = Number(parsed.price || 0) || 0;
+    const purchaseUnit = Number(parsed.purchaseUnit || 1) || 1;
+    const unitPrice = purchaseUnit > 0 ? price / purchaseUnit : 0;
+
+    if (!name) { results.skipped += 1; return; }
+
+    if (act === 'create') {
+      const id = String(Date.now()) + String(Math.random()).slice(2,8);
+      ingredients.push({ id, name, price, purchaseUnit, unitPrice });
+      results.created += 1;
+      return;
+    }
+
+    // update or merge: try find existing by detected id or name (case-insensitive)
+    let existing: Ingredient | undefined;
+    if (item.detectedMatch && item.detectedMatch.id) {
+      existing = ingredients.find(i => i.id === item.detectedMatch.id);
+    }
+    if (!existing) existing = ingredients.find(i => i.name.toLowerCase() === (name || '').toLowerCase());
+
+    if (!existing) {
+      // no existing -> create
+      const id = String(Date.now()) + String(Math.random()).slice(2,8);
+      ingredients.push({ id, name, price, purchaseUnit, unitPrice });
+      results.created += 1;
+      return;
+    }
+
+    if (act === 'update') {
+      existing.name = name || existing.name;
+      existing.price = price;
+      existing.purchaseUnit = purchaseUnit;
+      existing.unitPrice = unitPrice;
+      results.updated += 1;
+      return;
+    }
+
+    if (act === 'merge') {
+      // merge rules: prefer non-empty file values; for numbers prefer >0
+      existing.name = name || existing.name;
+      existing.price = price > 0 ? price : existing.price;
+      existing.purchaseUnit = purchaseUnit > 0 ? purchaseUnit : existing.purchaseUnit;
+      existing.unitPrice = existing.purchaseUnit > 0 ? existing.price / existing.purchaseUnit : existing.unitPrice;
+      results.updated += 1;
+      return;
+    }
+  });
+
+  saveIngredients(ingredients);
+  return results;
+}
+
+// Apply preview actions for Prep CSV preview items.
+// previewItems: each item.parsed should contain prepName, ingredientName, quantity, replenishDates
+export function applyPreviewActionsForPreps(previewItems: any[], actions: Record<number, string>) {
+  const existingPreps = loadPreps();
+  const ingredients = loadIngredients();
+  const ingredientNameMap: Record<string, string> = {};
+  ingredients.forEach(i => { ingredientNameMap[i.name.toLowerCase()] = i.id; });
+
+  const prepMap = new Map<string, { id: string; name: string; ingredients: any[]; replenishSet: Set<string>; createdAt: string; updatedAt: string }>();
+
+  previewItems.forEach((item: any) => {
+    const act = actions[item.rowNumber] as string;
+    if (act === 'skip') return;
+    const parsed = item.parsed || {};
+    const prepName = String(parsed.prepName || parsed.name || '').trim();
+    const ingredientName = String(parsed.ingredientName || '').trim();
+    const quantity = Number(parsed.quantity || 0) || 0;
+    const replenishDates = Array.isArray(parsed.replenishDates) ? parsed.replenishDates : (parsed.replenishDates ? [parsed.replenishDates] : []);
+    if (!prepName || !ingredientName) return;
+
+    // ensure ingredient exists
+    let ingredientId = ingredientNameMap[ingredientName.toLowerCase()];
+    if (!ingredientId) {
+      const newId = String(Date.now()) + String(Math.random()).slice(2,8);
+      const newIng = { id: newId, name: ingredientName, price: 0, purchaseUnit: 1, unitPrice: 0 };
+      ingredients.push(newIng);
+      ingredientId = newId;
+      ingredientNameMap[ingredientName.toLowerCase()] = newId;
+    }
+
+    let entry = prepMap.get(prepName);
+    if (!entry) {
+      entry = { id: String(Date.now()) + String(Math.random()).slice(2,6), name: prepName, ingredients: [], replenishSet: new Set<string>(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+      prepMap.set(prepName, entry);
+    }
+
+    const existingPi = entry.ingredients.find((pi: any) => pi.ingredientId === ingredientId);
+    if (existingPi) existingPi.quantity = (existingPi.quantity || 0) + quantity; else entry.ingredients.push({ ingredientId, ingredientName, quantity });
+    replenishDates.forEach((d: string) => { if (/^\d{4}-\d{2}-\d{2}$/.test(d)) entry!.replenishSet.add(d); });
+  });
+
+  // merge with existing preps: if same name exists, append ingredients and dedupe
+  const newPreps: any[] = [];
+  const existingNameIndex: Record<string, number> = {};
+  existingPreps.forEach((p, i) => { existingNameIndex[p.name.toLowerCase()] = i; });
+
+  prepMap.forEach(p => {
+    const replenishHistory = Array.from(p.replenishSet).sort();
+    const existingIdx = existingNameIndex[p.name.toLowerCase()];
+    if (existingIdx >= 0) {
+      const target = existingPreps[existingIdx];
+      // merge ingredients (sum quantities)
+      p.ingredients.forEach((pi: any) => {
+        const ex = target.ingredients.find((e: any) => e.ingredientId === pi.ingredientId);
+        if (ex) ex.quantity = (ex.quantity || 0) + pi.quantity; else target.ingredients.push(pi);
+      });
+      target.replenishHistory = Array.from(new Set([...(target.replenishHistory||[]), ...replenishHistory])).sort();
+      target.updatedAt = new Date().toISOString();
+    } else {
+      // new prep
+      const totalCost = 0; // will be recalculated by caller if needed
+      newPreps.push({ id: p.id, name: p.name, ingredients: p.ingredients, replenishHistory, nextReplenishDate: undefined, totalCost, createdAt: p.createdAt, updatedAt: p.updatedAt });
+    }
+  });
+
+  // save updated ingredients and preps
+  saveIngredients(ingredients);
+  savePreps([...existingPreps, ...newPreps]);
+  return { created: newPreps.length, updated: 0 };
+}
