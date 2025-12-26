@@ -1,4 +1,4 @@
-import { CSSProperties } from 'react';
+import React, { CSSProperties, forwardRef } from 'react';
 
 interface InputProps {
   type?: string;
@@ -11,13 +11,18 @@ interface InputProps {
   step?: number | string;
   disabled?: boolean;
   style?: CSSProperties;
+  autoFocus?: boolean;
 }
 
-export function Input({ type = 'text', value, onChange, placeholder, label, min, max, step, disabled, style }: InputProps) {
+export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
+  { type = 'text', value, onChange, placeholder, label, min, max, step, disabled, style, autoFocus },
+  ref
+) {
   return (
     <div className="input-group">
       {label && <label>{label}</label>}
       <input
+        ref={ref}
         type={type}
         value={value}
         onChange={onChange}
@@ -28,7 +33,10 @@ export function Input({ type = 'text', value, onChange, placeholder, label, min,
         disabled={disabled}
         style={style}
         className="input"
+        autoFocus={autoFocus}
       />
     </div>
   );
-}
+});
+
+export default Input;

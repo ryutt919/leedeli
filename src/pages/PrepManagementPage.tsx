@@ -199,6 +199,7 @@ export function PrepManagementPage() {
                 value={editingPrep.name}
                 onChange={(e) => setEditingPrep({ ...editingPrep, name: e.target.value })}
                 placeholder="예: 오이피클"
+                autoFocus
               />
             </div>
           </div>
