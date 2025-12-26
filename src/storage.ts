@@ -335,7 +335,13 @@ export function applyPreviewActionsForPreps(previewItems: any[], actions: Record
     }
 
     const existingPi = entry.ingredients.find((pi: any) => pi.ingredientId === ingredientId);
-    if (existingPi) existingPi.quantity = (existingPi.quantity || 0) + quantity; else entry.ingredients.push({ ingredientId, ingredientName, quantity });
+    if (existingPi) {
+      existingPi.quantity = (existingPi.quantity || 0) + quantity;
+      // preserve quantityText if not already present
+      if (!existingPi.quantityText && parsed.quantity) existingPi.quantityText = String(parsed.quantity);
+    } else {
+      entry.ingredients.push({ ingredientId, ingredientName, quantity, quantityText: parsed.quantity ? String(parsed.quantity) : undefined });
+    }
     replenishDates.forEach((d: string) => { if (/^\d{4}-\d{2}-\d{2}$/.test(d)) entry!.replenishSet.add(d); });
   });
 

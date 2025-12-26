@@ -76,6 +76,9 @@ export interface PrepIngredient {
   ingredientId: string;
   ingredientName: string;
   quantity: number;
+  // Original quantity text (e.g. "850g") preserved for display while
+  // `quantity` remains numeric for calculations.
+  quantityText?: string;
 }
 
 // 프렙

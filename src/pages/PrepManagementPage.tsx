@@ -428,7 +428,7 @@ export function PrepManagementPage() {
                               return (
                                 <tr key={index}>
                                   <td>{prepIng.ingredientName || '알 수 없음'}</td>
-                                  <td>{prepIng.quantity}</td>
+                                  <td>{prepIng.quantityText && String(prepIng.quantityText).trim() !== '' ? prepIng.quantityText : prepIng.quantity}</td>
                                   <td>{ingredient ? `${ingredient.unitPrice.toLocaleString('ko-KR')}원` : '-'}</td>
                                   <td>{itemTotal.toLocaleString('ko-KR')}원</td>
                                 </tr>
