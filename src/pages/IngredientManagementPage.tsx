@@ -151,7 +151,6 @@ export function IngredientManagementPage() {
       existingIngredients.forEach((ing, i) => { existingNameMap[(ing.name || '').toLowerCase()] = i; });
 
       const items: CsvPreviewItem[] = [];
-      const failures: string[] = [];
 
       dataLines.forEach((line, idx) => {
         const parts = parseCsvLine(line);
@@ -213,6 +212,9 @@ export function IngredientManagementPage() {
             style={{ display: 'none' }}
           />
         </label>
+        <Button variant="danger" onClick={handleResetIngredients}>
+          재료 초기화
+        </Button>
         <Button variant="secondary" onClick={() => exportIngredientsToXlsx(ingredients)}>
           엑셀 내보내기
         </Button>

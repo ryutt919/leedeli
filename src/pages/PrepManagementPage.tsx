@@ -3,7 +3,7 @@ import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { loadPreps, savePreps, deletePrep, applyPreviewActionsForPreps } from '../storage';
-import { loadIngredients, saveIngredients } from '../storage';
+import { loadIngredients } from '../storage';
 import CsvPreviewModal from '../components/CsvPreviewModal';
 import type { CsvPreviewItem, CsvAction } from '../types';
 import { exportPrepsToXlsx, exportPrepsToCsv } from '../generator';

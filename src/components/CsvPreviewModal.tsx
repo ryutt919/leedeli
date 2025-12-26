@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import type { CsvPreviewItem, CsvAction } from '../types';
 import { Button } from './Button';
 
