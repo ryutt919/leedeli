@@ -290,13 +290,13 @@ export function PrepManagementPage() {
             </div>
           ))}
 
-          <div className="actions">
+          <div className="actions" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
             <Button variant="secondary" onClick={handleAddIngredient}>
               재료 추가
             </Button>
           </div>
 
-          <div className="actions" style={{ marginTop: '1.5rem' }}>
+          <div className="actions" style={{ marginTop: '1.5rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
             <Button variant="primary" onClick={handleSavePrep}>
               저장
             </Button>
@@ -425,7 +425,7 @@ export function PrepManagementPage() {
                       </div>
                     )}
 
-                    <div className="actions" style={{ marginTop: '1rem' }}>
+                    <div className="actions" style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                       <Button variant="secondary" onClick={() => handleEditPrep(prep)}>
                         수정
                       </Button>
