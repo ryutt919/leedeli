@@ -1,6 +1,20 @@
 import { Schedule, Person, ShiftType, StaffConfig, Prep, Ingredient } from './types';
 import { STORAGE_KEY, STAFF_CONFIG_KEY, PREPS_STORAGE_KEY, INGREDIENTS_STORAGE_KEY } from './constants';
 
+// Helper: extract numeric part from strings like "850g", "1,200원", "1.5kg".
+function extractNumber(value: any): number {
+  if (value === undefined || value === null) return 0;
+  if (typeof value === 'number') return value;
+  if (typeof value === 'string') {
+    const cleaned = value.replace(/,/g, '').trim();
+    const m = cleaned.match(/[-+]?\d*\.?\d+/);
+    if (!m) return 0;
+    const n = Number(m[0]);
+    return Number.isFinite(n) ? n : 0;
+  }
+  return 0;
+}
+
 function normalizePerson(raw: Person): Person {
   const canOpen = typeof raw.canOpen === 'boolean' ? raw.canOpen : true;
   const canClose = typeof raw.canClose === 'boolean' ? raw.canClose : true;
@@ -232,8 +246,8 @@ export function applyPreviewActionsForIngredients(previewItems: any[], actions: 
 
     const parsed = item.parsed || {};
     const name = String(parsed.name || '').trim();
-    const price = Number(parsed.price || 0) || 0;
-    const purchaseUnit = Number(parsed.purchaseUnit || 1) || 1;
+    const price = extractNumber(parsed.price || 0) || 0;
+    const purchaseUnit = extractNumber(parsed.purchaseUnit || 1) || 1;
     const unitPrice = purchaseUnit > 0 ? price / purchaseUnit : 0;
 
     if (!name) { results.skipped += 1; return; }
@@ -300,7 +314,7 @@ export function applyPreviewActionsForPreps(previewItems: any[], actions: Record
     const parsed = item.parsed || {};
     const prepName = String(parsed.prepName || parsed.name || '').trim();
     const ingredientName = String(parsed.ingredientName || '').trim();
-    const quantity = Number(parsed.quantity || 0) || 0;
+    const quantity = extractNumber(parsed.quantity || 0) || 0;
     const replenishDates = Array.isArray(parsed.replenishDates) ? parsed.replenishDates : (parsed.replenishDates ? [parsed.replenishDates] : []);
     if (!prepName || !ingredientName) return;
 
