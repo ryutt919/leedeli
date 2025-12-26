@@ -32,10 +32,6 @@ export function CsvPreviewModal({ items, open, onClose, onApply }: Props) {
 
   if (!open) return null;
 
-  const handleChange = (row: number, action: CsvAction) => {
-    setActions(prev => ({ ...prev, [row]: action }));
-  };
-
   const handleToggleAction = (row: number) => {
     setActions(prev => ({ ...prev, [row]: prev[row] === 'skip' ? 'update' : 'skip' }));
   };
