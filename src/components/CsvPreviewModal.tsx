@@ -92,17 +92,17 @@ export function CsvPreviewModal({ items, open, onClose, onApply }: Props) {
     if (ingName && (price !== undefined || purchaseUnit !== undefined)) {
       return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: `${maxLeftChars}ch auto`, gap: '9ch', alignItems: 'center' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: `${maxLeftChars}ch auto`, gap: '0.5rem', alignItems: 'center' }}>
             <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}><strong>재료 :</strong></div>
             <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}>{ingName}</div>
 
             <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}><strong>구매 가격 :</strong></div>
-            {price !== undefined ? <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}>{price}</div> : <div />}
+            {price !== undefined ? <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}>{price}</div> : null}
 
             {purchaseUnit !== undefined ? (
               <>
-                <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}><strong>구매 단위 :</strong></div>
-                <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}>{purchaseUnit}</div>
+                  <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}><strong>구매 단위 :</strong></div>
+                  <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}>{purchaseUnit}</div>
               </>
             ) : null}
           </div>
@@ -119,17 +119,17 @@ export function CsvPreviewModal({ items, open, onClose, onApply }: Props) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         {pName ? (
-          <div style={{ display: 'grid', gridTemplateColumns: `${maxLeftChars}ch auto`, gap: '9ch', alignItems: 'center' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: `${maxLeftChars}ch auto`, gap: '0.5rem', alignItems: 'center' }}>
             <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}><strong>프렙/소스명 :</strong></div>
             <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}>{pName}</div>
           </div>
         ) : null}
         {iName || qty ? (
-          <div style={{ display: 'grid', gridTemplateColumns: `${maxLeftChars}ch auto`, gap: '9ch', alignItems: 'center' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: `${maxLeftChars}ch auto`, gap: '0.5rem', alignItems: 'center' }}>
             <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}><strong>재료 :</strong></div>
             <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}>{iName}</div>
             <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}><strong>투입량 :</strong></div>
-            {qty !== undefined && qty !== '' ? <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}>{qty}</div> : <div />}
+            {qty !== undefined && qty !== '' ? <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}>{qty}</div> : null}
           </div>
         ) : null}
         {dates && Array.isArray(dates) && dates.length ? <div style={{ color: '#666', fontSize: 12 }}>보충: {dates.join(', ')}</div> : null}
@@ -142,15 +142,15 @@ export function CsvPreviewModal({ items, open, onClose, onApply }: Props) {
     // Ingredient existing
     if (existing.hasOwnProperty('purchaseUnit') || existing.hasOwnProperty('unitPrice')) {
       return (
-        <div style={{ display: 'grid', gridTemplateColumns: `${maxLeftChars}ch auto`, gap: '9ch', alignItems: 'center' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: `${maxLeftChars}ch auto`, gap: '0.5rem', alignItems: 'center' }}>
           <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}><strong>재료 :</strong></div>
           <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}>{existing.name}</div>
 
           <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}><strong>구매 가격 :</strong></div>
           <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}>{existing.price}</div>
 
-          <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}><strong>구매 단위 :</strong></div>
-          <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}>{existing.purchaseUnit}</div>
+            <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}><strong>구매 단위 :</strong></div>
+            <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}>{existing.purchaseUnit}</div>
         </div>
       );
     }
@@ -159,14 +159,14 @@ export function CsvPreviewModal({ items, open, onClose, onApply }: Props) {
     if (existing.hasOwnProperty('ingredients')) {
       return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: `${maxLeftChars}ch auto`, gap: '9ch', alignItems: 'center' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: `${maxLeftChars}ch auto`, gap: '0.5rem', alignItems: 'center' }}>
             <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}><strong>프렙/소스명 :</strong></div>
             <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}>{existing.name}</div>
           </div>
           {Array.isArray(existing.ingredients) && existing.ingredients.length > 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               {existing.ingredients.map((ing: any, idx: number) => (
-                <div key={idx} style={{ display: 'grid', gridTemplateColumns: `${maxLeftChars}ch auto`, gap: '9ch', alignItems: 'center' }}>
+                <div key={idx} style={{ display: 'grid', gridTemplateColumns: `${maxLeftChars}ch auto`, gap: '0.5rem', alignItems: 'center' }}>
                   <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}><strong>재료 :</strong></div>
                   <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}>{ing.ingredientName || ing.name || ing.ingredient}</div>
                   <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}><strong>투입량 :</strong></div>
