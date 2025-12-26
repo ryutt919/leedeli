@@ -3,7 +3,7 @@ import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { loadPreps, savePreps, deletePrep } from '../storage';
-import { loadIngredients } from '../storage';
+import { loadIngredients, saveIngredients } from '../storage';
 import { exportPrepsToXlsx, exportPrepsToCsv } from '../generator';
 import type { Prep, PrepIngredient, Ingredient } from '../types';
 
@@ -268,6 +268,10 @@ export function PrepManagementPage() {
       const newPreps: Prep[] = [];
       const existingPreps = loadPreps();
       const currentIngredients = loadIngredients();
+      // 작업 중 재료 목록(기존 + 새로 추가될 것) 복사
+      const ingredientList: Ingredient[] = [...currentIngredients];
+      const addedIngredients: Ingredient[] = [];
+      let idCounter = Date.now();
 
       const failures: string[] = [];
 
@@ -289,10 +293,39 @@ export function PrepManagementPage() {
         }
 
         const quantity = parseFloat(quantityStr || '0');
-        const ingredient = currentIngredients.find(ing => ing.name === ingredientNameRaw);
+        // 재료 찾기 (ingredientList에서 탐색)
+        let ingredient = ingredientList.find(ing => ing.name === ingredientNameRaw);
         if (!ingredient) {
-          failures.push(`행 ${idx + 2}: 재료를 찾을 수 없습니다: ${ingredientNameRaw}`);
-          return;
+          // 같은 이름(대소문자 무시)으로 기존에 등록된 재료가 있는지 확인
+          const existingByName = ingredientList.find(ing => ing.name.toLowerCase() === ingredientNameRaw.toLowerCase());
+          if (existingByName) {
+            // 사용자에게 덮어쓰기 여부 확인
+            const doOverwrite = confirm(`재료 '${ingredientNameRaw}'이(가) 이미 존재합니다. 덮어쓰시겠습니까?`);
+            if (doOverwrite) {
+              // 덮어쓰기: 기존 항목을 기본값(이름만)으로 덮어씀
+              existingByName.name = ingredientNameRaw;
+              existingByName.price = 0 as any;
+              existingByName.purchaseUnit = 1 as any;
+              existingByName.unitPrice = 0 as any;
+              ingredient = existingByName;
+            } else {
+              // 덮어쓰지 않음: 기존 항목 사용
+              ingredient = existingByName;
+            }
+          } else {
+            // 새 재료 생성
+            idCounter += 1;
+            const newIng: Ingredient = {
+              id: String(idCounter),
+              name: ingredientNameRaw,
+              price: 0,
+              purchaseUnit: 1,
+              unitPrice: 0
+            };
+            ingredientList.push(newIng);
+            addedIngredients.push(newIng);
+            ingredient = newIng;
+          }
         }
 
         const prepIngredients: PrepIngredient[] = [{
@@ -327,6 +360,8 @@ export function PrepManagementPage() {
         newPreps.push(newPrep);
       });
 
+      // 새로 추가되거나 덮어쓴 재료를 로컬스토리지에 반영
+      saveIngredients(ingredientList);
       savePreps([...existingPreps, ...newPreps]);
       loadData();
       const successCount = newPreps.length;
