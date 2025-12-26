@@ -212,14 +212,15 @@ export function IngredientManagementPage() {
             style={{ display: 'none' }}
           />
         </label>
-        <Button variant="danger" onClick={handleResetIngredients}>
-          재료 초기화
-        </Button>
+
         <Button variant="secondary" onClick={() => exportIngredientsToXlsx(ingredients)}>
           엑셀 내보내기
         </Button>
         <Button variant="secondary" onClick={() => exportIngredientsToCsv(ingredients)}>
           CSV 내보내기
+        </Button>
+        <Button variant="danger" onClick={handleResetIngredients}>
+          재료 초기화
         </Button>
       </div>
       <CsvPreviewModal items={previewItems} open={showPreview} onClose={() => setShowPreview(false)} onApply={handleApplyPreview} />
