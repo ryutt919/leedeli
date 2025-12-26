@@ -367,7 +367,7 @@ export function PrepManagementPage() {
                           <label style={{ fontSize: '0.875rem' }}>보충 날짜 추가</label>
                           <Input
                             type="date"
-                            value={""}
+                            value=""
                             onChange={(e) => {
                               if (e.target.value) {
                                 handleAddReplenishDate(prep.id, e.target.value);
