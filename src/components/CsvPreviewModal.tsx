@@ -48,17 +48,28 @@ export function CsvPreviewModal({ items, open, onClose, onApply }: Props) {
   };
 
   function displaySummary(parsed?: Record<string, any>) {
-    if (!parsed) return '';
-    const parts: string[] = [];
+    if (!parsed) return null;
     const pName = parsed.prepName || parsed.name || parsed['prepName'];
-    if (pName) parts.push(`프렙명: ${pName}`);
     const iName = parsed.ingredientName || parsed['ingredientName'] || parsed['ingredient'];
-    if (iName) parts.push(`재료: ${iName}`);
     const qty = parsed.quantity || parsed.qty || parsed['수량'];
-    if (qty !== undefined && qty !== '') parts.push(`수량: ${qty}`);
     const dates = parsed.replenishDates || parsed.replenish || parsed['replenishDates'];
-    if (dates && Array.isArray(dates) && dates.length) parts.push(`보충: ${dates.join(',')}`);
-    return parts.join(', ');
+
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        {pName ? (
+          <div><strong>프렙명 :</strong> {pName}</div>
+        ) : null}
+        {iName ? (
+          <div><strong>재료 :</strong> {iName}</div>
+        ) : null}
+        {qty !== undefined && qty !== '' ? (
+          <div><strong>투입량 :</strong> {qty}</div>
+        ) : null}
+        {dates && Array.isArray(dates) && dates.length ? (
+          <div style={{ color: '#666', fontSize: 12 }}>보충: {dates.join(', ')}</div>
+        ) : null}
+      </div>
+    );
   }
 
   return (
@@ -67,6 +78,7 @@ export function CsvPreviewModal({ items, open, onClose, onApply }: Props) {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
           <h3 style={{ margin: 0 }}>CSV 업로드 미리보기</h3>
           <Button variant="secondary" onClick={onClose}>취소</Button>
+           <Button variant="primary" onClick={handleApply}>선택 적용</Button>
         </div>
         <div style={{ marginBottom: 8, color: '#555' }}>총 항목: {items.length}</div>
         <div style={{ overflowX: 'auto' }}>
@@ -97,8 +109,8 @@ export function CsvPreviewModal({ items, open, onClose, onApply }: Props) {
                     <input type="checkbox" checked={!!selected[it.rowNumber]} onChange={() => toggleSelect(it.rowNumber)} />
                     <div style={{ marginTop: 6 }}>{it.rowNumber}</div>
                   </td>
-                  <td style={{ padding: '8px 4px', verticalAlign: 'top', maxWidth: 320, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{displaySummary(it.parsed)}</td>
-                  <td style={{ padding: '8px 4px', verticalAlign: 'top' }}>{displaySummary(it.parsed)}</td>
+                  <td style={{ padding: '8px 4px', verticalAlign: 'top', maxWidth: 320, wordBreak: 'break-word' }}>{displaySummary(it.parsed)}</td>
+                  <td style={{ padding: '8px 4px', verticalAlign: 'top', wordBreak: 'break-word' }}>{displaySummary(it.parsed)}</td>
                   <td style={{ padding: '8px 4px', verticalAlign: 'top' }}>
                     <select value={actions[it.rowNumber]} onChange={(e) => handleChange(it.rowNumber, e.target.value as CsvAction)}>
                       <option value="create">추가</option>
