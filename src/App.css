@@ -250,7 +250,7 @@ body {
 /* Main Content */
 .main-content {
   flex: 1;
-  padding: var(--space-md);
+  padding: 6px 0 0 0;
   width: 100%;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
@@ -273,6 +273,9 @@ body {
 
 .container {
   width: 100%;
+  padding: 0 2px;
+  max-width: 480px;
+  margin: 0 auto;
 }
 
 .container > h1 {
@@ -312,15 +315,15 @@ body {
 .card {
   background: var(--surface);
   border: 1px solid var(--border-light);
-  border-radius: var(--radius-md);
-  padding: var(--space-md);
-  margin-bottom: var(--space-md);
-  box-shadow: var(--shadow-sm);
+  border-radius: 8px; /* 더 작게 */
+  padding: 8px 10px; /* 상하8, 좌우10 */
+  margin-bottom: 8px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.07); /* 더 얇게 */
   transition: all var(--transition-base);
   animation: slideUp var(--transition-base);
   display: flex;
   flex-direction: column;
-  align-items: center; /* 카드 내부 중앙 정렬 */
+  align-items: center;
 }
 
 .card:active {
