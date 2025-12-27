@@ -420,7 +420,9 @@ body {
   display: flex;
   align-items: center;
   gap: var(--space-sm);
-  flex: 1;
+  /* flex:1가 자식 요소를 강제로 확장시켜 입력/버튼이 전체 너비를 채우는 문제 발생
+     필요시 개별 항목에 flex 값을 주어 조정하도록 변경 */
+  flex: 0 1 auto;
   min-width: 120px;
 }
 
@@ -475,6 +477,10 @@ body {
   min-height: 32px;
   background: var(--surface);
   color: var(--text);
+  /* 기본적으로 전체 너비로 늘어나지 않도록 제한 */
+  width: auto;
+  max-width: 640px;
+  align-self: flex-start;
 }
 
 .input::placeholder,
@@ -554,6 +560,10 @@ body {
   font-family: var(--font-family);
   -webkit-user-select: none;
   user-select: none;
+  /* 버튼의 최대 너비 제한(텍스트 기반 사이즈 유지) */
+  width: auto;
+  max-width: 240px;
+  white-space: nowrap;
 }
 
 .btn:active {
