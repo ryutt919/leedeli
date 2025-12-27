@@ -415,19 +415,26 @@ body {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  align-items: center;
+  width: 100%;
 }
 
 .info-item {
-  padding: 6px 0 4px 0;
+  padding: 8px 10px;
   background: var(--bg);
   border-radius: 6px;
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  flex-direction: row;
+  gap: 8px;
   transition: all var(--transition-base);
   min-width: 0;
   align-items: center;
+  justify-content: space-between;
+}
+
+.info-item strong {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  margin-right: 12px;
 }
 
 .info-item:active {
@@ -517,15 +524,14 @@ body {
   min-height: 28px;
   background: var(--surface);
   color: var(--text);
-  width: 120px;
-  max-width: 180px;
-  align-self: center;
+  width: 110px;
+  max-width: 160px;
   text-align: center;
 }
 @media (min-width: 600px) {
   .input, .select {
-    width: 180px;
-    max-width: 220px;
+    width: 160px;
+    max-width: 200px;
   }
 }
 
