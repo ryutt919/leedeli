@@ -615,10 +615,8 @@ export function CreateSchedulePage() {
                 />
               </div>
 
-              <div style={{ marginTop: '1rem' }}>
-                <h5 style={{ marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-                  시프트 우선순위 (선택, 1~{peopleCount})
-                </h5>
+              <div className="mt-4">
+                <h5 className="mb-2 text-sm text-slate-500">시프트 우선순위 (선택, 1~{peopleCount})</h5>
                 <div className="form-row">
                   <Input
                     label="오픈 우선순위"
@@ -699,10 +697,8 @@ export function CreateSchedulePage() {
               </button>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
-              <Button variant="danger" onClick={handleResetRequests}>
-                초기화 (휴무/하프 모두 제거)
-              </Button>
+            <div className="flex justify-end mt-2">
+              <Button variant="danger" onClick={handleResetRequests}>초기화 (휴무/하프 모두 제거)</Button>
             </div>
 
             <div className="calendar-wrapper">
@@ -714,9 +710,7 @@ export function CreateSchedulePage() {
 
       {errors.length > 0 && (
         <Card title="❌ 스케줄 생성 불가">
-          <p style={{ marginBottom: '1rem', color: 'var(--danger)', fontWeight: 'bold' }}>
-            다음 문제를 해결한 후 다시 시도해주세요:
-          </p>
+          <p className="mb-3 text-sm font-bold text-rose-600">다음 문제를 해결한 후 다시 시도해주세요:</p>
           <div className="errors">
             {errors.map((error, i) => (
               <div key={i} className="error-message">

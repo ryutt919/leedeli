@@ -1,6 +1,7 @@
 import { useEffect, useState, type ChangeEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/Button';
+import { Input } from '../components/Input';
 import type { WorkRules } from '../constants';
 import { getWorkRules, saveWorkRules } from '../workRules';
 
@@ -38,79 +39,95 @@ export function HomePage() {
   };
 
   return (
-    <div className="container">
-      <div className="cards-grid">
-        <div className="card card-action" onClick={() => navigate('/create')} tabIndex={0} role="button">
-          <div className="card-title">근무 스케줄 생성</div>
-        </div>
-        <div className="card card-action" onClick={() => navigate('/manage')} tabIndex={0} role="button">
-          <div className="card-title">스케줄 관리/조회</div>
-        </div>
-        <div className="card card-action" onClick={() => navigate('/preps')} tabIndex={0} role="button">
-          <div className="card-title">프렙/소스 관리</div>
-        </div>
-        <div className="card card-action" onClick={() => navigate('/ingredients')} tabIndex={0} role="button">
-          <div className="card-title">재료 관리</div>
-        </div>
+    <div className="mx-auto w-full max-w-5xl px-3">
+      <div className="grid grid-cols-2 gap-2">
+        <button
+          type="button"
+          onClick={() => navigate('/create')}
+          className="w-full rounded-xl border border-slate-200 bg-white p-3 text-left active:bg-slate-50"
+        >
+          <div className="text-sm font-semibold text-slate-900">근무 스케줄 생성</div>
+          <div className="mt-1 text-xs text-slate-500">새 스케줄 만들기</div>
+        </button>
+        <button
+          type="button"
+          onClick={() => navigate('/manage')}
+          className="w-full rounded-xl border border-slate-200 bg-white p-3 text-left active:bg-slate-50"
+        >
+          <div className="text-sm font-semibold text-slate-900">스케줄 관리/조회</div>
+          <div className="mt-1 text-xs text-slate-500">저장된 스케줄 보기</div>
+        </button>
+        <button
+          type="button"
+          onClick={() => navigate('/preps')}
+          className="w-full rounded-xl border border-slate-200 bg-white p-3 text-left active:bg-slate-50"
+        >
+          <div className="text-sm font-semibold text-slate-900">프렙/소스 관리</div>
+          <div className="mt-1 text-xs text-slate-500">CSV 업로드/편집</div>
+        </button>
+        <button
+          type="button"
+          onClick={() => navigate('/ingredients')}
+          className="w-full rounded-xl border border-slate-200 bg-white p-3 text-left active:bg-slate-50"
+        >
+          <div className="text-sm font-semibold text-slate-900">재료 관리</div>
+          <div className="mt-1 text-xs text-slate-500">CSV 업로드/편집</div>
+        </button>
       </div>
 
-      <div className="info-section">
-        <h2>근무 규칙</h2>
-        <div className="info-grid">
-          <div className="info-item">
-            <strong>기본 근무 인원</strong>
-            <input
-              className="input"
-              type="number"
-              min={0.5}
-              max={20}
-              step={0.5}
-              value={rules.DAILY_STAFF_BASE}
-              onChange={(e: ChangeEvent<HTMLInputElement>) => setRules({ ...rules, DAILY_STAFF_BASE: parseFloat(e.target.value) || 0 })}
-            />
-          </div>
-          <div className="info-item">
-            <strong>최대 근무 인원</strong>
-            <input
-              className="input"
-              type="number"
-              min={0.5}
-              max={20}
-              step={0.5}
-              value={rules.DAILY_STAFF_MAX}
-              onChange={(e: ChangeEvent<HTMLInputElement>) => setRules({ ...rules, DAILY_STAFF_MAX: parseFloat(e.target.value) || 0 })}
-            />
-          </div>
-          <div className="info-item">
-            <strong>1인 근무 시간</strong>
-            <div className="rule-inline">
-              <div className="rule-inline-item">
-                <span className="rule-inline-label">근무</span>
-                <input
-                  className="input"
-                  type="number"
-                  min={1}
-                  max={24}
-                  value={rules.WORK_HOURS}
-                  onChange={(e: ChangeEvent<HTMLInputElement>) => setRules({ ...rules, WORK_HOURS: parseInt(e.target.value) || 0 })}
-                />
-              </div>
-              <div className="rule-inline-item">
-                <span className="rule-inline-label">휴게</span>
-                <input
-                  className="input"
-                  type="number"
-                  min={0}
-                  max={8}
-                  value={rules.BREAK_HOURS}
-                  onChange={(e: ChangeEvent<HTMLInputElement>) => setRules({ ...rules, BREAK_HOURS: parseInt(e.target.value) || 0 })}
-                />
-              </div>
+      <div className="mt-3 w-full rounded-xl border border-slate-200 bg-white p-3">
+        <div className="mb-2 text-sm font-semibold text-slate-900">근무 규칙</div>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <Input
+            type="number"
+            label="기본 근무 인원"
+            min={0.5}
+            max={20}
+            step={0.5}
+            value={rules.DAILY_STAFF_BASE}
+            onChange={(e: ChangeEvent<HTMLInputElement>) =>
+              setRules({ ...rules, DAILY_STAFF_BASE: parseFloat(e.target.value) || 0 })
+            }
+          />
+          <Input
+            type="number"
+            label="최대 근무 인원"
+            min={0.5}
+            max={20}
+            step={0.5}
+            value={rules.DAILY_STAFF_MAX}
+            onChange={(e: ChangeEvent<HTMLInputElement>) =>
+              setRules({ ...rules, DAILY_STAFF_MAX: parseFloat(e.target.value) || 0 })
+            }
+          />
+          <div className="flex flex-col gap-1 sm:col-span-2">
+            <div className="text-xs font-medium text-slate-600">1인 근무 시간</div>
+            <div className="flex w-full flex-col gap-2 sm:flex-row">
+              <Input
+                type="number"
+                label="근무"
+                min={1}
+                max={24}
+                value={rules.WORK_HOURS}
+                onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                  setRules({ ...rules, WORK_HOURS: parseInt(e.target.value) || 0 })
+                }
+              />
+              <Input
+                type="number"
+                label="휴게"
+                min={0}
+                max={8}
+                value={rules.BREAK_HOURS}
+                onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                  setRules({ ...rules, BREAK_HOURS: parseInt(e.target.value) || 0 })
+                }
+              />
             </div>
           </div>
         </div>
 
-        <div className="actions">
+        <div className="mt-3 flex justify-end">
           <Button variant="primary" onClick={handleSaveRules}>
             규칙 저장
           </Button>

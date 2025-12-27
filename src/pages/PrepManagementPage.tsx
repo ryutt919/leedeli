@@ -189,51 +189,50 @@ export function PrepManagementPage() {
   const formatDate = (dateString?: string) => { if (!dateString) return '미설정'; const date = new Date(dateString); return date.toLocaleDateString('ko-KR'); };
 
   return (
-    <div className="container">
-      <h1>프렙/소스 관리</h1>
-      <p>csv 구조 : 이름,재료명,투입량,보충날짜1(2025-12-20)..</p>
-      <div className="actions" style={{ marginBottom: '1.5rem' }}>
+    <div className="mx-auto w-full max-w-5xl px-3">
+      <h1 className="mb-1 text-lg font-semibold text-slate-900">프렙/소스 관리</h1>
+      <p className="mb-3 text-xs text-slate-500">csv 구조 : 이름,재료명,투입량,보충날짜1(2025-12-20)..</p>
+
+      <div className="mb-3 flex flex-wrap gap-2">
         <Button variant="primary" onClick={handleAddPrep}>프렙/소스 추가</Button>
-        <label className="btn btn-secondary" style={{ cursor: 'pointer' }}>
+        <label className="inline-flex h-9 items-center justify-center whitespace-nowrap rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 active:bg-slate-50">
           CSV 업로드
-          <input type="file" accept=".csv" onChange={handleCSVUpload} style={{ display: 'none' }} />
+          <input type="file" accept=".csv" onChange={handleCSVUpload} className="hidden" />
         </label>
         <Button variant="secondary" onClick={() => exportPrepsToXlsx(preps)}>엑셀 내보내기</Button>
         <Button variant="secondary" onClick={() => exportPrepsToCsv(preps)}>CSV 내보내기</Button>
-        <Button variant="danger" onClick={handleResetPreps} >프렙/소스 초기화</Button>
+        <Button variant="danger" onClick={handleResetPreps}>프렙/소스 초기화</Button>
       </div>
+
       <CsvPreviewModal items={previewItems} open={showPreview} onClose={() => setShowPreview(false)} onApply={handleApplyPreview} />
 
       {showAddForm && editingPrep && (
         <Card title={editingPrep.id ? '프렙/소스 수정' : '프렙/소스 추가'}>
-          <div className="form-row">
-            <div className="input-group">
-              <label>프렙/소스 이름</label>
-              <Input
-                value={editingPrep.name}
-                onChange={(e) => setEditingPrep({ ...editingPrep, name: e.target.value })}
-                placeholder="예: 오이피클"
-                autoFocus
-              />
-            </div>
+          <div className="grid grid-cols-1 gap-2">
+            <Input
+              label="프렙/소스 이름"
+              value={editingPrep.name}
+              onChange={(e) => setEditingPrep({ ...editingPrep, name: e.target.value })}
+              placeholder="예: 오이피클"
+              autoFocus
+            />
           </div>
 
-          <div className="subsection-title">보충 이력</div>
-          <div style={{ marginBottom: '1rem', padding: '1rem', background: 'var(--bg)', borderRadius: '8px' }}>
+          <div className="mt-3 text-sm font-semibold text-slate-900">보충 이력</div>
+          <div className="mt-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
             {editingPrep.replenishHistory.length > 0 && (
-              <div style={{ marginBottom: '1rem' }}>
-                <strong style={{ display: 'block', marginBottom: '0.5rem' }}>보충 날짜 목록:</strong>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <div className="mb-3">
+                <div className="mb-2 text-xs font-semibold text-slate-600">보충 날짜 목록</div>
+                <div className="flex flex-col gap-2">
                   {editingPrep.replenishHistory.map((date, idx) => (
-                    <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <span>{formatDate(date)}</span>
-                      <Button 
-                        variant="danger" 
+                    <div key={idx} className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="text-sm text-slate-700">{formatDate(date)}</span>
+                      <Button
+                        variant="danger"
                         onClick={() => {
                           const newHistory = editingPrep.replenishHistory.filter((_, i) => i !== idx);
                           setEditingPrep({ ...editingPrep, replenishHistory: newHistory });
                         }}
-                        style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem' }}
                       >
                         삭제
                       </Button>
@@ -241,76 +240,71 @@ export function PrepManagementPage() {
                   ))}
                 </div>
                 {editingPrep.replenishHistory.length >= 2 && (
-                  <div style={{ marginTop: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
+                  <div className="mt-2 text-xs text-slate-600">
                     평균 보충 간격: {calculateAverageReplenishInterval(editingPrep.replenishHistory)}일
                   </div>
                 )}
               </div>
             )}
-            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end' }}>
-              <div className="input-group" style={{ flex: 1 }}>
-                <label>보충 날짜 추가</label>
-                <Input
-                  type="date"
-                  value=""
-                  onChange={(e) => {
-                    if (e.target.value) {
-                      const newHistory = [...editingPrep.replenishHistory, e.target.value].sort();
-                      setEditingPrep({ ...editingPrep, replenishHistory: newHistory });
-                      e.target.value = '';
-                    }
-                  }}
-                />
-              </div>
-            </div>
+
+            <Input
+              type="date"
+              label="보충 날짜 추가"
+              value=""
+              onChange={(e) => {
+                if (e.target.value) {
+                  const newHistory = [...editingPrep.replenishHistory, e.target.value].sort();
+                  setEditingPrep({ ...editingPrep, replenishHistory: newHistory });
+                  e.target.value = '';
+                }
+              }}
+            />
           </div>
           {editingPrep.replenishHistory.length >= 2 && (
-            <div style={{ marginBottom: '1rem', padding: '0.75rem', background: '#e0f2fe', borderRadius: '8px', color: 'var(--text)' }}>
-              <strong>예상 보충 날짜:</strong> {formatDate(calculateExpectedReplenishDate(editingPrep) || undefined)}
+            <div className="mt-2 rounded-xl border border-sky-200 bg-sky-50 p-3 text-sm text-slate-900">
+              <span className="font-semibold">예상 보충 날짜:</span> {formatDate(calculateExpectedReplenishDate(editingPrep) || undefined)}
             </div>
           )}
 
-          <div className="subsection-title">재료 목록</div>
+          <div className="mt-3 text-sm font-semibold text-slate-900">재료 목록</div>
           {editingPrep.ingredients.map((prepIng, index) => (
-            <div key={index} className="form-row" style={{ marginBottom: '1rem', padding: '1rem', background: 'var(--bg)', borderRadius: '8px' }}>
-              <div className="input-group">
-                <label>재료</label>
-                <select
-                  className="select"
-                  value={prepIng.ingredientId}
-                  onChange={(e) => handleIngredientChange(index, 'ingredientId', e.target.value)}
-                >
-                  <option value="">재료 선택</option>
-                  {ingredients.map(ing => (
-                    <option key={ing.id} value={ing.id}>{ing.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="input-group">
-                <label>투입량</label>
+            <div key={index} className="mt-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr,1fr,auto]">
+                <div className="flex w-full flex-col gap-1">
+                  <label className="text-xs font-medium text-slate-600">재료</label>
+                  <select
+                    value={prepIng.ingredientId}
+                    onChange={(e) => handleIngredientChange(index, 'ingredientId', e.target.value)}
+                    className="h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none focus:border-sky-300 focus:ring-2 focus:ring-sky-200"
+                  >
+                    <option value="">재료 선택</option>
+                    {ingredients.map(ing => (
+                      <option key={ing.id} value={ing.id}>{ing.name}</option>
+                    ))}
+                  </select>
+                </div>
                 <Input
                   type="number"
+                  label="투입량"
                   min={0}
                   step={0.01}
                   value={prepIng.quantity}
                   onChange={(e) => handleIngredientChange(index, 'quantity', parseFloat(e.target.value) || 0)}
                 />
-              </div>
-              <div className="input-group" style={{ display: 'flex', alignItems: 'flex-end' }}>
-                <Button variant="danger" onClick={() => handleRemoveIngredient(index)}>
-                  삭제
-                </Button>
+                <div className="flex items-end">
+                  <Button variant="danger" onClick={() => handleRemoveIngredient(index)}>삭제</Button>
+                </div>
               </div>
             </div>
           ))}
 
-          <div className="actions">
+          <div className="mt-2 flex justify-end">
             <Button variant="secondary" onClick={handleAddIngredient}>
               재료 추가
             </Button>
           </div>
 
-          <div className="actions" style={{ marginTop: '1.5rem' }}>
+          <div className="mt-3 flex flex-wrap justify-end gap-2">
             <Button variant="primary" onClick={handleSavePrep}>
               저장
             </Button>
@@ -321,131 +315,100 @@ export function PrepManagementPage() {
         </Card>
       )}
 
-      <div className="schedules-list">
+      <div className="mt-3 flex flex-col gap-3">
         {preps.length === 0 ? (
-          <div className="empty-message">등록된 프렙/소스이 없습니다.</div>
+          <div className="rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-600">등록된 프렙/소스이 없습니다.</div>
         ) : (
           preps.map(prep => (
             <Card key={prep.id}>
-              <div>
-                {/* 카드 헤더 - 항상 표시 */}
-                <div 
-                  onClick={() => toggleExpand(prep.id)} 
-                  style={{ 
-                    cursor: 'pointer', 
-                    padding: '1rem',
-                    marginBottom: expandedPreps.has(prep.id) ? '1rem' : '0',
-                    borderRadius: '8px',
-                    background: expandedPreps.has(prep.id) ? 'transparent' : 'var(--bg)'
-                  }}
+              <div className="flex flex-col gap-3">
+                <button
+                  type="button"
+                  onClick={() => toggleExpand(prep.id)}
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-left active:bg-slate-100"
                 >
-                  <div style={{ 
-                    display: 'flex', 
-                    justifyContent: 'space-between', 
-                    alignItems: 'center',
-                    marginBottom: '0.5rem'
-                  }}>
-                    <h3 style={{ margin: 0, fontSize: '1.25rem' }}>{prep.name}</h3>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-semibold text-slate-900">{prep.name}</div>
+                      <div className="mt-1 text-xs text-slate-600">다음 보충 예상: {formatDate(prep.nextReplenishDate)}</div>
+                    </div>
+                    <div className="text-xs font-semibold text-slate-700">총 재료 비용: {prep.totalCost.toLocaleString('ko-KR')}원</div>
                   </div>
-                  <div style={{ 
-                    display: 'flex', 
-                    justifyContent: 'space-between',
-                    fontSize: '0.875rem',
-                    color: 'var(--text-secondary)'
-                  }}>
-                    <span>다음 보충 예상: {formatDate(prep.nextReplenishDate)}</span>
-                    <span style={{ fontWeight: 'bold' }}>
-                      총 재료 비용: {prep.totalCost.toLocaleString('ko-KR')}원
-                    </span>
-                  </div>
-                </div>
+                </button>
 
-                {/* 상세 정보 - 펼쳐졌을 때만 표시 */}
                 {expandedPreps.has(prep.id) && (
-                  <div>
-                    <div className="subsection-title">보충 이력</div>
-                    <div style={{ marginBottom: '1rem', padding: '1rem', background: 'var(--bg)', borderRadius: '8px' }}>
-                      {prep.replenishHistory.length === 0 ? (
-                        <p style={{ color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>보충 이력이 없습니다.</p>
-                      ) : (
-                        <div style={{ marginBottom: '1rem' }}>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  <div className="flex flex-col gap-3">
+                    <div>
+                      <div className="text-sm font-semibold text-slate-900">보충 이력</div>
+                      <div className="mt-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                        {prep.replenishHistory.length === 0 ? (
+                          <p className="text-sm text-slate-600">보충 이력이 없습니다.</p>
+                        ) : (
+                          <div className="mb-3 flex flex-col gap-2">
                             {prep.replenishHistory.map((date, idx) => (
-                              <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'space-between' }}>
-                                <span>{formatDate(date)}</span>
-                                <Button 
-                                  variant="danger" 
-                                  onClick={() => handleRemoveReplenishDate(prep.id, date)}
-                                  style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem' }}
-                                >
+                              <div key={idx} className="flex flex-wrap items-center justify-between gap-2">
+                                <span className="text-sm text-slate-700">{formatDate(date)}</span>
+                                <Button variant="danger" onClick={() => handleRemoveReplenishDate(prep.id, date)}>
                                   삭제
                                 </Button>
                               </div>
                             ))}
+                            {prep.replenishHistory.length >= 2 && (
+                              <div className="text-xs text-slate-600">평균 보충 간격: {calculateAverageReplenishInterval(prep.replenishHistory)}일</div>
+                            )}
                           </div>
-                          {prep.replenishHistory.length >= 2 && (
-                            <div style={{ marginTop: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
-                              평균 보충 간격: {calculateAverageReplenishInterval(prep.replenishHistory)}일
-                            </div>
-                          )}
-                        </div>
-                      )}
-                      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end' }}>
-                        <div className="input-group" style={{ flex: 1 }}>
-                          <label style={{ fontSize: '0.875rem' }}>보충 날짜 추가</label>
-                          <Input
-                            type="date"
-                            value=""
-                            onChange={(e) => {
-                              if (e.target.value) {
-                                handleAddReplenishDate(prep.id, e.target.value);
-                                e.target.value = '';
-                              }
-                            }}
-                          />
-                        </div>
+                        )}
+                        <Input
+                          type="date"
+                          label="보충 날짜 추가"
+                          value=""
+                          onChange={(e) => {
+                            if (e.target.value) {
+                              handleAddReplenishDate(prep.id, e.target.value);
+                              e.target.value = '';
+                            }
+                          }}
+                        />
                       </div>
                     </div>
-                    
-                    <div className="subsection-title" style={{ marginTop: '1.5rem' }}>재료 목록</div>
-                    {prep.ingredients.length === 0 ? (
-                      <p style={{ color: 'var(--text-secondary)' }}>등록된 재료가 없습니다.</p>
-                    ) : (
-                      <div className="schedule-table-wrapper">
-                        <table className="schedule-table">
-                          <thead>
-                            <tr>
-                              <th>재료명</th>
-                              <th>투입량</th>
-                              <th>단위 가격</th>
-                              <th>총 가격</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {prep.ingredients.map((prepIng, index) => {
-                              const ingredient = ingredients.find(i => i.id === prepIng.ingredientId);
-                              const itemTotal = ingredient ? ingredient.unitPrice * prepIng.quantity : 0;
-                              return (
-                                <tr key={index}>
-                                  <td>{prepIng.ingredientName || '알 수 없음'}</td>
-                                  <td>{prepIng.quantityText && String(prepIng.quantityText).trim() !== '' ? prepIng.quantityText : prepIng.quantity}</td>
-                                  <td>{ingredient ? `${ingredient.unitPrice.toLocaleString('ko-KR')}원` : '-'}</td>
-                                  <td>{itemTotal.toLocaleString('ko-KR')}원</td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
 
-                    <div className="actions" style={{ marginTop: '1rem' }}>
-                      <Button variant="secondary" onClick={() => handleEditPrep(prep)}>
-                        수정
-                      </Button>
-                      <Button variant="danger" onClick={() => handleDeletePrep(prep.id)}>
-                        삭제
-                      </Button>
+                    <div>
+                      <div className="text-sm font-semibold text-slate-900">재료 목록</div>
+                      {prep.ingredients.length === 0 ? (
+                        <p className="mt-2 text-sm text-slate-600">등록된 재료가 없습니다.</p>
+                      ) : (
+                        <div className="mt-2 w-full overflow-x-auto rounded-xl border border-slate-200">
+                          <table className="min-w-[640px] w-full border-collapse text-left text-sm">
+                            <thead className="bg-slate-50 text-xs text-slate-500">
+                              <tr>
+                                <th className="border-b border-slate-200 px-3 py-2">재료명</th>
+                                <th className="border-b border-slate-200 px-3 py-2">투입량</th>
+                                <th className="border-b border-slate-200 px-3 py-2">단위 가격</th>
+                                <th className="border-b border-slate-200 px-3 py-2">총 가격</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {prep.ingredients.map((prepIng, index) => {
+                                const ingredient = ingredients.find(i => i.id === prepIng.ingredientId);
+                                const itemTotal = ingredient ? ingredient.unitPrice * prepIng.quantity : 0;
+                                return (
+                                  <tr key={index} className="odd:bg-white even:bg-slate-50/40">
+                                    <td className="px-3 py-2">{prepIng.ingredientName || '알 수 없음'}</td>
+                                    <td className="px-3 py-2">{prepIng.quantityText && String(prepIng.quantityText).trim() !== '' ? prepIng.quantityText : prepIng.quantity}</td>
+                                    <td className="px-3 py-2">{ingredient ? `${ingredient.unitPrice.toLocaleString('ko-KR')}원` : '-'}</td>
+                                    <td className="px-3 py-2">{itemTotal.toLocaleString('ko-KR')}원</td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex flex-wrap justify-end gap-2">
+                      <Button variant="secondary" onClick={() => handleEditPrep(prep)}>수정</Button>
+                      <Button variant="danger" onClick={() => handleDeletePrep(prep.id)}>삭제</Button>
                     </div>
                   </div>
                 )}

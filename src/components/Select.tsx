@@ -7,12 +7,12 @@ interface SelectProps {
 
 export function Select({ value, onChange, options, label }: SelectProps) {
   return (
-    <div className="input-group">
-      {label && <label>{label}</label>}
+    <div className="flex w-full flex-col gap-1">
+      {label && <label className="text-xs font-medium text-slate-600">{label}</label>}
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="select"
+        className="h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none focus:border-sky-300 focus:ring-2 focus:ring-sky-200"
       >
         {options.map(option => (
           <option key={option.value} value={option.value}>

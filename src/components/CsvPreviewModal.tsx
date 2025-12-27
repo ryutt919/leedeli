@@ -40,47 +40,10 @@ export function CsvPreviewModal({ items, open, onClose, onApply }: Props) {
     setSelected(prev => ({ ...prev, [row]: !prev[row] }));
   };
 
-  
-
   const handleApply = () => {
     // build updated items (no inline edits in simple view)
     onApply(items, actions);
   };
-
-  // compute max left label width (in characters) across all items' ingredient lines
-  const computeLeftStringsFromItem = (it: CsvPreviewItem): string[] => {
-    const lefts: string[] = [];
-    // existing
-    if (it.detectedMatch && it.detectedMatch.existing) {
-      const ex = it.detectedMatch.existing as any;
-      if (ex.ingredients && Array.isArray(ex.ingredients) && ex.ingredients.length > 0) {
-        ex.ingredients.forEach((ing: any) => lefts.push(`재료 : ${String(ing.ingredientName || ing.name || ing.ingredient || '')}`));
-      } else if (ex.name) {
-        lefts.push(`프렙/소스명 : ${String(ex.name)}`);
-      }
-      if (ex.name && ex.purchaseUnit !== undefined) {
-        // ingredient object
-        lefts.push(`재료 : ${String(ex.name)}`);
-      }
-    }
-
-    // parsed
-    const parsed = it.parsed || {};
-    const ingName = parsed.ingredientName || parsed.name || parsed['ingredientName'] || parsed['ingredient'];
-    if (ingName) {
-      lefts.push(`재료 : ${String(ingName)}`);
-    } else if (parsed.prepName || parsed.name) {
-      lefts.push(`프렙/소스명 : ${String(parsed.prepName || parsed.name)}`);
-    }
-
-    return lefts;
-  };
-
-  const maxLeftChars = items.reduce((max, it) => {
-    const arr = computeLeftStringsFromItem(it);
-    arr.forEach(s => { if (s.length > max) max = s.length; });
-    return max;
-  }, 0);
 
   function renderParsedSummary(parsed?: Record<string, any>) {
     if (!parsed) return null;
@@ -91,21 +54,19 @@ export function CsvPreviewModal({ items, open, onClose, onApply }: Props) {
 
     if (ingName && (price !== undefined || purchaseUnit !== undefined)) {
       return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: `${maxLeftChars}ch auto`, gap: '0.5rem', alignItems: 'center' }}>
-            <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}><strong>재료 :</strong></div>
-            <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}>{ingName}</div>
+        <div className="grid grid-cols-[auto,1fr] items-center gap-x-2 gap-y-1">
+          <div className="whitespace-nowrap text-xs font-semibold text-slate-600">재료 :</div>
+          <div className="truncate text-sm text-slate-900">{ingName}</div>
 
-            <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}><strong>구매 가격 :</strong></div>
-            {price !== undefined ? <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}>{price}</div> : null}
+          <div className="whitespace-nowrap text-xs font-semibold text-slate-600">구매 가격 :</div>
+          {price !== undefined ? <div className="text-sm text-slate-900">{price}</div> : <div className="text-sm text-slate-400">-</div>}
 
-            {purchaseUnit !== undefined ? (
-              <>
-                  <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}><strong>구매 단위 :</strong></div>
-                  <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}>{purchaseUnit}</div>
-              </>
-            ) : null}
-          </div>
+          <div className="whitespace-nowrap text-xs font-semibold text-slate-600">구매 단위 :</div>
+          {purchaseUnit !== undefined ? (
+            <div className="text-sm text-slate-900">{purchaseUnit}</div>
+          ) : (
+            <div className="text-sm text-slate-400">-</div>
+          )}
         </div>
       );
     }
@@ -117,22 +78,24 @@ export function CsvPreviewModal({ items, open, onClose, onApply }: Props) {
     const dates = parsed.replenishDates || parsed.replenish || parsed['replenishDates'];
 
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <div className="flex flex-col gap-2">
         {pName ? (
-          <div style={{ display: 'grid', gridTemplateColumns: `${maxLeftChars}ch auto`, gap: '0.5rem', alignItems: 'center' }}>
-            <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}><strong>프렙/소스명 :</strong></div>
-            <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}>{pName}</div>
+          <div className="grid grid-cols-[auto,1fr] items-center gap-x-2 gap-y-1">
+            <div className="whitespace-nowrap text-xs font-semibold text-slate-600">프렙/소스명 :</div>
+            <div className="truncate text-sm text-slate-900">{pName}</div>
           </div>
         ) : null}
         {iName || qty ? (
-          <div style={{ display: 'grid', gridTemplateColumns: `${maxLeftChars}ch auto`, gap: '0.5rem', alignItems: 'center' }}>
-            <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}><strong>재료 :</strong></div>
-            <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}>{iName}</div>
-            <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}><strong>투입량 :</strong></div>
-            {qty !== undefined && qty !== '' ? <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}>{qty}</div> : null}
+          <div className="grid grid-cols-[auto,1fr] items-center gap-x-2 gap-y-1">
+            <div className="whitespace-nowrap text-xs font-semibold text-slate-600">재료 :</div>
+            <div className="truncate text-sm text-slate-900">{iName || '-'}</div>
+            <div className="whitespace-nowrap text-xs font-semibold text-slate-600">투입량 :</div>
+            {qty !== undefined && qty !== '' ? <div className="text-sm text-slate-900">{qty}</div> : <div className="text-sm text-slate-400">-</div>}
           </div>
         ) : null}
-        {dates && Array.isArray(dates) && dates.length ? <div style={{ color: '#666', fontSize: 12 }}>보충: {dates.join(', ')}</div> : null}
+        {dates && Array.isArray(dates) && dates.length ? (
+          <div className="text-xs text-slate-500">보충: {dates.join(', ')}</div>
+        ) : null}
       </div>
     );
   }
@@ -142,15 +105,15 @@ export function CsvPreviewModal({ items, open, onClose, onApply }: Props) {
     // Ingredient existing
     if (existing.hasOwnProperty('purchaseUnit') || existing.hasOwnProperty('unitPrice')) {
       return (
-        <div style={{ display: 'grid', gridTemplateColumns: `${maxLeftChars}ch auto`, gap: '0.5rem', alignItems: 'center' }}>
-          <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}><strong>재료 :</strong></div>
-          <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}>{existing.name}</div>
+        <div className="grid grid-cols-[auto,1fr] items-center gap-x-2 gap-y-1">
+          <div className="whitespace-nowrap text-xs font-semibold text-slate-600">재료 :</div>
+          <div className="truncate text-sm text-slate-900">{existing.name}</div>
 
-          <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}><strong>구매 가격 :</strong></div>
-          <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}>{existing.price}</div>
+          <div className="whitespace-nowrap text-xs font-semibold text-slate-600">구매 가격 :</div>
+          <div className="text-sm text-slate-900">{existing.price}</div>
 
-            <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}><strong>구매 단위 :</strong></div>
-            <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}>{existing.purchaseUnit}</div>
+          <div className="whitespace-nowrap text-xs font-semibold text-slate-600">구매 단위 :</div>
+          <div className="text-sm text-slate-900">{existing.purchaseUnit}</div>
         </div>
       );
     }
@@ -158,24 +121,24 @@ export function CsvPreviewModal({ items, open, onClose, onApply }: Props) {
     // Prep existing
     if (existing.hasOwnProperty('ingredients')) {
       return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: `${maxLeftChars}ch auto`, gap: '0.5rem', alignItems: 'center' }}>
-            <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}><strong>프렙/소스명 :</strong></div>
-            <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}>{existing.name}</div>
+        <div className="flex flex-col gap-2">
+          <div className="grid grid-cols-[auto,1fr] items-center gap-x-2 gap-y-1">
+            <div className="whitespace-nowrap text-xs font-semibold text-slate-600">프렙/소스명 :</div>
+            <div className="truncate text-sm text-slate-900">{existing.name}</div>
           </div>
           {Array.isArray(existing.ingredients) && existing.ingredients.length > 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <div className="flex flex-col gap-2">
               {existing.ingredients.map((ing: any, idx: number) => (
-                <div key={idx} style={{ display: 'grid', gridTemplateColumns: `${maxLeftChars}ch auto`, gap: '0.5rem', alignItems: 'center' }}>
-                  <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}><strong>재료 :</strong></div>
-                  <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}>{ing.ingredientName || ing.name || ing.ingredient}</div>
-                  <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}><strong>투입량 :</strong></div>
-                  <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}>{ing.quantity}</div>
+                <div key={idx} className="grid grid-cols-[auto,1fr] items-center gap-x-2 gap-y-1">
+                  <div className="whitespace-nowrap text-xs font-semibold text-slate-600">재료 :</div>
+                  <div className="truncate text-sm text-slate-900">{ing.ingredientName || ing.name || ing.ingredient}</div>
+                  <div className="whitespace-nowrap text-xs font-semibold text-slate-600">투입량 :</div>
+                  <div className="text-sm text-slate-900">{ing.quantity}</div>
                 </div>
               ))}
             </div>
           ) : (
-            <div style={{ color: '#666' }}>현재 없음</div>
+            <div className="text-sm text-slate-500">현재 없음</div>
           )}
         </div>
       );
@@ -185,61 +148,100 @@ export function CsvPreviewModal({ items, open, onClose, onApply }: Props) {
   }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 }}>
-      <div style={{ width: '90%', maxWidth: 1000, maxHeight: '80vh', overflow: 'auto', background: 'white', borderRadius: 8, padding: 16 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-            <h3 style={{ margin: 0 }}>CSV 업로드 미리보기</h3>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 12 }}>
+    <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/40 p-3">
+      <div className="w-full max-w-5xl overflow-hidden rounded-xl border border-slate-200 bg-white">
+        <div className="flex items-start justify-between gap-3 border-b border-slate-200 px-3 py-2">
+          <div className="min-w-0">
+            <h3 className="truncate text-sm font-semibold text-slate-900">CSV 업로드 미리보기</h3>
+            <div className="text-xs text-slate-500">총 항목: {items.length}</div>
+          </div>
+          <div className="flex flex-wrap justify-end gap-2">
             <Button variant="secondary" onClick={onClose}>취소</Button>
             <Button variant="primary" onClick={handleApply}>선택 적용</Button>
-            </div>
+          </div>
         </div>
-        <div style={{ marginBottom: 8, color: '#555' }}>총 항목: {items.length}</div>
-        <div style={{ overflowX: 'auto' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-            <div style={{ fontSize: 13, color: '#555' }}>행 수: {items.length}</div>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <select value={bulkAction} onChange={(e) => setBulkAction(e.target.value as CsvAction)}>
+
+        <div className="flex max-h-[80dvh] flex-col gap-2 overflow-auto px-3 py-2">
+          <div className="flex flex-wrap items-end justify-between gap-2">
+            <div className="text-xs text-slate-500">행 수: {items.length}</div>
+            <div className="flex flex-wrap items-center gap-2">
+              <select
+                value={bulkAction}
+                onChange={(e) => setBulkAction(e.target.value as CsvAction)}
+                className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none focus:border-sky-300 focus:ring-2 focus:ring-sky-200"
+              >
                 <option value="update">모두 갱신</option>
                 <option value="skip">모두 무시</option>
               </select>
-              <Button variant="secondary" onClick={() => { const m: Record<number, CsvAction> = {}; items.forEach(it => { m[it.rowNumber] = bulkAction; }); setActions(prev => ({ ...prev, ...m })); }}>모두 적용</Button>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  const m: Record<number, CsvAction> = {};
+                  items.forEach(it => {
+                    m[it.rowNumber] = bulkAction;
+                  });
+                  setActions(prev => ({ ...prev, ...m }));
+                }}
+              >
+                모두 적용
+              </Button>
             </div>
           </div>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr>
-                <th style={{ borderBottom: '1px solid #ddd', textAlign: 'left', width: 40 }}>#</th>
-                <th style={{ borderBottom: '1px solid #ddd', textAlign: 'left' }}>원본 아이템</th>
-                <th style={{ borderBottom: '1px solid #ddd', textAlign: 'left' }}>추가 시도 아이템</th>
-                <th style={{ borderBottom: '1px solid #ddd', textAlign: 'left', width: 140 }}>액션</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map(it => (
-                <tr key={it.rowNumber} style={{ background: selected[it.rowNumber] ? 'rgba(59,130,246,0.03)' : 'transparent' }}>
-                  <td style={{ padding: '8px 4px', verticalAlign: 'top' }}>
-                    <input type="checkbox" checked={!!selected[it.rowNumber]} onChange={() => toggleSelect(it.rowNumber)} />
-                    <div style={{ marginTop: 6 }}>{it.rowNumber}</div>
-                  </td>
-                  <td style={{ padding: '8px 4px', verticalAlign: 'top', maxWidth: 320, wordBreak: 'break-word' }}>
-                    {it.detectedMatch && it.detectedMatch.existing ? renderExistingSummary(it.detectedMatch.existing) : <div style={{ color: '#666' }}>현재 없음</div>}
-                  </td>
-                  <td style={{ padding: '8px 4px', verticalAlign: 'top', wordBreak: 'break-word' }}>{renderParsedSummary(it.parsed)}</td>
-                  <td style={{ padding: '8px 4px', verticalAlign: 'top' }}>
-                    <button onClick={() => handleToggleAction(it.rowNumber)} style={{ padding: '6px 10px', cursor: 'pointer' }}>
-                      {actions[it.rowNumber] === 'skip' ? '무시' : '갱신'}
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 12 }}>
-          <Button variant="secondary" onClick={onClose}>취소</Button>
-          <Button variant="primary" onClick={handleApply}>선택 적용</Button>
+          <div className="w-full overflow-x-auto">
+            <table className="min-w-[900px] w-full border-collapse text-left text-sm">
+              <thead>
+                <tr className="text-xs text-slate-500">
+                  <th className="w-12 border-b border-slate-200 py-2">#</th>
+                  <th className="border-b border-slate-200 py-2">원본 아이템</th>
+                  <th className="border-b border-slate-200 py-2">추가 시도 아이템</th>
+                  <th className="w-32 border-b border-slate-200 py-2">액션</th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.map(it => (
+                  <tr
+                    key={it.rowNumber}
+                    className={selected[it.rowNumber] ? 'bg-sky-50/60' : undefined}
+                  >
+                    <td className="py-2 align-top">
+                      <div className="flex flex-col items-start gap-2">
+                        <input
+                          type="checkbox"
+                          checked={!!selected[it.rowNumber]}
+                          onChange={() => toggleSelect(it.rowNumber)}
+                          className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-2 focus:ring-sky-200"
+                        />
+                        <div className="text-xs text-slate-500">{it.rowNumber}</div>
+                      </div>
+                    </td>
+                    <td className="py-2 align-top">
+                      {it.detectedMatch && it.detectedMatch.existing ? (
+                        renderExistingSummary(it.detectedMatch.existing)
+                      ) : (
+                        <div className="text-sm text-slate-500">현재 없음</div>
+                      )}
+                    </td>
+                    <td className="py-2 align-top">{renderParsedSummary(it.parsed)}</td>
+                    <td className="py-2 align-top">
+                      <button
+                        type="button"
+                        onClick={() => handleToggleAction(it.rowNumber)}
+                        className="h-8 w-full rounded-lg border border-slate-200 bg-white px-2 text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-200 active:bg-slate-50"
+                      >
+                        {actions[it.rowNumber] === 'skip' ? '무시' : '갱신'}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="flex flex-wrap justify-end gap-2 py-1">
+            <Button variant="secondary" onClick={onClose}>취소</Button>
+            <Button variant="primary" onClick={handleApply}>선택 적용</Button>
+          </div>
         </div>
       </div>
     </div>

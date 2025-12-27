@@ -53,46 +53,65 @@ export function ManageSchedulesPage() {
     const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
 
     return (
-      <div className="calendar">
-        {dayNames.map((name: string) => (
-          <div key={name} className="calendar-header">
-            {name}
-          </div>
-        ))}
-
-        {cells.map((dayNum: number | null, idx: number) => {
-          if (!dayNum) {
-            return <div key={`e-${idx}`} className="calendar-cell empty" />;
-          }
-
-          const assignment = s.assignments.find(a => a.date === dayNum);
-          const openPeople = assignment ? assignment.people.filter(p => p.shift === 'open') : [];
-          const middlePeople = assignment ? assignment.people.filter(p => p.shift === 'middle') : [];
-          const closePeople = assignment ? assignment.people.filter(p => p.shift === 'close') : [];
-
-          const formatAssignedName = (personName: string, isHalf?: boolean) => (isHalf ? `${personName}(하프)` : personName);
-
-          const dateObj = new Date(s.year, s.month - 1, dayNum);
-          const isWeekend = dateObj.getDay() === 0 || dateObj.getDay() === 6;
-
-          return (
-            <div key={dayNum} className={`calendar-cell ${isWeekend ? 'weekend' : ''}`}>
-              <div className="calendar-date">{dayNum}</div>
-              <div className="calendar-line">
-                <span className="calendar-label">오픈</span>
-                <span>{openPeople.map(p => formatAssignedName(p.personName, p.isHalf)).join(', ') || '-'}</span>
-              </div>
-              <div className="calendar-line">
-                <span className="calendar-label">미들</span>
-                <span>{middlePeople.map(p => formatAssignedName(p.personName, p.isHalf)).join(', ') || '-'}</span>
-              </div>
-              <div className="calendar-line">
-                <span className="calendar-label">마감</span>
-                <span>{closePeople.map(p => formatAssignedName(p.personName, p.isHalf)).join(', ') || '-'}</span>
-              </div>
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-200">
+        <div className="grid grid-cols-7 gap-px">
+          {dayNames.map((name: string, idx) => (
+            <div
+              key={name}
+              className={
+                'bg-slate-50 px-2 py-2 text-center text-xs font-semibold ' +
+                (idx === 0 || idx === 6 ? 'text-rose-600' : 'text-slate-600')
+              }
+            >
+              {name}
             </div>
-          );
-        })}
+          ))}
+
+          {cells.map((dayNum: number | null, idx: number) => {
+            if (!dayNum) {
+              return <div key={`e-${idx}`} className="min-h-24 bg-white/60" />;
+            }
+
+            const assignment = s.assignments.find(a => a.date === dayNum);
+            const openPeople = assignment ? assignment.people.filter(p => p.shift === 'open') : [];
+            const middlePeople = assignment ? assignment.people.filter(p => p.shift === 'middle') : [];
+            const closePeople = assignment ? assignment.people.filter(p => p.shift === 'close') : [];
+
+            const formatAssignedName = (personName: string, isHalf?: boolean) =>
+              isHalf ? `${personName}(하프)` : personName;
+
+            const dateObj = new Date(s.year, s.month - 1, dayNum);
+            const isWeekend = dateObj.getDay() === 0 || dateObj.getDay() === 6;
+
+            return (
+              <div key={dayNum} className="min-h-24 bg-white p-2">
+                <div className={isWeekend ? 'text-xs font-semibold text-rose-600' : 'text-xs font-semibold text-slate-900'}>
+                  {dayNum}
+                </div>
+                <div className="mt-1 flex min-w-0 flex-col gap-1 text-[11px] text-slate-700">
+                  <div className="flex min-w-0 gap-1">
+                    <span className="w-8 shrink-0 font-semibold text-slate-500">오픈</span>
+                    <span className="min-w-0 break-words">
+                      {openPeople.map(p => formatAssignedName(p.personName, p.isHalf)).join(', ') || '-'}
+                    </span>
+                  </div>
+                  <div className="flex min-w-0 gap-1">
+                    <span className="w-8 shrink-0 font-semibold text-slate-500">미들</span>
+                    <span className="min-w-0 break-words">
+                      {middlePeople.map(p => formatAssignedName(p.personName, p.isHalf)).join(', ') || '-'}
+                    </span>
+                  </div>
+                  <div className="flex min-w-0 gap-1">
+                    <span className="w-8 shrink-0 font-semibold text-slate-500">마감</span>
+                    <span className="min-w-0 break-words">
+                      {closePeople.map(p => formatAssignedName(p.personName, p.isHalf)).join(', ') || '-'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
     );
   };
@@ -114,11 +133,11 @@ export function ManageSchedulesPage() {
   const filtered = getFilteredSchedules();
 
   return (
-    <div className="container">
-      <h1>스케줄 관리/조회</h1>
+    <div className="mx-auto w-full max-w-5xl px-3">
+      <h1 className="mb-2 text-lg font-semibold text-slate-900">스케줄 관리/조회</h1>
 
       <Card title="필터">
-        <div className="form-row">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
           <Input
             type="number"
             label="연도"
@@ -142,7 +161,7 @@ export function ManageSchedulesPage() {
             placeholder="검색"
           />
         </div>
-        <div className="actions">
+        <div className="mt-3 flex justify-end">
           <Button onClick={handleExport} variant="secondary">
             엑셀 내보내기
           </Button>
@@ -151,32 +170,34 @@ export function ManageSchedulesPage() {
 
       {filtered.length === 0 ? (
         <Card>
-          <p className="empty-message">저장된 스케줄이 없습니다.</p>
-          <Button onClick={() => navigate('/create')}>
-            새 스케줄 만들기
-          </Button>
+          <div className="flex flex-col gap-2">
+            <p className="text-sm text-slate-600">저장된 스케줄이 없습니다.</p>
+            <div>
+              <Button onClick={() => navigate('/create')}>새 스케줄 만들기</Button>
+            </div>
+          </div>
         </Card>
       ) : (
-        <div className="schedules-list">
+        <div className="flex flex-col gap-3">
           {filtered.map(schedule => (
             <Card key={schedule.id} title={`${schedule.year}년 ${schedule.month}월`}>
-              <div className="schedule-summary">
-                <div className="summary-item">
-                  <strong>근무 인원:</strong>
-                  <span>{schedule.people.map((p: Person) => p.name).join(', ')}</span>
+              <div className="flex flex-col gap-1 text-sm">
+                <div className="flex flex-wrap gap-x-2 gap-y-1">
+                  <span className="font-semibold text-slate-700">근무 인원:</span>
+                  <span className="break-words text-slate-700">{schedule.people.map((p: Person) => p.name).join(', ')}</span>
                 </div>
-                <div className="summary-item">
-                  <strong>생성일:</strong>
-                  <span>{new Date(schedule.createdAt).toLocaleDateString('ko-KR')}</span>
+                <div className="flex flex-wrap gap-x-2 gap-y-1">
+                  <span className="font-semibold text-slate-700">생성일:</span>
+                  <span className="text-slate-700">{new Date(schedule.createdAt).toLocaleDateString('ko-KR')}</span>
                 </div>
-                <div className="summary-item">
-                  <strong>수정일:</strong>
-                  <span>{new Date(schedule.updatedAt).toLocaleDateString('ko-KR')}</span>
+                <div className="flex flex-wrap gap-x-2 gap-y-1">
+                  <span className="font-semibold text-slate-700">수정일:</span>
+                  <span className="text-slate-700">{new Date(schedule.updatedAt).toLocaleDateString('ko-KR')}</span>
                 </div>
               </div>
 
-              <h4 className="subsection-title">인원별 근무 통계</h4>
-              <div className="stats-grid">
+              <h4 className="mt-3 text-sm font-semibold text-slate-900">인원별 근무 통계</h4>
+              <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
                 {schedule.people.map((person: Person) => {
                   const fullWorkDays = schedule.assignments
                     .filter(day => day.people.some(p => p.personId === person.id && !p.isHalf))
@@ -191,24 +212,25 @@ export function ManageSchedulesPage() {
                   const offEquivalent = offDays.length + halfDays.length * 0.5;
 
                   return (
-                    <div key={person.id} className="person-stats">
-                      <h4>{person.name}</h4>
-                      <div className="stat-item">
-                        <strong>근무(환산):</strong>
-                        <span>{workEquivalent}일</span>
-                      </div>
-                      <div className="stat-item">
-                        <strong>하프:</strong>
-                        <span>{halfDays.length}일</span>
-                      </div>
-                      <div className="stat-item">
-                        <strong>휴무(환산):</strong>
-                        <span>{offEquivalent}일</span>
+                    <div key={person.id} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                      <div className="text-sm font-semibold text-slate-900">{person.name}</div>
+                      <div className="mt-2 flex flex-col gap-1 text-sm text-slate-700">
+                        <div className="flex gap-2">
+                          <span className="w-20 shrink-0 font-semibold text-slate-600">근무(환산)</span>
+                          <span>{workEquivalent}일</span>
+                        </div>
+                        <div className="flex gap-2">
+                          <span className="w-20 shrink-0 font-semibold text-slate-600">하프</span>
+                          <span>{halfDays.length}일</span>
+                        </div>
+                        <div className="flex gap-2">
+                          <span className="w-20 shrink-0 font-semibold text-slate-600">휴무(환산)</span>
+                          <span>{offEquivalent}일</span>
+                        </div>
                       </div>
                       {offDays.length > 0 && (
-                        <div className="stat-item">
-                          <strong>휴무일:</strong>
-                          <span>{offDays.sort((a, b) => a - b).join(', ')}일</span>
+                        <div className="mt-2 text-xs text-slate-600">
+                          <span className="font-semibold">휴무일:</span> {offDays.sort((a, b) => a - b).join(', ')}일
                         </div>
                       )}
                     </div>
@@ -216,10 +238,10 @@ export function ManageSchedulesPage() {
                 })}
               </div>
 
-              <h4 className="subsection-title">달력 전체 보기</h4>
-              <div className="calendar-wrapper">{renderCalendar(schedule)}</div>
+              <h4 className="mt-3 text-sm font-semibold text-slate-900">달력 전체 보기</h4>
+              <div className="mt-2">{renderCalendar(schedule)}</div>
 
-              <div className="actions">
+              <div className="mt-3 flex flex-wrap justify-end gap-2">
                 <Button onClick={() => navigate('/create', { state: { editScheduleId: schedule.id } })} variant="secondary">
                   수정
                 </Button>

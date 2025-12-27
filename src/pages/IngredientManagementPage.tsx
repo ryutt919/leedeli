@@ -210,79 +210,58 @@ export function IngredientManagementPage() {
   };
 
   return (
-    <div className="container">
-      <h1>재료 관리</h1>
-       <p>csv 구조 : 이름,가격,구매단위</p>
-      <div className="actions" style={{ marginBottom: '1.5rem' }}>
-        <Button variant="primary" onClick={handleAddIngredient}>
-          재료 추가
-        </Button>
-        <label className="btn btn-secondary" style={{ cursor: 'pointer' }}>
-          CSV 업로드
-          <input
-            type="file"
-            accept=".csv"
-            onChange={handleCSVUpload}
-            style={{ display: 'none' }}
-          />
-        </label>
+    <div className="mx-auto w-full max-w-5xl px-3">
+      <h1 className="mb-1 text-lg font-semibold text-slate-900">재료 관리</h1>
+      <p className="mb-3 text-xs text-slate-500">csv 구조 : 이름,가격,구매단위</p>
 
-        <Button variant="secondary" onClick={() => exportIngredientsToXlsx(ingredients)}>
-          엑셀 내보내기
-        </Button>
-        <Button variant="secondary" onClick={() => exportIngredientsToCsv(ingredients)}>
-          CSV 내보내기
-        </Button>
-        <Button variant="danger" onClick={handleResetIngredients}>
-          재료 초기화
-        </Button>
+      <div className="mb-3 flex flex-wrap gap-2">
+        <Button variant="primary" onClick={handleAddIngredient}>재료 추가</Button>
+        <label className="inline-flex h-9 items-center justify-center whitespace-nowrap rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 active:bg-slate-50">
+          CSV 업로드
+          <input type="file" accept=".csv" onChange={handleCSVUpload} className="hidden" />
+        </label>
+        <Button variant="secondary" onClick={() => exportIngredientsToXlsx(ingredients)}>엑셀 내보내기</Button>
+        <Button variant="secondary" onClick={() => exportIngredientsToCsv(ingredients)}>CSV 내보내기</Button>
+        <Button variant="danger" onClick={handleResetIngredients}>재료 초기화</Button>
       </div>
+
       <CsvPreviewModal items={previewItems} open={showPreview} onClose={() => setShowPreview(false)} onApply={handleApplyPreview} />
 
       {showAddForm && editingIngredient && (
         <Card title={editingIngredient.id ? '재료 수정' : '재료 추가'}>
-          <div className="form-row">
-            <div className="input-group">
-              <label>재료 이름</label>
-              <Input
-                value={editingIngredient.name}
-                onChange={(e) => handleFieldChange('name', e.target.value)}
-                placeholder="예: 오이"
-              />
-            </div>
-            <div className="input-group">
-              <label>구매 가격 (원)</label>
-              <Input
-                type="number"
-                min={0}
-                step={0.01}
-                value={editingIngredient.price}
-                onChange={(e) => handleFieldChange('price', parseFloat(e.target.value) || 0)}
-              />
-            </div>
-            <div className="input-group">
-              <label>구매 단위</label>
-              <Input
-                type="number"
-                min={0.01}
-                step={0.01}
-                value={editingIngredient.purchaseUnit}
-                onChange={(e) => handleFieldChange('purchaseUnit', parseFloat(e.target.value) || 1)}
-                placeholder="예: 1 (1kg, 1개 등)"
-              />
-            </div>
-            <div className="input-group">
-              <label>단위 가격 (자동 계산)</label>
-              <Input
-                type="number"
-                value={editingIngredient.unitPrice.toFixed(2)}
-                disabled
-                style={{ background: 'var(--bg)' }}
-              />
-            </div>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <Input
+              label="재료 이름"
+              value={editingIngredient.name}
+              onChange={(e) => handleFieldChange('name', e.target.value)}
+              placeholder="예: 오이"
+            />
+            <Input
+              type="number"
+              label="구매 가격 (원)"
+              min={0}
+              step={0.01}
+              value={editingIngredient.price}
+              onChange={(e) => handleFieldChange('price', parseFloat(e.target.value) || 0)}
+            />
+            <Input
+              type="number"
+              label="구매 단위"
+              min={0.01}
+              step={0.01}
+              value={editingIngredient.purchaseUnit}
+              onChange={(e) => handleFieldChange('purchaseUnit', parseFloat(e.target.value) || 1)}
+              placeholder="예: 1 (1kg, 1개 등)"
+            />
+            <Input
+              type="number"
+              label="단위 가격 (자동 계산)"
+              value={editingIngredient.unitPrice.toFixed(2)}
+              disabled
+            />
           </div>
 
-          <div className="actions" style={{ marginTop: '1.5rem' }}>
+          <div className="mt-3 flex flex-wrap justify-end gap-2">
             <Button variant="primary" onClick={handleSaveIngredient}>
               저장
             </Button>
@@ -293,36 +272,32 @@ export function IngredientManagementPage() {
         </Card>
       )}
 
-      <div className="schedules-list">
+      <div className="mt-3">
         {ingredients.length === 0 ? (
-          <div className="empty-message">등록된 재료가 없습니다.</div>
+          <div className="rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-600">등록된 재료가 없습니다.</div>
         ) : (
-          <div className="schedule-table-wrapper">
-            <table className="schedule-table">
-              <thead>
+          <div className="w-full overflow-x-auto rounded-xl border border-slate-200 bg-white">
+            <table className="min-w-[760px] w-full border-collapse text-left text-sm">
+              <thead className="bg-slate-50 text-xs text-slate-500">
                 <tr>
-                  <th>재료명</th>
-                  <th>구매 가격</th>
-                  <th>구매 단위</th>
-                  <th>단위 가격</th>
-                  <th>작업</th>
+                  <th className="border-b border-slate-200 px-3 py-2">재료명</th>
+                  <th className="border-b border-slate-200 px-3 py-2">구매 가격</th>
+                  <th className="border-b border-slate-200 px-3 py-2">구매 단위</th>
+                  <th className="border-b border-slate-200 px-3 py-2">단위 가격</th>
+                  <th className="border-b border-slate-200 px-3 py-2">작업</th>
                 </tr>
               </thead>
               <tbody>
                 {ingredients.map(ingredient => (
-                  <tr key={ingredient.id}>
-                    <td>{ingredient.name}</td>
-                    <td>{ingredient.price.toLocaleString('ko-KR')}원</td>
-                    <td>{ingredient.purchaseUnit}</td>
-                    <td>{ingredient.unitPrice.toLocaleString('ko-KR', { maximumFractionDigits: 2 })}원</td>
-                    <td>
-                      <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <Button variant="secondary" onClick={() => handleEditIngredient(ingredient)}>
-                          수정
-                        </Button>
-                        <Button variant="danger" onClick={() => handleDeleteIngredient(ingredient.id)}>
-                          삭제
-                        </Button>
+                  <tr key={ingredient.id} className="odd:bg-white even:bg-slate-50/40">
+                    <td className="px-3 py-2">{ingredient.name}</td>
+                    <td className="px-3 py-2">{ingredient.price.toLocaleString('ko-KR')}원</td>
+                    <td className="px-3 py-2">{ingredient.purchaseUnit}</td>
+                    <td className="px-3 py-2">{ingredient.unitPrice.toLocaleString('ko-KR', { maximumFractionDigits: 2 })}원</td>
+                    <td className="px-3 py-2">
+                      <div className="flex flex-wrap gap-2">
+                        <Button variant="secondary" onClick={() => handleEditIngredient(ingredient)}>수정</Button>
+                        <Button variant="danger" onClick={() => handleDeleteIngredient(ingredient.id)}>삭제</Button>
                       </div>
                     </td>
                   </tr>
