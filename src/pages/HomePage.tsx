@@ -40,43 +40,51 @@ export function HomePage() {
 
   return (
     <div className="mx-auto w-full max-w-5xl px-3">
-      <div className="grid grid-cols-2 gap-2">
-        <button
-          type="button"
-          onClick={() => navigate('/create')}
-          className="w-full rounded-xl border border-slate-200 bg-white p-3 text-left active:bg-slate-50"
-        >
-          <div className="text-sm font-semibold text-slate-900">근무 스케줄 생성</div>
-          <div className="mt-1 text-xs text-slate-500">새 스케줄 만들기</div>
-        </button>
-        <button
-          type="button"
-          onClick={() => navigate('/manage')}
-          className="w-full rounded-xl border border-slate-200 bg-white p-3 text-left active:bg-slate-50"
-        >
-          <div className="text-sm font-semibold text-slate-900">스케줄 관리/조회</div>
-          <div className="mt-1 text-xs text-slate-500">저장된 스케줄 보기</div>
-        </button>
-        <button
-          type="button"
-          onClick={() => navigate('/preps')}
-          className="w-full rounded-xl border border-slate-200 bg-white p-3 text-left active:bg-slate-50"
-        >
-          <div className="text-sm font-semibold text-slate-900">프렙/소스 관리</div>
-          <div className="mt-1 text-xs text-slate-500">CSV 업로드/편집</div>
-        </button>
-        <button
-          type="button"
-          onClick={() => navigate('/ingredients')}
-          className="w-full rounded-xl border border-slate-200 bg-white p-3 text-left active:bg-slate-50"
-        >
-          <div className="text-sm font-semibold text-slate-900">재료 관리</div>
-          <div className="mt-1 text-xs text-slate-500">CSV 업로드/편집</div>
-        </button>
+      <div className="grid grid-cols-2 gap-3 sm:gap-4">
+        <div className="card bg-base-100 shadow-md border border-base-200 rounded-box p-0">
+          <button
+            type="button"
+            onClick={() => navigate('/create')}
+            className="btn btn-block btn-lg btn-pastel mb-0 rounded-b-none rounded-t-box"
+          >
+            <span className="font-bold text-base-content">근무 스케줄 생성</span>
+            <span className="block text-xs text-base-content/60">새 스케줄 만들기</span>
+          </button>
+        </div>
+        <div className="card bg-base-100 shadow-md border border-base-200 rounded-box p-0">
+          <button
+            type="button"
+            onClick={() => navigate('/manage')}
+            className="btn btn-block btn-lg btn-pastel mb-0 rounded-b-none rounded-t-box"
+          >
+            <span className="font-bold text-base-content">스케줄 관리/조회</span>
+            <span className="block text-xs text-base-content/60">저장된 스케줄 보기</span>
+          </button>
+        </div>
+        <div className="card bg-base-100 shadow-md border border-base-200 rounded-box p-0">
+          <button
+            type="button"
+            onClick={() => navigate('/preps')}
+            className="btn btn-block btn-lg btn-pastel mb-0 rounded-b-none rounded-t-box"
+          >
+            <span className="font-bold text-base-content">프렙/소스 관리</span>
+            <span className="block text-xs text-base-content/60">CSV 업로드/편집</span>
+          </button>
+        </div>
+        <div className="card bg-base-100 shadow-md border border-base-200 rounded-box p-0">
+          <button
+            type="button"
+            onClick={() => navigate('/ingredients')}
+            className="btn btn-block btn-lg btn-pastel mb-0 rounded-b-none rounded-t-box"
+          >
+            <span className="font-bold text-base-content">재료 관리</span>
+            <span className="block text-xs text-base-content/60">CSV 업로드/편집</span>
+          </button>
+        </div>
       </div>
 
-      <div className="mt-3 w-full rounded-xl border border-slate-200 bg-white p-3">
-        <div className="mb-2 text-sm font-semibold text-slate-900">근무 규칙</div>
+      <div className="mt-4 card bg-base-100 shadow border border-base-200 rounded-box p-4">
+        <div className="mb-2 text-base font-bold text-base-content">근무 규칙</div>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           <Input
             type="number"

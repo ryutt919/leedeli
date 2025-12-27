@@ -106,43 +106,37 @@ export function PrepManagementPage() {
     setEditingPrep({ ...editingPrep, ingredients: updated });
   };
 
-  // CSV helper
-  const parseCsvLine = (line: string): string[] => {
-    const res: string[] = []; let cur = ''; let inQuotes = false;
-    for (let i = 0; i < line.length; i++) { const ch = line[i]; if (ch === '"') { inQuotes = !inQuotes; continue; } if (ch === ',' && !inQuotes) { res.push(cur); cur = ''; continue; } cur += ch; }
-    res.push(cur); return res.map(s => s.replace(/\uFEFF/g, '').trim());
-  };
-  const normalizeField = (s?: string) => (s || '').replace(/\uFEFF/g, '').replace(/^"|"$/g, '').trim();
+  return (
+    <div className="mx-auto w-full max-w-5xl px-3">
+      <div className="mb-4 card bg-base-100 shadow border border-base-200 rounded-box p-4 flex flex-wrap gap-2 items-end">
+        <Button onClick={handleAddPrep} className="btn btn-pastel btn-sm">새 프렙 추가</Button>
+        <Button onClick={handleExport} className="btn btn-outline btn-pastel btn-sm">엑셀로 내보내기</Button>
+        <Button onClick={handleExportCsv} className="btn btn-outline btn-pastel btn-sm">CSV로 내보내기</Button>
+      </div>
 
-  // CSV 업로드: 같은 프렙/소스명은 하나로 합치고, 누락 재료는 자동 생성(중복시 확인)
-  const handleCSVUpload = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]; if (!file) return; const reader = new FileReader();
-    reader.onload = (event) => {
-      const text = event.target?.result as string;
-      const lines = text.split(/\r?\n/).filter(line => line.trim());
-      if (lines.length < 2) { alert('CSV 파일 형식이 올바르지 않습니다.'); return; }
-
-      const dataLines = lines.slice(1);
-      const existingIngredients = loadIngredients();
-      const existingNameMap: Record<string, number> = {};
-      existingIngredients.forEach((ing, i) => { existingNameMap[(ing.name || '').toLowerCase()] = i; });
-
-      const existingPreps = loadPreps();
-      const existingPrepNameMap: Record<string, number> = {};
-      existingPreps.forEach((p, i) => { existingPrepNameMap[(p.name || '').toLowerCase()] = i; });
-
-      const items: CsvPreviewItem[] = [];
-
-      dataLines.forEach((line, idx) => {
-        const parts = parseCsvLine(line);
-        const nameRaw = normalizeField(parts[0]);
-        const ingredientNameRaw = normalizeField(parts[1]);
-        const quantityStr = normalizeField(parts[2]);
-        const replenishDatesRaw = parts.slice(3).map(normalizeField).filter(Boolean);
-        const rowNumber = idx + 2;
-        const parsed: Record<string, any> = { prepName: nameRaw, ingredientName: ingredientNameRaw, quantity: quantityStr, replenishDates: replenishDatesRaw };
-        const validationErrors: string[] = [];
-        if (!nameRaw) validationErrors.push('프렙/소스명 누락');
+      <div className="grid gap-4">
+        {preps.map(prep => (
+          <div key={prep.id} className="card bg-base-100 shadow border border-base-200 rounded-box p-4">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+              <div className="font-bold text-base-content">{prep.name}</div>
+              <div className="flex gap-1">
+                <Button size="sm" className="btn btn-pastel btn-sm" onClick={() => handleEditPrep(prep)}>
+                  편집
+                </Button>
+                <Button size="sm" color="error" className="btn btn-error btn-sm" onClick={() => handleDeletePrep(prep.id)}>
+                  삭제
+                </Button>
+              </div>
+            </div>
+            {/* ...기타 내용... */}
+          </div>
+        ))}
+        {preps.length === 0 && (
+          <div className="text-center text-base-content/40 py-10">등록된 프렙이 없습니다.</div>
+        )}
+      </div>
+    </div>
+  );
         if (!ingredientNameRaw) validationErrors.push('재료명 누락');
         if (quantityStr && isNaN(parseFloat(quantityStr))) validationErrors.push('투입량 숫자 형식 오류');
 

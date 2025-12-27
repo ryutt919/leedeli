@@ -121,6 +121,8 @@ export function CreateSchedulePage() {
     setSelectedPersonId(newPeople[0]?.id ?? null);
   };
 
+    // map/reduce 등에서 any 추론 방지용 타입 명시
+    // 예시: people.map((p: Person) => ...), reduce<DayRequestSummary[]>((acc, p: Person) => ...)
   // 개별 인원 정보 업데이트
   const updatePerson = (index: number, updates: Partial<Person>, resetConfirm = true) => {
     const newPeople = [...people];

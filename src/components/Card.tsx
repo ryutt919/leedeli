@@ -7,13 +7,13 @@ interface CardProps {
 
 export function Card({ children, title }: CardProps) {
   return (
-    <div className="w-full overflow-hidden rounded-xl border border-slate-200 bg-white">
+    <div className="card bg-base-100 shadow-md w-full">
       {title && (
-        <div className="border-b border-slate-200 px-3 py-2">
-          <h3 className="text-sm font-semibold text-slate-900">{title}</h3>
+        <div className="card-title px-4 pt-4 text-base font-bold text-primary-content">
+          {title}
         </div>
       )}
-      <div className="p-3">{children}</div>
+      <div className="card-body p-4 pt-2">{children}</div>
     </div>
   );
 }

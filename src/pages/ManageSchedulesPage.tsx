@@ -134,9 +134,9 @@ export function ManageSchedulesPage() {
 
   return (
     <div className="mx-auto w-full max-w-5xl px-3">
-      <h1 className="mb-2 text-lg font-semibold text-slate-900">스케줄 관리/조회</h1>
+      <h1 className="mb-2 text-lg font-bold text-base-content">스케줄 관리/조회</h1>
 
-      <Card title="필터">
+      <div className="card bg-base-100 shadow border border-base-200 rounded-box p-4 mb-4">
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
           <Input
             type="number"
@@ -144,6 +144,7 @@ export function ManageSchedulesPage() {
             value={filterYear}
             onChange={(e) => setFilterYear((e.target as HTMLInputElement).value)}
             placeholder="전체"
+            className="input input-bordered input-sm"
           />
           <Input
             type="number"
@@ -153,50 +154,52 @@ export function ManageSchedulesPage() {
             placeholder="전체"
             min={1}
             max={12}
+            className="input input-bordered input-sm"
           />
           <Input
             label="인원 이름"
             value={filterName}
             onChange={(e) => setFilterName((e.target as HTMLInputElement).value)}
             placeholder="검색"
+            className="input input-bordered input-sm"
           />
         </div>
         <div className="mt-3 flex justify-end">
-          <Button onClick={handleExport} variant="secondary">
+          <Button onClick={handleExport} className="btn btn-outline btn-pastel btn-sm">
             엑셀 내보내기
           </Button>
         </div>
-      </Card>
+      </div>
 
       {filtered.length === 0 ? (
-        <Card>
+        <div className="card bg-base-100 shadow border border-base-200 rounded-box p-4">
           <div className="flex flex-col gap-2">
-            <p className="text-sm text-slate-600">저장된 스케줄이 없습니다.</p>
+            <p className="text-sm text-base-content/60">저장된 스케줄이 없습니다.</p>
             <div>
-              <Button onClick={() => navigate('/create')}>새 스케줄 만들기</Button>
+              <Button onClick={() => navigate('/create')} className="btn btn-pastel btn-sm">새 스케줄 만들기</Button>
             </div>
           </div>
-        </Card>
+        </div>
       ) : (
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-4">
           {filtered.map(schedule => (
-            <Card key={schedule.id} title={`${schedule.year}년 ${schedule.month}월`}>
+            <div key={schedule.id} className="card bg-base-100 shadow border border-base-200 rounded-box p-4">
               <div className="flex flex-col gap-1 text-sm">
                 <div className="flex flex-wrap gap-x-2 gap-y-1">
-                  <span className="font-semibold text-slate-700">근무 인원:</span>
-                  <span className="break-words text-slate-700">{schedule.people.map((p: Person) => p.name).join(', ')}</span>
+                  <span className="font-semibold text-base-content/80">근무 인원:</span>
+                  <span className="break-words text-base-content/80">{schedule.people.map((p: Person) => p.name).join(', ')}</span>
                 </div>
                 <div className="flex flex-wrap gap-x-2 gap-y-1">
-                  <span className="font-semibold text-slate-700">생성일:</span>
-                  <span className="text-slate-700">{new Date(schedule.createdAt).toLocaleDateString('ko-KR')}</span>
+                  <span className="font-semibold text-base-content/80">생성일:</span>
+                  <span className="text-base-content/80">{new Date(schedule.createdAt).toLocaleDateString('ko-KR')}</span>
                 </div>
                 <div className="flex flex-wrap gap-x-2 gap-y-1">
-                  <span className="font-semibold text-slate-700">수정일:</span>
-                  <span className="text-slate-700">{new Date(schedule.updatedAt).toLocaleDateString('ko-KR')}</span>
+                  <span className="font-semibold text-base-content/80">수정일:</span>
+                  <span className="text-base-content/80">{new Date(schedule.updatedAt).toLocaleDateString('ko-KR')}</span>
                 </div>
               </div>
 
-              <h4 className="mt-3 text-sm font-semibold text-slate-900">인원별 근무 통계</h4>
+              <h4 className="mt-3 text-sm font-bold text-base-content">인원별 근무 통계</h4>
               <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
                 {schedule.people.map((person: Person) => {
                   const fullWorkDays = schedule.assignments
@@ -212,24 +215,24 @@ export function ManageSchedulesPage() {
                   const offEquivalent = offDays.length + halfDays.length * 0.5;
 
                   return (
-                    <div key={person.id} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                      <div className="text-sm font-semibold text-slate-900">{person.name}</div>
-                      <div className="mt-2 flex flex-col gap-1 text-sm text-slate-700">
+                    <div key={person.id} className="rounded-box border border-base-200 bg-base-200/60 p-3">
+                      <div className="text-sm font-bold text-base-content">{person.name}</div>
+                      <div className="mt-2 flex flex-col gap-1 text-sm text-base-content/80">
                         <div className="flex gap-2">
-                          <span className="w-20 shrink-0 font-semibold text-slate-600">근무(환산)</span>
+                          <span className="w-20 shrink-0 font-semibold">근무(환산)</span>
                           <span>{workEquivalent}일</span>
                         </div>
                         <div className="flex gap-2">
-                          <span className="w-20 shrink-0 font-semibold text-slate-600">하프</span>
+                          <span className="w-20 shrink-0 font-semibold">하프</span>
                           <span>{halfDays.length}일</span>
                         </div>
                         <div className="flex gap-2">
-                          <span className="w-20 shrink-0 font-semibold text-slate-600">휴무(환산)</span>
+                          <span className="w-20 shrink-0 font-semibold">휴무(환산)</span>
                           <span>{offEquivalent}일</span>
                         </div>
                       </div>
                       {offDays.length > 0 && (
-                        <div className="mt-2 text-xs text-slate-600">
+                        <div className="mt-2 text-xs text-base-content/60">
                           <span className="font-semibold">휴무일:</span> {offDays.sort((a, b) => a - b).join(', ')}일
                         </div>
                       )}
@@ -238,18 +241,18 @@ export function ManageSchedulesPage() {
                 })}
               </div>
 
-              <h4 className="mt-3 text-sm font-semibold text-slate-900">달력 전체 보기</h4>
+              <h4 className="mt-3 text-sm font-bold text-base-content">달력 전체 보기</h4>
               <div className="mt-2">{renderCalendar(schedule)}</div>
 
               <div className="mt-3 flex flex-wrap justify-end gap-2">
-                <Button onClick={() => navigate('/create', { state: { editScheduleId: schedule.id } })} variant="secondary">
+                <Button onClick={() => navigate('/create', { state: { editScheduleId: schedule.id } })} className="btn btn-pastel btn-sm">
                   수정
                 </Button>
-                <Button onClick={() => handleDelete(schedule.id)} variant="danger">
+                <Button onClick={() => handleDelete(schedule.id)} className="btn btn-error btn-sm">
                   삭제
                 </Button>
               </div>
-            </Card>
+            </div>
           ))}
         </div>
       )}

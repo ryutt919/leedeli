@@ -19,10 +19,9 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
   ref
 ) {
   void style;
-
   return (
-    <div className="flex w-full flex-col gap-1">
-      {label && <label className="text-xs font-medium text-slate-600">{label}</label>}
+    <div className="form-control w-full">
+      {label && <label className="label py-1"><span className="label-text text-xs font-semibold">{label}</span></label>}
       <input
         ref={ref}
         type={type}
@@ -33,7 +32,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
         max={max}
         step={step}
         disabled={disabled}
-        className="h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:border-sky-300 focus:ring-2 focus:ring-sky-200 disabled:bg-slate-50 disabled:text-slate-500"
+        className="input input-bordered input-sm rounded-lg"
         autoFocus={autoFocus}
       />
     </div>

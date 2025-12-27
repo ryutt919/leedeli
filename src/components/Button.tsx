@@ -9,27 +9,16 @@ export interface ButtonProps {
   style?: CSSProperties;
 }
 
-export function Button({ children, onClick, type = 'button', variant = 'primary', disabled = false, style }: ButtonProps) {
-  void style;
-
-  const baseClassName =
-    'inline-flex h-9 w-auto items-center justify-center rounded-lg px-3 text-sm font-medium whitespace-nowrap ' +
-    'border focus:outline-none focus:ring-2 focus:ring-offset-1 active:translate-y-px ' +
-    'disabled:pointer-events-none disabled:opacity-50';
-
-  const variantClassName =
-    variant === 'danger'
-      ? 'bg-rose-600 text-white border-rose-600 focus:ring-rose-200'
-      : variant === 'secondary'
-        ? 'bg-white text-slate-700 border-slate-200 focus:ring-slate-200'
-        : 'bg-sky-600 text-white border-sky-600 focus:ring-sky-200';
-
+export function Button({ children, onClick, type = 'button', variant = 'primary', disabled = false }: ButtonProps) {
+  let color = 'primary';
+  if (variant === 'secondary') color = 'secondary';
+  if (variant === 'danger') color = 'error';
   return (
     <button
       type={type}
       onClick={onClick}
       disabled={disabled}
-      className={`${baseClassName} ${variantClassName}`}
+      className={`btn btn-${color} btn-sm rounded-lg font-semibold`}
     >
       {children}
     </button>

@@ -211,18 +211,18 @@ export function IngredientManagementPage() {
 
   return (
     <div className="mx-auto w-full max-w-5xl px-3">
-      <h1 className="mb-1 text-lg font-semibold text-slate-900">재료 관리</h1>
-      <p className="mb-3 text-xs text-slate-500">csv 구조 : 이름,가격,구매단위</p>
+      <h1 className="mb-1 text-lg font-bold text-base-content">재료 관리</h1>
+      <p className="mb-3 text-xs text-base-content/60">csv 구조 : 이름,가격,구매단위</p>
 
-      <div className="mb-3 flex flex-wrap gap-2">
-        <Button variant="primary" onClick={handleAddIngredient}>재료 추가</Button>
-        <label className="inline-flex h-9 items-center justify-center whitespace-nowrap rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 active:bg-slate-50">
+      <div className="mb-4 card bg-base-100 shadow border border-base-200 rounded-box p-4 flex flex-wrap gap-2 items-end">
+        <Button onClick={handleAddIngredient} className="btn btn-pastel btn-sm">재료 추가</Button>
+        <label className="btn btn-outline btn-pastel btn-sm">
           CSV 업로드
           <input type="file" accept=".csv" onChange={handleCSVUpload} className="hidden" />
         </label>
-        <Button variant="secondary" onClick={() => exportIngredientsToXlsx(ingredients)}>엑셀 내보내기</Button>
-        <Button variant="secondary" onClick={() => exportIngredientsToCsv(ingredients)}>CSV 내보내기</Button>
-        <Button variant="danger" onClick={handleResetIngredients}>재료 초기화</Button>
+        <Button onClick={() => exportIngredientsToXlsx(ingredients)} className="btn btn-outline btn-pastel btn-sm">엑셀 내보내기</Button>
+        <Button onClick={() => exportIngredientsToCsv(ingredients)} className="btn btn-outline btn-pastel btn-sm">CSV 내보내기</Button>
+        <Button onClick={handleResetIngredients} className="btn btn-error btn-sm">재료 초기화</Button>
       </div>
 
       <CsvPreviewModal items={previewItems} open={showPreview} onClose={() => setShowPreview(false)} onApply={handleApplyPreview} />
@@ -262,42 +262,38 @@ export function IngredientManagementPage() {
           </div>
 
           <div className="mt-3 flex flex-wrap justify-end gap-2">
-            <Button variant="primary" onClick={handleSaveIngredient}>
-              저장
-            </Button>
-            <Button variant="secondary" onClick={() => { setShowAddForm(false); setEditingIngredient(null); }}>
-              취소
-            </Button>
+            <Button onClick={handleSaveIngredient} className="btn btn-pastel btn-sm">저장</Button>
+            <Button onClick={() => { setShowAddForm(false); setEditingIngredient(null); }} className="btn btn-outline btn-pastel btn-sm">취소</Button>
           </div>
         </Card>
       )}
 
       <div className="mt-3">
         {ingredients.length === 0 ? (
-          <div className="rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-600">등록된 재료가 없습니다.</div>
+          <div className="rounded-box border border-base-200 bg-base-100 p-3 text-sm text-base-content/60">등록된 재료가 없습니다.</div>
         ) : (
-          <div className="w-full overflow-x-auto rounded-xl border border-slate-200 bg-white">
+          <div className="w-full overflow-x-auto rounded-box border border-base-200 bg-base-100">
             <table className="min-w-[760px] w-full border-collapse text-left text-sm">
-              <thead className="bg-slate-50 text-xs text-slate-500">
+              <thead className="bg-base-200 text-xs text-base-content/60">
                 <tr>
-                  <th className="border-b border-slate-200 px-3 py-2">재료명</th>
-                  <th className="border-b border-slate-200 px-3 py-2">구매 가격</th>
-                  <th className="border-b border-slate-200 px-3 py-2">구매 단위</th>
-                  <th className="border-b border-slate-200 px-3 py-2">단위 가격</th>
-                  <th className="border-b border-slate-200 px-3 py-2">작업</th>
+                  <th className="border-b border-base-200 px-3 py-2">재료명</th>
+                  <th className="border-b border-base-200 px-3 py-2">구매 가격</th>
+                  <th className="border-b border-base-200 px-3 py-2">구매 단위</th>
+                  <th className="border-b border-base-200 px-3 py-2">단위 가격</th>
+                  <th className="border-b border-base-200 px-3 py-2">작업</th>
                 </tr>
               </thead>
               <tbody>
                 {ingredients.map(ingredient => (
-                  <tr key={ingredient.id} className="odd:bg-white even:bg-slate-50/40">
+                  <tr key={ingredient.id} className="odd:bg-base-100 even:bg-base-200/60">
                     <td className="px-3 py-2">{ingredient.name}</td>
                     <td className="px-3 py-2">{ingredient.price.toLocaleString('ko-KR')}원</td>
                     <td className="px-3 py-2">{ingredient.purchaseUnit}</td>
                     <td className="px-3 py-2">{ingredient.unitPrice.toLocaleString('ko-KR', { maximumFractionDigits: 2 })}원</td>
                     <td className="px-3 py-2">
                       <div className="flex flex-wrap gap-2">
-                        <Button variant="secondary" onClick={() => handleEditIngredient(ingredient)}>수정</Button>
-                        <Button variant="danger" onClick={() => handleDeleteIngredient(ingredient.id)}>삭제</Button>
+                        <Button onClick={() => handleEditIngredient(ingredient)} className="btn btn-pastel btn-xs">수정</Button>
+                        <Button onClick={() => handleDeleteIngredient(ingredient.id)} className="btn btn-error btn-xs">삭제</Button>
                       </div>
                     </td>
                   </tr>
