@@ -465,13 +465,14 @@ body {
 
 .input,
 .select {
-  padding: var(--space-md) var(--space-md);
+  /* 더 작은 기본 여백/높이로 축소 */
+  padding: var(--space-sm) var(--space-md);
   border: 1px solid var(--border-light);
   border-radius: var(--radius-sm);
-  font-size: var(--font-size-base);
+  font-size: var(--font-size-sm);
   font-family: var(--font-family);
   transition: all var(--transition-base);
-  min-height: 40px;
+  min-height: 32px;
   background: var(--surface);
   color: var(--text);
 }
@@ -534,7 +535,8 @@ body {
    ============================================ */
 
 .btn {
-  padding: var(--space-md) var(--space-xl);
+  /* 버튼을 기본적으로 작게 유지 */
+  padding: var(--space-sm) var(--space-md);
   border: none;
   border-radius: var(--radius-sm);
   font-size: var(--font-size-sm);
@@ -545,10 +547,10 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 40px;
+  min-height: 36px;
   touch-action: manipulation;
   text-align: center;
-  line-height: 1.5;
+  line-height: 1.4;
   font-family: var(--font-family);
   -webkit-user-select: none;
   user-select: none;
@@ -609,7 +611,11 @@ body {
 }
 
 .actions .btn {
-  width: 100%;
+  /* 액션 버튼은 기본적으로 컨테이너 전체 너비를 채우지 않도록 조정
+     기존 코드에서 전체 너비를 강제하던 부분이 문제를 일으켰음 */
+  width: auto;
+  min-width: 72px;
+  align-self: flex-start;
 }
 
 /* ============================================
