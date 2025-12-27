@@ -34,9 +34,9 @@
   /* Compact Spacing System */
   --space-xs: 4px;
   --space-sm: 8px;
-  --space-md: 12px; /* Reduced from 16px */
-  --space-lg: 16px; /* Reduced from 24px */
-  --space-xl: 24px; /* Reduced from 32px */
+  --space-md: 12px;
+  --space-lg: 16px;
+  --space-xl: 24px;
   
   --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
@@ -53,7 +53,7 @@ body {
   background-color: var(--bg-app);
   color: var(--text-primary);
   line-height: 1.4;
-  font-size: 15px; /* Slightly smaller base font */
+  font-size: 14px; /* Reduced base font size */
 }
 
 a {
@@ -63,7 +63,7 @@ a {
 
 button, input, select, textarea {
   font-family: inherit;
-  font-size: 15px;
+  font-size: 14px;
 }
 
 /* ============================================
@@ -95,7 +95,7 @@ button, input, select, textarea {
 }
 
 .navbar .logo h2 {
-  font-size: 17px;
+  font-size: 16px;
   font-weight: 700;
   color: var(--primary);
   margin: 0;
@@ -145,7 +145,7 @@ button, input, select, textarea {
 }
 
 .container > h1 {
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 700;
   margin-bottom: var(--space-md);
   color: var(--text-primary);
@@ -181,21 +181,21 @@ button, input, select, textarea {
 }
 
 .card-header h3 {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
   color: var(--text-primary);
   margin: 0;
 }
 
 .card-body {
-  font-size: 14px;
+  font-size: 13px;
 }
 
 /* Interactive Cards (Home Menu) */
 .cards-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr); /* 2x2 Grid on Mobile */
-  gap: var(--space-md);
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-sm); /* Reduced gap */
 }
 
 .card-action {
@@ -205,7 +205,7 @@ button, input, select, textarea {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 100px; /* Taller for better touch target */
+  min-height: 90px;
   text-align: center;
   padding: var(--space-md);
   background: white;
@@ -219,7 +219,7 @@ button, input, select, textarea {
 }
 
 .card-title {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--text-primary);
   margin-top: var(--space-sm);
@@ -240,21 +240,21 @@ button, input, select, textarea {
 }
 
 .input-group label {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 500;
   color: var(--text-secondary);
 }
 
 .input, .select {
   width: 100%;
-  height: 40px; /* Reduced height for compactness */
-  padding: 0 10px;
+  height: 36px; /* Reduced height to 36px */
+  padding: 0 8px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background-color: var(--bg-surface);
   color: var(--text-primary);
   transition: border-color 0.2s;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .input:focus, .select:focus {
@@ -268,15 +268,16 @@ button, input, select, textarea {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 40px; /* Reduced height */
-  padding: 0 var(--space-md);
+  height: 36px; /* Reduced height to 36px */
+  padding: 0 12px;
   border-radius: var(--radius-sm);
   font-weight: 600;
-  font-size: 14px;
+  font-size: 13px;
   border: none;
   cursor: pointer;
   transition: opacity 0.2s;
   width: 100%;
+  white-space: nowrap; /* Prevent wrapping */
 }
 
 .btn:active {
@@ -309,6 +310,7 @@ button, input, select, textarea {
   flex-direction: column;
   gap: var(--space-sm);
   margin-top: var(--space-md);
+  width: 100%; /* Ensure full width */
 }
 
 /* ============================================
@@ -342,7 +344,7 @@ button, input, select, textarea {
   border: 1px solid var(--border);
   border-radius: 6px;
   padding: 2px;
-  font-size: 11px;
+  font-size: 10px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -387,6 +389,12 @@ button, input, select, textarea {
   margin-bottom: var(--space-md);
 }
 
+.person-editor h4 {
+  margin-bottom: var(--space-sm);
+  font-size: 14px;
+  color: var(--primary);
+}
+
 .person-chip {
   display: inline-flex;
   align-items: center;
@@ -395,7 +403,7 @@ button, input, select, textarea {
   border: 1px solid var(--border);
   border-radius: 16px;
   margin: 0 6px 6px 0;
-  font-size: 13px;
+  font-size: 12px;
   cursor: pointer;
 }
 
@@ -417,12 +425,12 @@ button, input, select, textarea {
   width: 100%;
   border-collapse: collapse;
   background: var(--bg-surface);
-  font-size: 13px;
+  font-size: 12px;
   white-space: nowrap;
 }
 
 .schedule-table th, .schedule-table td {
-  padding: 10px;
+  padding: 8px;
   border-bottom: 1px solid var(--border);
   text-align: left;
 }
@@ -437,7 +445,7 @@ button, input, select, textarea {
 .stat-item {
   display: flex;
   justify-content: space-between;
-  padding: 10px 0;
+  padding: 8px 0;
   border-bottom: 1px solid var(--border);
 }
 

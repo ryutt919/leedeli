@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
+import { HashRouter, Routes, Route, Link } from 'react-router-dom';
 import { HomePage } from './pages/HomePage';
 import { CreateSchedulePage } from './pages/CreateSchedulePage';
 import { ManageSchedulesPage } from './pages/ManageSchedulesPage';
@@ -8,7 +8,7 @@ import './App.css';
 
 function App() {
   return (
-    <BrowserRouter>
+    <HashRouter>
       <div className="app">
         <nav className="navbar">
           <Link to="/" className="logo">
@@ -37,7 +37,7 @@ function App() {
           <p>&copy; 2025 leedeli management</p>
         </footer>
       </div>
-    </BrowserRouter>
+    </HashRouter>
   );
 }
 
