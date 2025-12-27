@@ -45,15 +45,15 @@
   --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.15);
   --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.15);
   
-  /* Spacing System (4px base) */
-  --space-xs: 4px;
-  --space-sm: 8px;
-  --space-md: 12px;
-  --space-lg: 16px;
-  --space-xl: 20px;
-  --space-2xl: 24px;
-  --space-3xl: 32px;
-  --space-4xl: 40px;
+  /* Spacing System (4px base) - Mobile Compact */
+  --space-xs: 3px;
+  --space-sm: 6px;
+  --space-md: 8px;
+  --space-lg: 10px;
+  --space-xl: 12px;
+  --space-2xl: 16px;
+  --space-3xl: 20px;
+  --space-4xl: 24px;
   
   /* Typography */
   --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'SF Pro Display', sans-serif;
@@ -180,10 +180,10 @@ body {
 .navbar {
   background: var(--surface);
   border-bottom: 1px solid var(--border-light);
-  padding: var(--space-lg);
+  padding: var(--space-md) var(--space-lg);
   display: flex;
   flex-direction: column;
-  gap: var(--space-md);
+  gap: var(--space-sm);
   box-shadow: var(--shadow-sm);
   position: sticky;
   top: 0;
@@ -223,7 +223,7 @@ body {
   color: var(--text);
   font-weight: var(--font-weight-medium);
   font-size: var(--font-size-sm);
-  padding: var(--space-md) var(--space-lg);
+  padding: var(--space-sm) var(--space-lg);
   border: 1px solid var(--border-light);
   border-radius: 20px;
   background: var(--surface);
@@ -233,7 +233,7 @@ body {
   cursor: pointer;
   -webkit-user-select: none;
   user-select: none;
-  min-height: 44px;
+  min-height: 38px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -250,7 +250,7 @@ body {
 /* Main Content */
 .main-content {
   flex: 1;
-  padding: var(--space-lg);
+  padding: var(--space-md);
   width: 100%;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
@@ -276,9 +276,9 @@ body {
 }
 
 .container > h1 {
-  margin-bottom: var(--space-lg);
+  margin-bottom: var(--space-md);
   color: var(--text);
-  font-size: var(--font-size-2xl);
+  font-size: var(--font-size-xl);
   font-weight: var(--font-weight-bold);
   letter-spacing: -0.5px;
   animation: fadeIn var(--transition-base);
@@ -287,8 +287,8 @@ body {
 /* Hero Section */
 .hero {
   text-align: center;
-  padding: var(--space-2xl) 0;
-  margin-bottom: var(--space-2xl);
+  padding: var(--space-lg) 0;
+  margin-bottom: var(--space-lg);
   animation: fadeIn var(--transition-base);
 }
 
@@ -313,8 +313,8 @@ body {
   background: var(--surface);
   border: 1px solid var(--border-light);
   border-radius: var(--radius-md);
-  padding: var(--space-lg);
-  margin-bottom: var(--space-lg);
+  padding: var(--space-md);
+  margin-bottom: var(--space-md);
   box-shadow: var(--shadow-sm);
   transition: all var(--transition-base);
   animation: slideUp var(--transition-base);
@@ -326,8 +326,8 @@ body {
 }
 
 .card-header {
-  margin-bottom: var(--space-md);
-  padding-bottom: var(--space-md);
+  margin-bottom: var(--space-sm);
+  padding-bottom: var(--space-sm);
   border-bottom: 1px solid var(--border-light);
 }
 
@@ -348,8 +348,8 @@ body {
 .cards-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: var(--space-md);
-  margin-bottom: var(--space-2xl);
+  gap: var(--space-sm);
+  margin-bottom: var(--space-lg);
 }
 
 .cards-grid p {
@@ -465,13 +465,13 @@ body {
 
 .input,
 .select {
-  padding: var(--space-lg) var(--space-md);
+  padding: var(--space-md) var(--space-md);
   border: 1px solid var(--border-light);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   font-size: var(--font-size-base);
   font-family: var(--font-family);
   transition: all var(--transition-base);
-  min-height: 44px;
+  min-height: 40px;
   background: var(--surface);
   color: var(--text);
 }
@@ -534,10 +534,10 @@ body {
    ============================================ */
 
 .btn {
-  padding: var(--space-lg) var(--space-2xl);
+  padding: var(--space-md) var(--space-xl);
   border: none;
-  border-radius: var(--radius-md);
-  font-size: var(--font-size-base);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
   cursor: pointer;
   transition: all var(--transition-fast);
@@ -545,7 +545,7 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 44px;
+  min-height: 40px;
   touch-action: manipulation;
   text-align: center;
   line-height: 1.5;
@@ -599,8 +599,8 @@ body {
 
 .actions {
   display: flex;
-  gap: var(--space-lg);
-  margin-top: var(--space-lg);
+  gap: var(--space-sm);
+  margin-top: var(--space-md);
   flex-direction: column;
 }
 
@@ -624,9 +624,9 @@ body {
 }
 
 .person-editor {
-  padding: var(--space-lg);
+  padding: var(--space-md);
   background: var(--surface);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   border: 1px solid var(--border-light);
   box-shadow: var(--shadow-sm);
   transition: all var(--transition-base);
@@ -672,16 +672,16 @@ body {
 }
 
 .person-chip {
-  padding: var(--space-md) var(--space-lg);
+  padding: var(--space-sm) var(--space-md);
   border: 1px solid var(--border-light);
   background: var(--surface);
-  border-radius: 20px;
+  border-radius: 16px;
   cursor: pointer;
   transition: all var(--transition-fast);
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
   color: var(--text);
-  min-height: 44px;
+  min-height: 36px;
   display: flex;
   align-items: center;
 }
@@ -710,10 +710,10 @@ body {
 }
 
 .request-day-cell {
-  min-height: 100px;
-  padding: var(--space-md);
-  border: 1.5px solid var(--border-light);
-  border-radius: var(--radius-lg);
+  min-height: 85px;
+  padding: var(--space-sm);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
   background: var(--surface);
   cursor: pointer;
   transition: all var(--transition-base);
@@ -880,16 +880,16 @@ body {
 }
 
 .request-mode-btn {
-  padding: var(--space-md) var(--space-lg);
+  padding: var(--space-sm) var(--space-md);
   border: 1px solid var(--border-light);
   background: var(--surface);
-  border-radius: 20px;
+  border-radius: 16px;
   cursor: pointer;
   transition: all var(--transition-fast);
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
   color: var(--text);
-  min-height: 44px;
+  min-height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -922,7 +922,7 @@ body {
 }
 
 .day-btn {
-  padding: var(--space-md);
+  padding: var(--space-sm);
   border: 1px solid var(--border-light);
   background: var(--surface);
   border-radius: var(--radius-sm);
@@ -931,7 +931,7 @@ body {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
   text-align: center;
-  min-height: 44px;
+  min-height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
