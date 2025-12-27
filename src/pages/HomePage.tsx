@@ -1,9 +1,11 @@
 import { useEffect, useState, type ChangeEvent } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/Button';
 import type { WorkRules } from '../constants';
 import { getWorkRules, saveWorkRules } from '../workRules';
 
 export function HomePage() {
+  const navigate = useNavigate();
   const [rules, setRules] = useState<WorkRules>(getWorkRules());
 
   useEffect(() => {
@@ -38,16 +40,16 @@ export function HomePage() {
   return (
     <div className="container">
       <div className="cards-grid">
-        <div className="card card-action" onClick={() => window.location.href='/create'} tabIndex={0} role="button">
+        <div className="card card-action" onClick={() => navigate('/create')} tabIndex={0} role="button">
           <div className="card-title">근무 스케줄 생성</div>
         </div>
-        <div className="card card-action" onClick={() => window.location.href='/manage'} tabIndex={0} role="button">
+        <div className="card card-action" onClick={() => navigate('/manage')} tabIndex={0} role="button">
           <div className="card-title">스케줄 관리/조회</div>
         </div>
-        <div className="card card-action" onClick={() => window.location.href='/preps'} tabIndex={0} role="button">
+        <div className="card card-action" onClick={() => navigate('/preps')} tabIndex={0} role="button">
           <div className="card-title">프렙/소스 관리</div>
         </div>
-        <div className="card card-action" onClick={() => window.location.href='/ingredients'} tabIndex={0} role="button">
+        <div className="card card-action" onClick={() => navigate('/ingredients')} tabIndex={0} role="button">
           <div className="card-title">재료 관리</div>
         </div>
       </div>

@@ -31,11 +31,12 @@
   --radius-md: 12px;
   --radius-lg: 20px;
   
+  /* Compact Spacing System */
   --space-xs: 4px;
   --space-sm: 8px;
-  --space-md: 16px;
-  --space-lg: 24px;
-  --space-xl: 32px;
+  --space-md: 12px; /* Reduced from 16px */
+  --space-lg: 16px; /* Reduced from 24px */
+  --space-xl: 24px; /* Reduced from 32px */
   
   --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
@@ -51,8 +52,8 @@ body {
   font-family: var(--font-family);
   background-color: var(--bg-app);
   color: var(--text-primary);
-  line-height: 1.5;
-  font-size: 16px; /* Base size for readability */
+  line-height: 1.4;
+  font-size: 15px; /* Slightly smaller base font */
 }
 
 a {
@@ -62,7 +63,7 @@ a {
 
 button, input, select, textarea {
   font-family: inherit;
-  font-size: 16px; /* Prevent zoom on iOS */
+  font-size: 15px;
 }
 
 /* ============================================
@@ -77,7 +78,7 @@ button, input, select, textarea {
 
 /* Navbar */
 .navbar {
-  background-color: rgba(255, 255, 255, 0.9);
+  background-color: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--border);
@@ -94,7 +95,7 @@ button, input, select, textarea {
 }
 
 .navbar .logo h2 {
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 700;
   color: var(--primary);
   margin: 0;
@@ -102,10 +103,10 @@ button, input, select, textarea {
 
 .nav-links {
   display: flex;
-  gap: var(--space-sm);
+  gap: var(--space-xs);
   overflow-x: auto;
-  padding-bottom: 4px;
-  scrollbar-width: none; /* Hide scrollbar */
+  padding-bottom: 2px;
+  scrollbar-width: none;
 }
 
 .nav-links::-webkit-scrollbar {
@@ -114,9 +115,9 @@ button, input, select, textarea {
 
 .nav-links a {
   flex: 0 0 auto;
-  padding: 6px 12px;
+  padding: 6px 10px;
   border-radius: var(--radius-lg);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
   color: var(--text-secondary);
   background-color: transparent;
@@ -138,15 +139,15 @@ button, input, select, textarea {
 
 .container {
   width: 100%;
-  max-width: 600px; /* Mobile-focused max width */
+  max-width: 600px;
   margin: 0 auto;
   padding: 0 var(--space-md);
 }
 
 .container > h1 {
-  font-size: 24px;
+  font-size: 22px;
   font-weight: 700;
-  margin-bottom: var(--space-lg);
+  margin-bottom: var(--space-md);
   color: var(--text-primary);
 }
 
@@ -155,7 +156,7 @@ button, input, select, textarea {
   text-align: center;
   padding: var(--space-lg);
   color: var(--text-tertiary);
-  font-size: 12px;
+  font-size: 11px;
   background-color: var(--bg-app);
 }
 
@@ -174,26 +175,26 @@ button, input, select, textarea {
 }
 
 .card-header {
-  margin-bottom: var(--space-md);
-  padding-bottom: var(--space-sm);
+  margin-bottom: var(--space-sm);
+  padding-bottom: var(--space-xs);
   border-bottom: 1px solid var(--border);
 }
 
 .card-header h3 {
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 600;
   color: var(--text-primary);
   margin: 0;
 }
 
 .card-body {
-  font-size: 15px;
+  font-size: 14px;
 }
 
 /* Interactive Cards (Home Menu) */
 .cards-grid {
   display: grid;
-  grid-template-columns: 1fr; /* Single column on mobile */
+  grid-template-columns: repeat(2, 1fr); /* 2x2 Grid on Mobile */
   gap: var(--space-md);
 }
 
@@ -201,52 +202,59 @@ button, input, select, textarea {
   cursor: pointer;
   transition: transform 0.1s, box-shadow 0.1s;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 80px;
+  min-height: 100px; /* Taller for better touch target */
   text-align: center;
+  padding: var(--space-md);
+  background: white;
+  border: 1px solid var(--border);
 }
 
 .card-action:active {
-  transform: scale(0.98);
+  transform: scale(0.96);
   background-color: var(--primary-light);
+  border-color: var(--primary);
 }
 
 .card-title {
-  font-size: 18px;
+  font-size: 15px;
   font-weight: 600;
-  color: var(--primary);
+  color: var(--text-primary);
+  margin-top: var(--space-sm);
 }
 
-/* Forms */
+/* Forms - Compact */
 .form-row {
   display: flex;
   flex-direction: column;
-  gap: var(--space-md);
+  gap: var(--space-sm);
   margin-bottom: var(--space-md);
 }
 
 .input-group {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
 
 .input-group label {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
   color: var(--text-secondary);
 }
 
 .input, .select {
   width: 100%;
-  height: 44px; /* Touch target size */
-  padding: 0 12px;
+  height: 40px; /* Reduced height for compactness */
+  padding: 0 10px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background-color: var(--bg-surface);
   color: var(--text-primary);
   transition: border-color 0.2s;
+  font-size: 14px;
 }
 
 .input:focus, .select:focus {
@@ -255,20 +263,20 @@ button, input, select, textarea {
   box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
 }
 
-/* Buttons */
+/* Buttons - Compact */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 44px;
-  padding: 0 var(--space-lg);
+  height: 40px; /* Reduced height */
+  padding: 0 var(--space-md);
   border-radius: var(--radius-sm);
   font-weight: 600;
-  font-size: 16px;
+  font-size: 14px;
   border: none;
   cursor: pointer;
   transition: opacity 0.2s;
-  width: 100%; /* Full width on mobile */
+  width: 100%;
 }
 
 .btn:active {
@@ -300,7 +308,7 @@ button, input, select, textarea {
   display: flex;
   flex-direction: column;
   gap: var(--space-sm);
-  margin-top: var(--space-lg);
+  margin-top: var(--space-md);
 }
 
 /* ============================================
@@ -311,30 +319,30 @@ button, input, select, textarea {
 .calendar {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 4px;
-  margin-bottom: var(--space-lg);
+  gap: 2px;
+  margin-bottom: var(--space-md);
 }
 
 .calendar-header {
   text-align: center;
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-secondary);
-  padding: 4px 0;
+  padding: 2px 0;
 }
 
 .request-calendar {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 4px;
+  gap: 2px;
 }
 
 .request-day-cell {
-  aspect-ratio: 1; /* Square cells */
+  aspect-ratio: 1;
   background: var(--bg-surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 4px;
-  font-size: 12px;
+  border-radius: 6px;
+  padding: 2px;
+  font-size: 11px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -364,9 +372,9 @@ button, input, select, textarea {
 }
 
 .staff-toggle {
-  font-size: 10px;
-  padding: 2px 4px;
-  border-radius: 4px;
+  font-size: 9px;
+  padding: 1px 3px;
+  border-radius: 3px;
   background: rgba(0,0,0,0.05);
 }
 
@@ -382,12 +390,12 @@ button, input, select, textarea {
 .person-chip {
   display: inline-flex;
   align-items: center;
-  padding: 6px 12px;
+  padding: 4px 10px;
   background: var(--bg-surface);
   border: 1px solid var(--border);
-  border-radius: 20px;
-  margin: 0 8px 8px 0;
-  font-size: 14px;
+  border-radius: 16px;
+  margin: 0 6px 6px 0;
+  font-size: 13px;
   cursor: pointer;
 }
 
@@ -402,19 +410,19 @@ button, input, select, textarea {
   overflow-x: auto;
   border-radius: var(--radius-md);
   border: 1px solid var(--border);
-  margin-bottom: var(--space-lg);
+  margin-bottom: var(--space-md);
 }
 
 .schedule-table {
   width: 100%;
   border-collapse: collapse;
   background: var(--bg-surface);
-  font-size: 14px;
+  font-size: 13px;
   white-space: nowrap;
 }
 
 .schedule-table th, .schedule-table td {
-  padding: 12px;
+  padding: 10px;
   border-bottom: 1px solid var(--border);
   text-align: left;
 }
@@ -429,7 +437,7 @@ button, input, select, textarea {
 .stat-item {
   display: flex;
   justify-content: space-between;
-  padding: 12px 0;
+  padding: 10px 0;
   border-bottom: 1px solid var(--border);
 }
 
@@ -444,10 +452,12 @@ button, input, select, textarea {
 @media (min-width: 600px) {
   .cards-grid {
     grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-lg);
   }
   
   .form-row {
     flex-direction: row;
+    gap: var(--space-lg);
   }
   
   .form-row > * {
