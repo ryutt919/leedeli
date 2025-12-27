@@ -192,7 +192,7 @@ export function PrepManagementPage() {
     <div className="container">
       <h1>프렙/소스 관리</h1>
       <p>csv 구조 : 이름,재료명,투입량,보충날짜1(2025-12-20)..</p>
-      <div className="actions" style={{ marginBottom: '1.5rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+      <div className="actions" style={{ marginBottom: '1.5rem' }}>
         <Button variant="primary" onClick={handleAddPrep}>프렙/소스 추가</Button>
         <label className="btn btn-secondary" style={{ cursor: 'pointer' }}>
           CSV 업로드
@@ -304,13 +304,13 @@ export function PrepManagementPage() {
             </div>
           ))}
 
-          <div className="actions" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          <div className="actions">
             <Button variant="secondary" onClick={handleAddIngredient}>
               재료 추가
             </Button>
           </div>
 
-          <div className="actions" style={{ marginTop: '1.5rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          <div className="actions" style={{ marginTop: '1.5rem' }}>
             <Button variant="primary" onClick={handleSavePrep}>
               저장
             </Button>
@@ -439,7 +439,7 @@ export function PrepManagementPage() {
                       </div>
                     )}
 
-                    <div className="actions" style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <div className="actions" style={{ marginTop: '1rem' }}>
                       <Button variant="secondary" onClick={() => handleEditPrep(prep)}>
                         수정
                       </Button>
