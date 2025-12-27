@@ -40,29 +40,18 @@ export function HomePage() {
   return (
     <div className="container">
       <div className="cards-grid">
-        <Card title="근무 스케줄 생성">
-          <Link to="/create">
-            <Button variant="primary">스케줄 생성하기</Button>
-          </Link>
-        </Card>
-
-        <Card title="스케줄 관리/조회">
-          <Link to="/manage">
-            <Button variant="secondary">관리하기</Button>
-          </Link>
-        </Card>
-
-        <Card title="프렙/소스 관리">
-          <Link to="/preps">
-            <Button variant="primary">프렙/소스 관리하기</Button>
-          </Link>
-        </Card>
-
-        <Card title="재료 관리">
-          <Link to="/ingredients">
-            <Button variant="secondary">재료 관리하기</Button>
-          </Link>
-        </Card>
+        <div className="card card-action" onClick={() => window.location.href='/create'} tabIndex={0} role="button">
+          <div className="card-title">근무 스케줄 생성</div>
+        </div>
+        <div className="card card-action" onClick={() => window.location.href='/manage'} tabIndex={0} role="button">
+          <div className="card-title">스케줄 관리/조회</div>
+        </div>
+        <div className="card card-action" onClick={() => window.location.href='/preps'} tabIndex={0} role="button">
+          <div className="card-title">프렙/소스 관리</div>
+        </div>
+        <div className="card card-action" onClick={() => window.location.href='/ingredients'} tabIndex={0} role="button">
+          <div className="card-title">재료 관리</div>
+        </div>
       </div>
 
       <div className="info-section">

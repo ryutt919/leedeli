@@ -315,15 +315,43 @@ body {
 .card {
   background: var(--surface);
   border: 1px solid var(--border-light);
-  border-radius: 8px; /* 더 작게 */
-  padding: 8px 10px; /* 상하8, 좌우10 */
-  margin-bottom: 8px;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.07); /* 더 얇게 */
-  transition: all var(--transition-base);
+  border-radius: 7px;
+  padding: 6px 4px;
+  margin-bottom: 6px;
+  box-shadow: 0 1px 1.5px rgba(0,0,0,0.05);
+  transition: box-shadow 0.18s, background 0.18s, color 0.18s;
   animation: slideUp var(--transition-base);
   display: flex;
   flex-direction: column;
   align-items: center;
+  min-width: 0;
+  min-height: 36px;
+}
+.card-title {
+  font-size: 1.08rem;
+  font-weight: 600;
+  color: var(--primary-dark);
+  padding: 6px 0;
+  text-align: center;
+}
+
+.card-action {
+  cursor: pointer;
+  user-select: none;
+  background: #f8fafc;
+  border: 1.5px solid #e0e7ef;
+  box-shadow: 0 1.5px 4px rgba(0,0,0,0.07);
+  transition: box-shadow 0.18s, background 0.18s, color 0.18s;
+}
+.card-action:hover, .card-action:focus {
+  background: #e6f0ff;
+  color: #0051D5;
+  box-shadow: 0 2.5px 8px rgba(0,122,255,0.10);
+}
+.card-action:active {
+  background: #d0e3ff;
+  color: #003a99;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.10);
 }
 
 .card:active {
@@ -365,12 +393,15 @@ body {
 
 /* Info Section */
 .info-section {
-  margin-top: var(--space-2xl);
-  padding: var(--space-lg);
+  margin-top: 10px;
+  padding: 8px 4px 10px 4px;
   background: var(--surface);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-sm);
+  border-radius: 7px;
+  box-shadow: 0 1px 1.5px rgba(0,0,0,0.05);
   animation: slideUp var(--transition-base);
+  max-width: 340px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .info-section h2 {
@@ -381,19 +412,22 @@ body {
 }
 
 .info-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: var(--space-md);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
 }
 
 .info-item {
-  padding: var(--space-lg);
+  padding: 6px 0 4px 0;
   background: var(--bg);
-  border-radius: var(--radius-sm);
+  border-radius: 6px;
   display: flex;
   flex-direction: column;
-  gap: var(--space-sm);
+  gap: 4px;
   transition: all var(--transition-base);
+  min-width: 0;
+  align-items: center;
 }
 
 .info-item:active {
