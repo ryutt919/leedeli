@@ -1,6 +1,4 @@
-import { Link } from 'react-router-dom';
 import { useEffect, useState, type ChangeEvent } from 'react';
-import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import type { WorkRules } from '../constants';
 import { getWorkRules, saveWorkRules } from '../workRules';
