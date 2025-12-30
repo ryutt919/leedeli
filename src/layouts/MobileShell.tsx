@@ -11,7 +11,7 @@ export function MobileShell({
   children,
   right,
 }: {
-  title: string
+  title: React.ReactNode
   children: ReactNode
   right?: ReactNode
 }) {

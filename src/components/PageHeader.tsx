@@ -8,7 +8,7 @@ export function PageHeader({
   onOpenMenu,
   right,
 }: {
-  title: string
+  title: React.ReactNode
   onBack?: () => void
   onOpenMenu?: () => void
   right?: ReactNode
