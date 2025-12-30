@@ -1,4 +1,4 @@
-import { Person, ValidationError, ShiftType } from './types';
+import type { Person, ValidationError, ShiftType } from './types';
 import { getWorkRules } from './workRules';
 
 export function validateScheduleInputs(
@@ -82,7 +82,7 @@ export function validateScheduleInputs(
     }
 
     // 휴무/하프 충돌 금지
-    const halfDays = Object.keys(person.halfRequests).map(d => parseInt(d));
+    const halfDays = Object.keys(person.halfRequests ?? {}).map(d => parseInt(d));
     const conflictDays = halfDays.filter(d => person.requestedDaysOff.includes(d));
     if (conflictDays.length > 0) {
       errors.push({
@@ -93,7 +93,7 @@ export function validateScheduleInputs(
 
     // 하프 시프트 유효성(오픈/마감은 가능 여부 필요)
     halfDays.forEach(day => {
-      const shift = person.halfRequests[day];
+      const shift = person.halfRequests?.[String(day)];
       if (shift === 'open' && !person.canOpen) {
         errors.push({ type: 'conflict', message: `${person.name || `${index + 1}번째 인원`}의 ${day}일 하프는 오픈으로 선택했지만 오픈 근무가 불가능합니다.` });
       }
@@ -118,7 +118,7 @@ export function validateScheduleInputs(
 
     // 오픈/마감 필수인 사람은 하프 요청이 해당 시프트와 충돌하면 안 됨
     halfDays.forEach(day => {
-      const shift = person.halfRequests[day];
+      const shift = person.halfRequests?.[String(day)];
       if (person.mustOpen || person.mustClose) {
         errors.push({ type: 'conflict', message: `${person.name || `${index + 1}번째 인원`}은 오픈/마감 필수 설정이 있어 하프를 선택할 수 없습니다. (${day}일)` });
         return;
@@ -194,12 +194,12 @@ export function validateScheduleInputs(
     const requiredUnits = toHalfUnits(requiredStaff);
 
     // 고정된 하프(0.5) 인원(휴무는 이미 충돌 금지)
-    const fixedHalfPeople = people.filter(p => !p.requestedDaysOff.includes(date) && p.halfRequests?.[date] !== undefined);
+    const fixedHalfPeople = people.filter(p => !p.requestedDaysOff.includes(date) && p.halfRequests?.[String(date)] !== undefined);
     // 하프는 2명(짝수)마다 1명으로 환산됨. 내부 단위는 half-units(0.5단위->1)
     const fixedHalfUnits = Math.floor(fixedHalfPeople.length / 2) * 2; // 예: 1명->0, 2명->2
 
     // 풀근무 후보: 휴무가 아니고, 하프도 아닌 사람 (1.0 = 2 units)
-    const availableFullForDay = people.filter(p => !p.requestedDaysOff.includes(date) && p.halfRequests?.[date] === undefined);
+    const availableFullForDay = people.filter(p => !p.requestedDaysOff.includes(date) && p.halfRequests?.[String(date)] === undefined);
 
     const remainingUnits = requiredUnits - fixedHalfUnits;
     if (remainingUnits < 0) {
@@ -230,9 +230,9 @@ export function validateScheduleInputs(
     const plannedHeadcount = requiredFullCount + Math.floor(fixedHalfPeople.length / 2);
     const needsThreeShift = plannedHeadcount >= 3 || fixedHalfPeople.length >= 2;
 
-    const fixedHasOpen = fixedHalfPeople.some(p => p.halfRequests?.[date] === 'open');
-    const fixedHasMiddle = fixedHalfPeople.some(p => p.halfRequests?.[date] === 'middle');
-    const fixedHasClose = fixedHalfPeople.some(p => p.halfRequests?.[date] === 'close');
+    const fixedHasOpen = fixedHalfPeople.some(p => p.halfRequests?.[String(date)] === 'open');
+    const fixedHasMiddle = fixedHalfPeople.some(p => p.halfRequests?.[String(date)] === 'middle');
+    const fixedHasClose = fixedHalfPeople.some(p => p.halfRequests?.[String(date)] === 'close');
 
     const canCoverOpen = fixedHasOpen || availableFullForDay.some(p => p.canOpen);
     const canCoverClose = fixedHasClose || availableFullForDay.some(p => p.canClose);

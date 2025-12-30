@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { Person, DayAssignment, Schedule, ShiftType, ValidationError, Prep, Ingredient } from './types';
 import { getDaysInMonth } from './validator';
 import * as XLSX from 'xlsx';

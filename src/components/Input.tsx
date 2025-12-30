@@ -1,4 +1,5 @@
-import React, { CSSProperties, forwardRef } from 'react';
+import React, { forwardRef } from 'react';
+import type { CSSProperties } from 'react';
 
 interface InputProps {
   type?: string;
