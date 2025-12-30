@@ -1,794 +1,784 @@
-import { useEffect, useState, type KeyboardEvent, type MouseEvent } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { Card } from '../components/Card';
-import { Button } from '../components/Button';
-import { Input } from '../components/Input';
-import { Select } from '../components/Select';
-import { Checkbox } from '../components/Checkbox';
-import { Person, Schedule, ShiftType, ValidationError, StaffConfig } from '../types';
-import { validateScheduleInputs, getDaysInMonth } from '../validator';
-import { generateSchedule, validateGeneratedSchedule, ScheduleGenerationError, exportSchedulesToXlsx } from '../generator';
-import { getScheduleById, saveSchedule, saveStaffConfig, loadStaffConfig } from '../storage';
-import { getWorkRules } from '../workRules';
+import { DownloadOutlined, PlayCircleOutlined, SaveOutlined } from '@ant-design/icons'
+import {
+  Button,
+  DatePicker,
+  Calendar,
+  Card,
+  Checkbox,
+  Collapse,
+  Flex,
+  Form,
+  Input,
+  InputNumber,
+  Modal,
+  Select,
+  Space,
+  Tag,
+  Typography,
+  theme,
+  message,
+} from 'antd'
+import dayjs, { Dayjs } from 'dayjs'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import type { DayRequest, SavedSchedule, Shift, StaffMember, WorkRules } from '../domain/types'
+import { generateSchedule, toSavedSchedule, validateGeneratedSchedule, validateScheduleInputs } from '../domain/scheduleEngine'
+import type { ScheduleInputs } from '../domain/scheduleEngine'
+import { MobileShell } from '../layouts/MobileShell'
+import { getSchedule, upsertSchedule } from '../storage/schedulesRepo'
+import { loadStaffPresets, upsertStaffPreset } from '../storage/staffPresetsRepo'
+import type { StaffPreset } from '../storage/staffPresetsRepo'
+import { DEFAULT_WORK_RULES, loadWorkRules, saveWorkRules } from '../storage/workRulesRepo'
+import { daysInRangeISO } from '../utils/date'
+import { newId } from '../utils/id'
+import { exportScheduleXlsx } from '../utils/scheduleExport'
+import type { CellRenderInfo } from '@rc-component/picker/interface'
 
-type RequestMode = 'off' | 'half';
-
-type DayRequestSummary = {
-  key: string;
-  name: string;
-  kind: 'off' | 'half';
-  shiftLabel?: string;
-};
+const EMPTY_STAFF: StaffMember[] = []
 
 export function CreateSchedulePage() {
-  const location = useLocation();
-  const navigate = useNavigate();
-  const currentYear = new Date().getFullYear();
-  const currentMonth = new Date().getMonth() + 1;
+  void theme.useToken()
+  const [sp] = useSearchParams()
+  const editId = sp.get('editId') ?? undefined
 
-  const [year, setYear] = useState(currentYear);
-  const [month, setMonth] = useState(currentMonth);
-  const [peopleCount, setPeopleCount] = useState(0);
-  const [people, setPeople] = useState<Person[]>([]);
-  const [errors, setErrors] = useState<ValidationError[]>([]);
-  const [schedule, setSchedule] = useState<Schedule | null>(null);
-  const [confirmed, setConfirmed] = useState(false);
-  const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
-  const [requestMode, setRequestMode] = useState<RequestMode>('off');
-  const [dailyStaffByDate, setDailyStaffByDate] = useState<Record<number, number>>({});
-  const [editingScheduleId, setEditingScheduleId] = useState<string | null>(null);
-  const [editingCreatedAt, setEditingCreatedAt] = useState<string | null>(null);
+  const [form] = Form.useForm()
 
-  const rules = getWorkRules();
+  const [selectedDate, setSelectedDate] = useState<Dayjs>(() => dayjs())
+  const [selectedStaffId, setSelectedStaffId] = useState<string | null>(null)
+  const [mode, setMode] = useState<'off' | 'half'>('off')
+  const [halfShift, setHalfShift] = useState<Shift>('middle')
+
+  const [requests, setRequests] = useState<DayRequest[]>([])
+  const [result, setResult] = useState<{ assignments: SavedSchedule['assignments']; stats: SavedSchedule['stats'] } | null>(
+    null,
+  )
+
+  const [presetModalOpen, setPresetModalOpen] = useState(false)
+  const [presetName, setPresetName] = useState('')
+  const [presets, setPresets] = useState<StaffPreset[]>(() => loadStaffPresets())
+  const lastRangeWarnAtRef = useRef(0)
+
+  const normalizeRequest = (r: Partial<DayRequest> & { dateISO: string }): DayRequest => {
+    const base: DayRequest = {
+      dateISO: r.dateISO,
+      // IMPORTANT: 배열 참조 공유를 끊어야(불변) StrictMode/dev에서 토글이 안정적임
+      offStaffIds: [...(((r.offStaffIds ?? []) as string[]) ?? [])],
+      halfStaff: [...(((r.halfStaff ?? []) as Array<{ staffId: string; shift: Shift }>) ?? [])],
+      needDelta: 0,
+    }
+    const legacyBoost = (r as { needBoost?: boolean }).needBoost
+    const delta = Number.isFinite((r as { needDelta?: number }).needDelta)
+      ? Number((r as { needDelta?: number }).needDelta)
+      : legacyBoost
+        ? 1
+        : 0
+    return { ...base, needDelta: delta }
+  }
 
   useEffect(() => {
-    const state = location.state as { editScheduleId?: string } | null;
-    const id = state?.editScheduleId;
-    if (!id) return;
+    const workRules = loadWorkRules()
+    const today = dayjs()
+    let startDateISO = today.startOf('month').format('YYYY-MM-DD')
+    let endDateISO = today.endOf('month').format('YYYY-MM-DD')
+    let staff: StaffMember[] = []
+    let loadedRequests: DayRequest[] = []
 
-    const existing = getScheduleById(id);
-    if (!existing) return;
-
-    setEditingScheduleId(existing.id);
-    setEditingCreatedAt(existing.createdAt);
-    setYear(existing.year);
-    setMonth(existing.month);
-    setPeople(existing.people);
-    setPeopleCount(existing.people.length);
-    setDailyStaffByDate(existing.dailyStaffByDate ?? {});
-    setConfirmed(true);
-    setSelectedPersonId(existing.people[0]?.id ?? null);
-    setSchedule(existing);
-    setErrors([]);
-  }, [location.state]);
-
-  // 마운트 시 편집 모드가 아니면 저장된 직원 구성 자동 로드
-  useEffect(() => {
-    const state = location.state as { editScheduleId?: string } | null;
-    if (state?.editScheduleId) return; // 편집 모드면 자동 로드하지 않음
-
-    const configs = loadStaffConfig();
-    if (configs && configs.length > 0) {
-      const loadedPeople: Person[] = configs.map((c: StaffConfig) => ({
-        id: c.id,
-        name: c.name,
-        canOpen: c.canOpen,
-        canMiddle: c.canMiddle,
-        canClose: c.canClose,
-        mustOpen: c.mustOpen ?? false,
-        mustClose: c.mustClose ?? false,
-        preferredShift: (c.preferredShift as ShiftType) ?? 'middle',
-        openPriority: c.openPriority,
-        middlePriority: c.middlePriority,
-        closePriority: c.closePriority,
-        requestedDaysOff: [],
-        halfRequests: {}
-      }));
-      setPeople(loadedPeople);
-      setPeopleCount(loadedPeople.length);
-      setSelectedPersonId(loadedPeople[0]?.id ?? null);
+    if (editId) {
+      const s = getSchedule(editId)
+      if (s) {
+        startDateISO = s.startDateISO
+        endDateISO = s.endDateISO
+        staff = s.staff
+        loadedRequests = (s.requests ?? []).map((r) => normalizeRequest(r))
+        setResult({ assignments: s.assignments, stats: s.stats })
+      }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
-  // 인원 수 변경 시 배열 초기화
-  const handlePeopleCountChange = (count: string) => {
-    const num = parseInt(count) || 0;
-    setPeopleCount(num);
-    setConfirmed(false);
-    setSchedule(null);
-    
-    const newPeople: Person[] = [];
-    for (let i = 0; i < num; i++) {
-      if (people[i]) {
-        newPeople.push(people[i]);
+    // 직원이 없으면 최대 인원만큼 빈 직원 생성
+    if (!staff.length) {
+      const maxCount = workRules.DAILY_STAFF_MAX
+      staff = Array.from({ length: maxCount }, () => ({
+        id: newId(),
+        name: '',
+        availableShifts: ['open', 'middle', 'close'] as const,
+        priority: { open: 3, middle: 3, close: 3 },
+      }))
+    }
+
+    setRequests(loadedRequests.map((r) => normalizeRequest(r)))
+    form.setFieldsValue({
+      range: [dayjs(startDateISO), dayjs(endDateISO)],
+      workRules,
+      staffCount: staff.length,
+      staff,
+    })
+    setSelectedDate(dayjs(startDateISO))
+    setSelectedStaffId(staff[0]?.id ?? null)
+  }, [editId, form])
+
+  const getInput = (): ScheduleInputs => {
+    const v = form.getFieldsValue(true) as {
+      range: [Dayjs, Dayjs]
+      workRules: WorkRules
+      staff: StaffMember[]
+    }
+    const range = v.range ?? [dayjs().startOf('month'), dayjs().endOf('month')]
+    const startDateISO = range[0].format('YYYY-MM-DD')
+    const endDateISO = range[1].format('YYYY-MM-DD')
+    const workRules = v.workRules ?? DEFAULT_WORK_RULES
+    const staff = (v.staff ?? []).map((s) => ({
+      ...s,
+      name: (s.name ?? '').toString(),
+      availableShifts: s.availableShifts ?? [],
+      priority: s.priority ?? { open: 3, middle: 3, close: 3 },
+    }))
+    return { startDateISO, endDateISO, workRules, staff, requests }
+  }
+
+
+  const toggleForSelected = (dateISO: string) => {
+    if (!selectedStaffId) return
+    // ensureRequest는 제거 - setRequests 안에서 이미 idx < 0 처리함
+    setRequests((prev) => {
+      const idx = prev.findIndex((x) => x.dateISO === dateISO)
+      const r = idx >= 0 ? prev[idx] : normalizeRequest({ dateISO })
+      const next: DayRequest = normalizeRequest({ ...r, dateISO })
+
+      const sid = selectedStaffId
+      if (mode === 'off') {
+        // off 토글, half는 제거
+        const off = new Set(next.offStaffIds)
+        if (off.has(sid)) off.delete(sid)
+        else off.add(sid)
+        next.offStaffIds = [...off]
+        next.halfStaff = next.halfStaff.filter((x) => x.staffId !== sid)
       } else {
-        newPeople.push({
-          id: crypto.randomUUID(),
-          name: '',
-          canOpen: true,
-          canMiddle: true,
-          canClose: true,
-          mustOpen: false,
-          mustClose: false,
-          preferredShift: 'middle',
-          requestedDaysOff: [],
-          halfRequests: {}
-        });
-      }
-    }
-    setPeople(newPeople);
-    setSelectedPersonId(newPeople[0]?.id ?? null);
-  };
-
-  // 개별 인원 정보 업데이트
-  const updatePerson = (index: number, updates: Partial<Person>, resetConfirm = true) => {
-    const newPeople = [...people];
-    newPeople[index] = { ...newPeople[index], ...updates };
-    setPeople(newPeople);
-    if (resetConfirm) setConfirmed(false);
-    setSchedule(null);
-  };
-
-  const canConfirm = people.length > 0 && people.every((p: Person) => p.name.trim().length > 0);
-
-  const handleConfirmPeople = () => {
-    if (!canConfirm) {
-      alert('모든 인원의 이름을 입력해주세요.');
-      return;
-    }
-    setConfirmed(true);
-    setSelectedPersonId((prev: string | null) => prev ?? people[0]?.id ?? null);
-  };
-
-  const getSelectedPersonIndex = () => {
-    if (!selectedPersonId) return -1;
-    return people.findIndex((p: Person) => p.id === selectedPersonId);
-  };
-
-  const toggleCalendarDayForSelected = (day: number) => {
-    const personIndex = getSelectedPersonIndex();
-    if (personIndex === -1) return;
-    const person = people[personIndex];
-
-    if (requestMode === 'off') {
-      const newDaysOff = person.requestedDaysOff.includes(day)
-        ? person.requestedDaysOff.filter((d: number) => d !== day)
-        : [...person.requestedDaysOff, day];
-
-      const newHalfRequests = { ...person.halfRequests };
-      if (newDaysOff.includes(day)) {
-        delete newHalfRequests[day];
+        // half 토글, off 제거
+        next.offStaffIds = next.offStaffIds.filter((x) => x !== sid)
+        const has = next.halfStaff.some((x) => x.staffId === sid)
+        if (has) {
+          // 이미 하프면 해제 (불변)
+          next.halfStaff = next.halfStaff.filter((x) => x.staffId !== sid)
+        } else {
+          // 선호 시프트: preferredShift > priority 최고값 > halfShift 순
+          const currentStaff = (form.getFieldValue('staff') ?? []) as StaffMember[]
+          const member = currentStaff.find((s) => s.id === sid)
+          let shift: Shift = halfShift
+          if (member?.preferredShift) {
+            shift = member.preferredShift
+          } else if (member?.priority) {
+            const best = (['open', 'middle', 'close'] as Shift[]).reduce((a, b) =>
+              (member.priority[b] ?? 0) > (member.priority[a] ?? 0) ? b : a
+            )
+            shift = best
+          }
+          next.halfStaff = [...next.halfStaff, { staffId: sid, shift }]
+        }
       }
 
-      updatePerson(personIndex, { requestedDaysOff: newDaysOff, halfRequests: newHalfRequests }, false);
-      return;
+      const out = [...prev]
+      if (idx >= 0) out[idx] = next
+      else out.push(next)
+      return out
+    })
+  }
+
+  const onGenerate = () => {
+    const input = getInput()
+    const errs = validateScheduleInputs(input)
+    if (errs.length) {
+      message.error(errs[0])
+      return
     }
-
-    // half 모드
-    const newHalfRequests = { ...person.halfRequests };
-    if (newHalfRequests[day] !== undefined) {
-      delete newHalfRequests[day];
-    } else {
-      // 기본 하프 시프트: 선호 > 가능 여부 고려
-      if (person.preferredShift === 'open' && person.canOpen) newHalfRequests[day] = 'open';
-      else if (person.preferredShift === 'middle' && person.canMiddle) newHalfRequests[day] = 'middle';
-      else if (person.preferredShift === 'close' && person.canClose) newHalfRequests[day] = 'close';
-      else if (person.canMiddle) newHalfRequests[day] = 'middle';
-      else if (person.canOpen) newHalfRequests[day] = 'open';
-      else newHalfRequests[day] = 'close';
-    }
-    const newDaysOff = person.requestedDaysOff.filter((d: number) => d !== day);
-    updatePerson(personIndex, { requestedDaysOff: newDaysOff, halfRequests: newHalfRequests }, false);
-  };
-
-  const setHalfShiftForSelected = (day: number, shift: ShiftType) => {
-    const personIndex = getSelectedPersonIndex();
-    if (personIndex === -1) return;
-    const person = people[personIndex];
-    if (person.halfRequests[day] === undefined) return;
-    updatePerson(personIndex, { halfRequests: { ...person.halfRequests, [day]: shift } }, false);
-  };
-
-  // 직원 구성 저장/불러오기
-  const handleSaveStaffConfig = () => {
-    const configs: StaffConfig[] = people.map(p => ({
-      id: p.id,
-      name: p.name,
-      canOpen: p.canOpen,
-      canMiddle: p.canMiddle,
-      canClose: p.canClose,
-      mustOpen: p.mustOpen || undefined,
-      mustClose: p.mustClose || undefined,
-      preferredShift: p.preferredShift ?? null,
-      openPriority: p.openPriority,
-      middlePriority: p.middlePriority,
-      closePriority: p.closePriority
-    }));
-    saveStaffConfig(configs);
-    alert('직원 구성이 저장되었습니다.');
-  };
-
-  const handleLoadStaffConfig = () => {
-    const configs = loadStaffConfig();
-    if (!configs || configs.length === 0) {
-      alert('저장된 직원 구성이 없습니다.');
-      return;
-    }
-
-    const loadedPeople: Person[] = configs.map((c: StaffConfig) => ({
-      id: c.id,
-      name: c.name,
-      canOpen: c.canOpen,
-      canMiddle: c.canMiddle,
-      canClose: c.canClose,
-      mustOpen: c.mustOpen ?? false,
-      mustClose: c.mustClose ?? false,
-      preferredShift: (c.preferredShift as ShiftType) ?? 'middle',
-      openPriority: c.openPriority,
-      middlePriority: c.middlePriority,
-      closePriority: c.closePriority,
-      requestedDaysOff: [],
-      halfRequests: {}
-    }));
-
-    setPeople(loadedPeople);
-    setPeopleCount(loadedPeople.length);
-    setSelectedPersonId(loadedPeople[0]?.id ?? null);
-    setConfirmed(false);
-    setSchedule(null);
-  };
-
-  // 달력의 휴무 및 하프 요청을 모두 초기화
-  const handleResetRequests = () => {
-    if (!confirm('모든 휴무/하프 요청을 초기화하시겠습니까?')) return;
-    const cleared = people.map(p => ({ ...p, requestedDaysOff: [], halfRequests: {} }));
-    setPeople(cleared);
-    setSchedule(null);
-    alert('모든 휴무/하프 요청을 초기화했습니다.');
-  };
-
-  const formatStaff = (value: number): string => {
-    const s = value.toString();
-    return s.endsWith('.0') ? s.slice(0, -2) : s;
-  };
-
-  const incrementDailyStaff = (day: number) => {
-    setDailyStaffByDate((prev: Record<number, number>) => {
-      const base = rules.DAILY_STAFF_BASE;
-      const max = rules.DAILY_STAFF_MAX;
-
-      const current = prev[day] ?? base;
-      const next = { ...prev };
-
-      // 1 단위로 증가, 최대치 초과 시 기본값으로
-      const nextValue = current < max ? current + 1 : base;
-
-      if (nextValue === base) {
-        delete next[day];
-      } else {
-        next[day] = nextValue;
-      }
-      return next;
-    });
-    setSchedule(null);
-  };
-
-  // 스케줄 생성
-  const handleGenerate = () => {
-    const validationErrors = validateScheduleInputs(year, month, people, dailyStaffByDate);
-    
-    if (validationErrors.length > 0) {
-      setErrors(validationErrors);
-      setSchedule(null);
-      return;
-    }
-
     try {
-      const generated = generateSchedule(year, month, people, dailyStaffByDate);
-      const newSchedule = editingScheduleId
-        ? {
-            ...generated,
-            id: editingScheduleId,
-            createdAt: editingCreatedAt ?? generated.createdAt,
-            updatedAt: new Date().toISOString()
-          }
-        : generated;
-
-      // 생성된 스케줄 검증(방어적)
-      const generationErrors = validateGeneratedSchedule(newSchedule);
-      if (generationErrors.length > 0) {
-        setErrors(generationErrors);
-        setSchedule(null);
-        return;
+      const gen = generateSchedule(input)
+      const postErrs = validateGeneratedSchedule(input, gen.assignments)
+      if (postErrs.length) {
+        message.error(postErrs[0])
+        return
       }
+      setResult(gen)
+      message.success('스케줄 생성 완료')
+    } catch (e) {
+      // 예외 발생 시 사용자에게 알려주고 콘솔에 출력
+      const msg = e instanceof Error ? e.message : String(e)
+      console.error('generateSchedule error', e)
+      message.error(`스케줄 생성 실패: ${msg}`)
+    }
+  }
 
-      setSchedule(newSchedule);
-      setErrors([]);
-    } catch (err) {
-      if (err instanceof ScheduleGenerationError) {
-        setErrors(err.errors);
-        setSchedule(null);
-        return;
+  const onSaveSchedule = () => {
+    const input = getInput()
+    const errs = validateScheduleInputs(input)
+    if (errs.length) {
+      message.error(errs[0])
+      return
+    }
+    if (!result) {
+      message.error('먼저 스케줄을 생성하세요.')
+      return
+    }
+    const id = editId ?? newId()
+    const saved = toSavedSchedule({
+      id,
+      editSourceScheduleId: editId ? editId : undefined,
+      input,
+      assignments: result.assignments,
+      stats: result.stats,
+    })
+    upsertSchedule(saved)
+    saveWorkRules(input.workRules)
+    message.success('저장 완료')
+  }
+
+  const onExport = () => {
+    const input = getInput()
+    if (!result) {
+      message.error('먼저 스케줄을 생성하세요.')
+      return
+    }
+    const temp: SavedSchedule = {
+      id: 'temp',
+      startDateISO: input.startDateISO,
+      endDateISO: input.endDateISO,
+      year: dayjs(input.startDateISO).year(),
+      month: dayjs(input.startDateISO).month() + 1,
+      createdAtISO: new Date().toISOString(),
+      updatedAtISO: new Date().toISOString(),
+      workRules: input.workRules,
+      staff: input.staff,
+      requests: input.requests,
+      assignments: result.assignments,
+      stats: result.stats,
+    }
+    exportScheduleXlsx(temp)
+  }
+
+  const watchedStaff = Form.useWatch('staff', form) as StaffMember[] | undefined
+  const staff: StaffMember[] = watchedStaff ?? EMPTY_STAFF
+  const staffCount: number = Form.useWatch('staffCount', form) ?? staff.length ?? 0
+  const rangeWatch =
+    ((Form.useWatch('range', form) as [Dayjs, Dayjs] | undefined) ?? [dayjs().startOf('month'), dayjs().endOf('month')])
+  const workRulesWatch: WorkRules = Form.useWatch('workRules', form) ?? DEFAULT_WORK_RULES
+  const rangeISO = useMemo(
+    () => ({
+      startDateISO: rangeWatch[0].format('YYYY-MM-DD'),
+      endDateISO: rangeWatch[1].format('YYYY-MM-DD'),
+    }),
+    [rangeWatch]
+  )
+  const validDatesSet = useMemo(() => new Set(daysInRangeISO(rangeISO.startDateISO, rangeISO.endDateISO)), [rangeISO])
+
+  useEffect(() => {
+    // 기간 변경 시 선택 날짜가 범위 밖이면 시작일로 정렬
+    const start = rangeWatch[0]
+    const end = rangeWatch[1]
+    if (selectedDate.isBefore(start, 'day') || selectedDate.isAfter(end, 'day')) setSelectedDate(start)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rangeWatch])
+
+
+  const reqByDate = useMemo(() => {
+    const m = new Map<string, DayRequest>()
+    for (const r of requests) m.set(r.dateISO, normalizeRequest(r))
+    return m
+  }, [requests])
+
+  const staffNameById = useMemo(() => new Map(staff.map((s) => [s.id, s.name || '이름없음'])), [staff])
+
+  const renderRequestPills = (d: Dayjs) => {
+    const iso = d.format('YYYY-MM-DD')
+    const r = reqByDate.get(iso)
+
+    const inRange = validDatesSet.has(iso)
+
+    const pills: Array<{ key: string; staffId: string; kind: 'half' | 'off'; text: string }> = []
+    if (r) {
+      // 이름만 표시 (하프: 주황, 휴무: 파랑)
+      for (const h of r.halfStaff) {
+        const sid = String(h.staffId)
+        const nm = staffNameById.get(sid) ?? sid
+        pills.push({
+          key: `half_${sid}`,
+          staffId: sid,
+          kind: 'half',
+          text: nm,
+        })
       }
-      setErrors([{ type: 'unknown', message: '스케줄 생성 중 알 수 없는 오류가 발생했습니다.' }]);
-      setSchedule(null);
+      for (const sid of r.offStaffIds) {
+        const s = String(sid)
+        const nm = staffNameById.get(s) ?? s
+        pills.push({
+          key: `off_${s}`,
+          staffId: s,
+          kind: 'off',
+          text: nm,
+        })
+      }
     }
-  };
 
-  // 스케줄 저장
-  const handleSave = () => {
-    if (schedule) {
-      saveSchedule(schedule);
-      alert('스케줄이 저장되었습니다!');
-      navigate('/manage');
-    }
-  };
+    // 선택된 직원은 배경색으로 표시, 나머지만 pill로 표시
+    const selectedSid = selectedStaffId ? String(selectedStaffId) : null
+    const otherPills = selectedSid ? pills.filter((p) => p.staffId !== selectedSid) : pills
 
-  const handleExportExcel = () => {
-    if (!schedule) return;
-    exportSchedulesToXlsx([schedule]);
-  };
+    // 선택된 직원의 휴무/하프 여부 확인
+    const isSelectedOff = !!(selectedSid && r?.offStaffIds.some((x) => String(x) === selectedSid))
+    const isSelectedHalf = !!(selectedSid && r?.halfStaff.some((x) => String(x.staffId) === selectedSid))
 
-  const renderCalendar = (s: Schedule) => {
-    const firstWeekday = new Date(s.year, s.month - 1, 1).getDay();
-    const totalCells = firstWeekday + daysInMonth;
-    const weekCount = Math.ceil(totalCells / 7);
-    const cells = Array.from({ length: weekCount * 7 }, (_, i) => {
-      const dayNum = i - firstWeekday + 1;
-      return dayNum >= 1 && dayNum <= daysInMonth ? dayNum : null;
-    });
-
-    const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+    // 배경색 결정 (더 진한 색상)
+    let bgColor = 'transparent'
+    if (isSelectedOff) bgColor = '#bae0ff' // 더 진한 파랑
+    else if (isSelectedHalf) bgColor = '#ffe7ba' // 더 진한 주황
 
     return (
-      <div className="calendar">
-        {dayNames.map(name => (
-          <div key={name} className="calendar-header">
-            {name}
-          </div>
-        ))}
-        {cells.map((dayNum, idx) => {
-          if (!dayNum) {
-            return <div key={`e-${idx}`} className="calendar-cell empty" />;
-          }
-
-          const assignment = s.assignments.find(a => a.date === dayNum);
-          const openPeople = assignment ? assignment.people.filter(p => p.shift === 'open') : [];
-          const middlePeople = assignment ? assignment.people.filter(p => p.shift === 'middle') : [];
-          const closePeople = assignment ? assignment.people.filter(p => p.shift === 'close') : [];
-
-          const formatAssignedName = (personName: string, isHalf?: boolean) => (isHalf ? `${personName}(하프)` : personName);
-
-          const dateObj = new Date(s.year, s.month - 1, dayNum);
-          const isWeekend = dateObj.getDay() === 0 || dateObj.getDay() === 6;
-
-          return (
-            <div key={dayNum} className={`calendar-cell ${isWeekend ? 'weekend' : ''}`}
-            >
-              <div className="calendar-date">{dayNum}</div>
-              <div className="calendar-line">
-                <span className="calendar-label">오픈</span>
-                <span>{openPeople.map(p => formatAssignedName(p.personName, p.isHalf)).join(', ') || '-'}</span>
-              </div>
-              <div className="calendar-line">
-                <span className="calendar-label">미들</span>
-                <span>{middlePeople.map(p => formatAssignedName(p.personName, p.isHalf)).join(', ') || '-'}</span>
-              </div>
-              <div className="calendar-line">
-                <span className="calendar-label">마감</span>
-                <span>{closePeople.map(p => formatAssignedName(p.personName, p.isHalf)).join(', ') || '-'}</span>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    );
-  };
-
-  const renderRequestCalendar = (yearValue: number, monthValue: number) => {
-    const days = getDaysInMonth(yearValue, monthValue);
-    const firstWeekday = new Date(yearValue, monthValue - 1, 1).getDay();
-    const totalCells = firstWeekday + days;
-    const weekCount = Math.ceil(totalCells / 7);
-    const cells = Array.from({ length: weekCount * 7 }, (_, i) => {
-      const dayNum = i - firstWeekday + 1;
-      return dayNum >= 1 && dayNum <= days ? dayNum : null;
-    });
-
-    const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
-    const personIndex = getSelectedPersonIndex();
-    const person = personIndex >= 0 ? people[personIndex] : null;
-
-    return (
-      <div className="request-calendar">
-        {dayNames.map(name => (
-          <div key={name} className="calendar-header">
-            {name}
-          </div>
-        ))}
-
-        {cells.map((dayNum, idx) => {
-          if (!dayNum) return <div key={`e-${idx}`} className="calendar-cell empty" />;
-
-          const dateObj = new Date(yearValue, monthValue - 1, dayNum);
-          const isWeekend = dateObj.getDay() === 0 || dateObj.getDay() === 6;
-
-          const isOff = !!person && person.requestedDaysOff.includes(dayNum);
-          const isHalf = !!person && person.halfRequests[dayNum] !== undefined;
-          const halfShift = person ? person.halfRequests[dayNum] : undefined;
-
-          const canHalfOpen = !!person && person.canOpen;
-          const canHalfMiddle = !!person && person.canMiddle;
-          const canHalfClose = !!person && person.canClose;
-
-          const staffForDay = dailyStaffByDate[dayNum] ?? rules.DAILY_STAFF_BASE;
-          const isBaseStaff = staffForDay === rules.DAILY_STAFF_BASE;
-
-          const summaries: DayRequestSummary[] = people.reduce<DayRequestSummary[]>((acc, p) => {
-            if (p.requestedDaysOff.includes(dayNum)) {
-              acc.push({ key: `${p.id}-off`, name: p.name, kind: 'off' });
-              return acc;
-            }
-            const hs = p.halfRequests?.[dayNum];
-            if (hs !== undefined) {
-              const hsLabel = hs === 'open' ? '오픈' : hs === 'middle' ? '미들' : '마감';
-              acc.push({ key: `${p.id}-half`, name: p.name, kind: 'half', shiftLabel: hsLabel });
-            }
-            return acc;
-          }, []);
-
-          return (
-            <div
-              key={dayNum}
-              className={`request-day-cell ${isWeekend ? 'weekend' : ''} ${isOff ? 'selected' : ''} ${isHalf ? 'half-selected' : ''}`}
-              role="button"
-              tabIndex={0}
-              onClick={() => toggleCalendarDayForSelected(dayNum)}
-              onKeyDown={(e: KeyboardEvent<HTMLDivElement>) => {
-                if (e.key === 'Enter' || e.key === ' ') toggleCalendarDayForSelected(dayNum);
-              }}
-            >
-              <div className="request-day-top">
-                <div className="calendar-date">{dayNum}</div>
-                <button
-                  type="button"
-                  className={`staff-toggle ${isBaseStaff ? '' : 'custom-staff'}`}
-                  onClick={(e: MouseEvent<HTMLButtonElement>) => {
-                    e.stopPropagation();
-                    incrementDailyStaff(dayNum);
-                  }}
-                >
-                  {formatStaff(staffForDay)}인
-                </button>
-              </div>
-
-              {summaries.length > 0 && (
-                <div className="request-summaries" onClick={(e: MouseEvent<HTMLDivElement>) => e.stopPropagation()}>
-                  {summaries.map((s: DayRequestSummary) => (
-                    <div key={s.key} className={`request-summary ${s.kind}`}>
-                      <span className="summary-text">(</span>
-                      <span className="summary-name">{s.name}</span>
-                      <span className="summary-text">/</span>
-                      <span className={`summary-status ${s.kind}`}>{s.kind === 'off' ? '휴무' : '하프'}</span>
-                      {s.shiftLabel && (
-                        <>
-                          <span className="summary-text">/</span>
-                          <span className="summary-shift">{s.shiftLabel}</span>
-                        </>
-                      )}
-                      <span className="summary-text">)</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {isHalf && (
-                <div className="half-shift-buttons" onClick={(e: MouseEvent<HTMLDivElement>) => e.stopPropagation()}>
-                  <button
-                    type="button"
-                    className={`half-shift-btn ${halfShift === 'open' ? 'active' : ''}`}
-                    onClick={() => setHalfShiftForSelected(dayNum, 'open')}
-                    disabled={!canHalfOpen}
-                  >
-                    오픈
-                  </button>
-                  <button
-                    type="button"
-                    className={`half-shift-btn ${halfShift === 'middle' ? 'active' : ''}`}
-                    onClick={() => setHalfShiftForSelected(dayNum, 'middle')}
-                    disabled={!canHalfMiddle}
-                  >
-                    미들
-                  </button>
-                  <button
-                    type="button"
-                    className={`half-shift-btn ${halfShift === 'close' ? 'active' : ''}`}
-                    onClick={() => setHalfShiftForSelected(dayNum, 'close')}
-                    disabled={!canHalfClose}
-                  >
-                    마감
-                  </button>
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    );
-  };
-
-  const yearOptions = Array.from({ length: 10 }, (_, i) => ({
-    value: currentYear + i - 2,
-    label: `${currentYear + i - 2}년`
-  }));
-
-  const monthOptions = Array.from({ length: 12 }, (_, i) => ({
-    value: i + 1,
-    label: `${i + 1}월`
-  }));
-
-  const daysInMonth = getDaysInMonth(year, month);
-
-  return (
-    <div className="container">
-      <h1>근무 스케줄 생성</h1>
-
-      <Card title="기본 설정">
-        <div className="form-row">
-          <Select
-            label="연도"
-            value={year}
-            onChange={(v) => setYear(parseInt(v))}
-            options={yearOptions}
+      <>
+        {/* 배경색 레이어 - 셀 전체를 덮음 */}
+        {bgColor !== 'transparent' && (
+          <div
+            className="leedeli-cal-bg-layer"
+            style={{ background: bgColor }}
           />
-          <Select
-            label="월"
-            value={month}
-            onChange={(v) => setMonth(parseInt(v))}
-            options={monthOptions}
-          />
-        </div>
-      </Card>
-
-      <Card title="근무 인원 설정">
-        <Input
-          type="number"
-          label="인원 수"
-          value={peopleCount}
-          onChange={(e) => handlePeopleCountChange((e.target as HTMLInputElement).value)}
-          min={1}
-          max={20}
-        />
-
-        <div className="people-list">
-          {people.map((person: Person, index: number) => (
-            <div key={person.id} className="person-editor">
-              <h4>인원 {index + 1}</h4>
-              
-              <Input
-                label="이름"
-                value={person.name}
-                onChange={(e) => updatePerson(index, { name: (e.target as HTMLInputElement).value })}
-                placeholder="이름 입력"
-              />
-
-              <div className="checkbox-group">
-                <Checkbox
-                  checked={person.canOpen}
-                  onChange={(v) => updatePerson(index, { canOpen: v })}
-                  label="오픈 가능"
-                />
-                <Checkbox
-                  checked={person.canMiddle}
-                  onChange={(v) => updatePerson(index, { canMiddle: v })}
-                  label="미들 가능"
-                />
-                <Checkbox
-                  checked={person.canClose}
-                  onChange={(v) => updatePerson(index, { canClose: v })}
-                  label="마감 가능"
-                />
-              </div>
-
-              <Select
-                label="선호 시프트"
-                value={person.preferredShift}
-                onChange={(v) => updatePerson(index, { preferredShift: v as ShiftType })}
-                options={[
-                  { value: 'open', label: '오픈' },
-                  { value: 'middle', label: '미들' },
-                  { value: 'close', label: '마감' }
-                ]}
-              />
-
-              <div className="checkbox-group">
-                <Checkbox
-                  checked={person.mustOpen}
-                  onChange={(v) => updatePerson(index, { mustOpen: v })}
-                  label="오픈 필수"
-                />
-                <Checkbox
-                  checked={person.mustClose}
-                  onChange={(v) => updatePerson(index, { mustClose: v })}
-                  label="마감 필수"
-                />
-              </div>
-
-              <div style={{ marginTop: '1rem' }}>
-                <h5 style={{ marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-                  시프트 우선순위 (선택, 1~{peopleCount})
-                </h5>
-                <div className="form-row">
-                  <Input
-                    label="오픈 우선순위"
-                    type="number"
-                    value={person.openPriority?.toString() ?? ''}
-                    onChange={(e) => updatePerson(index, { openPriority: (e.target as HTMLInputElement).value ? parseInt((e.target as HTMLInputElement).value) : undefined })}
-                    placeholder="미설정"
-                    min={1}
-                    max={peopleCount}
-                  />
-                  <Input
-                    label="미들 우선순위"
-                    type="number"
-                    value={person.middlePriority?.toString() ?? ''}
-                    onChange={(e) => updatePerson(index, { middlePriority: (e.target as HTMLInputElement).value ? parseInt((e.target as HTMLInputElement).value) : undefined })}
-                    placeholder="미설정"
-                    min={1}
-                    max={peopleCount}
-                  />
-                  <Input
-                    label="마감 우선순위"
-                    type="number"
-                    value={person.closePriority?.toString() ?? ''}
-                    onChange={(e) => updatePerson(index, { closePriority: (e.target as HTMLInputElement).value ? parseInt((e.target as HTMLInputElement).value) : undefined })}
-                    placeholder="미설정"
-                    min={1}
-                    max={peopleCount}
-                  />
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="actions">
-          <Button onClick={handleConfirmPeople} variant="secondary" disabled={!canConfirm}>
-            확인
-          </Button>
-          <Button onClick={handleSaveStaffConfig} variant="secondary">
-            직원 구성 저장
-          </Button>
-          <Button onClick={handleLoadStaffConfig} variant="secondary">
-            직원 구성 불러오기
-          </Button>
-        </div>
-      </Card>
-
-      {confirmed && people.length > 0 && (
-        <Card title="휴무/하프 설정">
-          <div className="request-editor">
-            <div className="person-picker">
-              {people.map(p => (
-                <button
-                  key={p.id}
-                  type="button"
-                  className={`person-chip ${selectedPersonId === p.id ? 'active' : ''}`}
-                  onClick={() => setSelectedPersonId(p.id)}
-                >
-                  {p.name}
-                </button>
-              ))}
-            </div>
-
-            <div className="request-mode">
-              <button
-                type="button"
-                className={`request-mode-btn ${requestMode === 'off' ? 'active' : ''}`}
-                onClick={() => setRequestMode('off')}
+        )}
+        {/* pill 영역 */}
+        <div className="leedeli-cal-cellContent" style={{ opacity: inRange ? 1 : 0.25 }}>
+          <div className="leedeli-cal-pills">
+            {otherPills.map((p) => (
+              <Tag
+                key={p.key}
+                color={p.kind === 'half' ? 'orange' : 'blue'}
+                style={{
+                  marginInlineEnd: 0,
+                  borderRadius: 999,
+                  padding: '1px 8px',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  pointerEvents: 'none',
+                }}
               >
-                휴무
-              </button>
-              <button
-                type="button"
-                className={`request-mode-btn half ${requestMode === 'half' ? 'active' : ''}`}
-                onClick={() => setRequestMode('half')}
-              >
-                하프
-              </button>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
-              <Button variant="danger" onClick={handleResetRequests}>
-                초기화 (휴무/하프 모두 제거)
-              </Button>
-            </div>
-
-            <div className="calendar-wrapper">
-              {renderRequestCalendar(year, month)}
-            </div>
-          </div>
-        </Card>
-      )}
-
-      {errors.length > 0 && (
-        <Card title="❌ 스케줄 생성 불가">
-          <p style={{ marginBottom: '1rem', color: 'var(--danger)', fontWeight: 'bold' }}>
-            다음 문제를 해결한 후 다시 시도해주세요:
-          </p>
-          <div className="errors">
-            {errors.map((error, i) => (
-              <div key={i} className="error-message">
-                {error.message}
-              </div>
+                {p.text}
+              </Tag>
             ))}
           </div>
-        </Card>
-      )}
+        </div>
+      </>
+    )
+  }
 
-      <div className="actions actions-bottom-gap">
-        <Button onClick={handleGenerate} variant="primary">
+  return (
+    <MobileShell
+      title={editId ? '스케줄 수정' : '스케줄 생성'}
+      right={
+        <Space size={4}>
+          <Button icon={<DownloadOutlined />} onClick={onExport}>
+            내보내기
+          </Button>
+          <Button type="primary" icon={<SaveOutlined />} onClick={onSaveSchedule}>
+            저장
+          </Button>
+        </Space>
+      }
+    >
+      <Form form={form} layout="vertical">
+        <Card size="small" title="기본 설정">
+          <Form.Item name="range" label="기간(시작~종료)" rules={[{ required: true, message: '기간을 선택하세요' }]}>
+            <DatePicker.RangePicker style={{ width: '100%' }} />
+          </Form.Item>
+        </Card>
+
+        <Card size="small" title="근무 규칙" style={{ marginTop: 12 }}>
+          <Flex gap={8}>
+            <Form.Item
+              name={['workRules', 'DAILY_STAFF_BASE']}
+              label="최소 인원"
+              style={{ flex: 1, marginBottom: 0 }}
+            >
+              <InputNumber min={1} step={1} style={{ width: '100%' }} />
+            </Form.Item>
+            <Form.Item
+              name={['workRules', 'DAILY_STAFF_MAX']}
+              label="최대 인원"
+              style={{ flex: 1, marginBottom: 0 }}
+            >
+              <InputNumber min={1} step={1} style={{ width: '100%' }} />
+            </Form.Item>
+          </Flex>
+          <Flex gap={8} style={{ marginTop: 10 }}>
+            <Form.Item name={['workRules', 'WORK_HOURS']} label="근무시간" style={{ flex: 1, marginBottom: 0 }}>
+              <InputNumber min={0} step={0.5} style={{ width: '100%' }} />
+            </Form.Item>
+            <Form.Item name={['workRules', 'BREAK_HOURS']} label="휴게시간" style={{ flex: 1, marginBottom: 0 }}>
+              <InputNumber min={0} step={0.5} style={{ width: '100%' }} />
+            </Form.Item>
+          </Flex>
+        </Card>
+
+        <Card
+          size="small"
+          title="직원 구성"
+          style={{ marginTop: 12 }}
+          extra={
+            <Space size={6}>
+              <Button
+                onClick={() => {
+                  setPresets(loadStaffPresets())
+                  setPresetModalOpen(true)
+                }}
+              >
+                저장/불러오기
+              </Button>
+            </Space>
+          }
+        >
+          <Form.Item name="staffCount" label="인원 수" initialValue={staff.length || 1}>
+            <InputNumber
+              min={1}
+              max={workRulesWatch.DAILY_STAFF_MAX}
+              style={{ width: '100%' }}
+              onChange={(n) => {
+                const nextCount = Number(n ?? 1)
+                const cur = (form.getFieldValue('staff') ?? []) as StaffMember[]
+                let next = [...cur]
+                if (next.length < nextCount) {
+                  for (let i = next.length; i < nextCount; i++) {
+                    next.push({
+                      id: newId(),
+                      name: '',
+                      availableShifts: ['open', 'middle', 'close'],
+                      priority: { open: 3, middle: 3, close: 3 },
+                    })
+                  }
+                } else if (next.length > nextCount) {
+                  next = next.slice(0, nextCount)
+                }
+                form.setFieldValue('staff', next)
+                if (!selectedStaffId && next.length) setSelectedStaffId(next[0].id)
+              }}
+            />
+          </Form.Item>
+
+          <Form.List name="staff">
+            {(fields) => (
+              <Space direction="vertical" style={{ width: '100%' }} size={10}>
+                {fields.map((f, idx) => (
+                  <Card key={f.key} size="small" title={`직원 ${idx + 1}`}>
+                    <Form.Item
+                      {...f}
+                      name={[f.name, 'id']}
+                      initialValue={(staff[idx] && staff[idx].id) || newId()}
+                      hidden
+                    >
+                      <Input />
+                    </Form.Item>
+
+                    <Form.Item
+                      {...f}
+                      name={[f.name, 'name']}
+                      label="이름"
+                      rules={[{ required: true, message: '이름을 입력하세요' }]}
+                    >
+                      <Input placeholder="이름" />
+                    </Form.Item>
+
+                    <Form.Item {...f} name={[f.name, 'availableShifts']} label="가능 시프트">
+                      <Checkbox.Group
+                        options={[
+                          { label: '오픈', value: 'open' },
+                          { label: '미들', value: 'middle' },
+                          { label: '마감', value: 'close' },
+                        ]}
+                      />
+                    </Form.Item>
+
+                    <Flex gap={8}>
+                      <Form.Item {...f} name={[f.name, 'requiredShift']} label="필수" style={{ flex: 1 }}>
+                        <Select
+                          allowClear
+                          options={[
+                            { label: '오픈', value: 'open' },
+                            { label: '미들', value: 'middle' },
+                            { label: '마감', value: 'close' },
+                          ]}
+                        />
+                      </Form.Item>
+                      <Form.Item {...f} name={[f.name, 'preferredShift']} label="선호" style={{ flex: 1 }}>
+                        <Select
+                          allowClear
+                          options={[
+                            { label: '오픈', value: 'open' },
+                            { label: '미들', value: 'middle' },
+                            { label: '마감', value: 'close' },
+                          ]}
+                        />
+                      </Form.Item>
+                    </Flex>
+
+                    <Collapse
+                      size="small"
+                      items={[
+                        {
+                          key: 'prio',
+                          label: '우선순위(오픈/미들/마감)',
+                          children: (
+                            <Flex gap={8}>
+                              <Form.Item {...f} name={[f.name, 'priority', 'open']} label="오픈" style={{ flex: 1 }}>
+                                <InputNumber min={0} max={5} style={{ width: '100%' }} />
+                              </Form.Item>
+                              <Form.Item {...f} name={[f.name, 'priority', 'middle']} label="미들" style={{ flex: 1 }}>
+                                <InputNumber min={0} max={5} style={{ width: '100%' }} />
+                              </Form.Item>
+                              <Form.Item {...f} name={[f.name, 'priority', 'close']} label="마감" style={{ flex: 1 }}>
+                                <InputNumber min={0} max={5} style={{ width: '100%' }} />
+                              </Form.Item>
+                            </Flex>
+                          ),
+                        },
+                      ]}
+                    />
+                  </Card>
+                ))}
+              </Space>
+            )}
+          </Form.List>
+        </Card>
+      </Form>
+
+      <Card
+        size="small"
+        title="휴무/하프 요청"
+        style={{ marginTop: 12 }}
+        extra={<Button danger size="small" onClick={() => setRequests([])}>초기화</Button>}
+      >
+        <Space direction="vertical" style={{ width: '100%' }} size={10}>
+          <Typography.Text type="secondary">
+            직원 선택(1명) → 모드(휴무/하프) → 날짜 클릭 즉시 토글
+          </Typography.Text>
+
+          <Flex gap={8} wrap>
+            {staff.slice(0, staffCount).map((s) => (
+              <Button
+                key={s.id}
+                type={selectedStaffId === s.id ? 'primary' : 'default'}
+                onClick={() => {
+                  setSelectedStaffId(s.id)
+                  // 선택한 직원의 preferredShift를 하프 시프트 기본값으로 설정
+                  if (s.preferredShift) setHalfShift(s.preferredShift)
+                }}
+              >
+                {s.name || '이름없음'}
+              </Button>
+            ))}
+          </Flex>
+
+          <Flex gap={8} wrap align="center">
+            <Button
+              type="default"
+              className={`leedeli-mode-btn leedeli-mode-btn--off ${mode === 'off' ? 'is-active' : ''}`}
+              onClick={() => setMode('off')}
+            >
+              휴무
+            </Button>
+            <Button
+              type="default"
+              className={`leedeli-mode-btn leedeli-mode-btn--half ${mode === 'half' ? 'is-active' : ''}`}
+              onClick={() => setMode('half')}
+            >
+              하프
+            </Button>
+            {mode === 'half' ? (
+              <Select
+                value={halfShift}
+                style={{ width: 100 }}
+                options={[
+                  { label: '오픈', value: 'open' },
+                  { label: '미들', value: 'middle' },
+                  { label: '마감', value: 'close' },
+                ]}
+                onChange={(v) => setHalfShift(v)}
+              />
+            ) : null}
+          </Flex>
+
+          <div
+            onClickCapture={(e) => {
+              // 셀 전체(td) 클릭을 위임으로 처리: 날짜 숫자 영역 클릭/재클릭에서도 토글이 항상 동작하게
+              const el = e.target as HTMLElement | null
+              const td = el?.closest?.('td.ant-picker-cell') as HTMLElement | null
+              const iso = td?.getAttribute?.('title') ?? ''
+              if (!iso) return
+
+              if (!validDatesSet.has(iso)) {
+                // 근무기간 밖 클릭: 경고만 띄우고, 캘린더의 어떤 동작도 발생하지 않게 차단
+                e.preventDefault()
+                e.stopPropagation()
+                const now = Date.now()
+                if (now - lastRangeWarnAtRef.current > 1200) {
+                  lastRangeWarnAtRef.current = now
+                  message.warning(`선택한 날짜(${iso})는 근무기간(${rangeISO.startDateISO} ~ ${rangeISO.endDateISO}) 밖입니다.`)
+                }
+                return
+              }
+
+              // 중복 토글 방지: antd 내부 onSelect 처리로 내려가지 않게 차단하고, 여기서만 처리
+              e.preventDefault()
+              e.stopPropagation()
+
+              setSelectedDate(dayjs(iso))
+              if (selectedStaffId) toggleForSelected(iso)
+            }}
+          >
+            <Calendar
+              fullscreen={false}
+              value={selectedDate}
+              onSelect={(d) => {
+                // 선택 날짜 표시만(토글은 위임 핸들러에서만)
+                setSelectedDate(d)
+              }}
+              cellRender={(d: Dayjs, info: CellRenderInfo<Dayjs>) => {
+                if (info.type !== 'date') return info.originNode
+                return <div className="leedeli-cal-cellWrap">{renderRequestPills(d)}</div>
+              }}
+            />
+          </div>
+
+          <Card size="small" title={`선택 날짜: ${selectedDate.format('YYYY-MM-DD')}`}>
+            <Flex align="center" justify="space-between" wrap gap={8}>
+              <Space>
+                <Typography.Text>필요 인원</Typography.Text>
+                <Tag color="blue">
+                  {workRulesWatch.DAILY_STAFF_BASE}-{workRulesWatch.DAILY_STAFF_MAX}명
+                </Tag>
+                <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                </Typography.Text>
+              </Space>
+            </Flex>
+          </Card>
+        </Space>
+      </Card>
+
+      <Flex gap={8} style={{ marginTop: 12 }}>
+        <Button type="primary" icon={<PlayCircleOutlined />} onClick={onGenerate} block>
           스케줄 생성
         </Button>
-      </div>
+      </Flex>
 
-      {schedule && (
-        <>
-          <Card title="인원별 근무 통계">
-            <div className="stats-grid">
-              {schedule.people.map((person: Person) => {
-                const fullWorkDays = schedule.assignments
-                  .filter(day => day.people.some(p => p.personId === person.id && !p.isHalf))
-                  .map(day => day.date);
+      {result ? (
+        <Card size="small" title="생성 결과" style={{ marginTop: 12 }}>
 
-                const halfDays = schedule.assignments
-                  .filter(day => day.people.some(p => p.personId === person.id && !!p.isHalf))
-                  .map(day => day.date);
+          <Typography.Title level={5}>인원별 통계</Typography.Title>
+          <Space direction="vertical" style={{ width: '100%' }} size={6}>
+            {result.stats
+              .slice()
+              .sort((a, b) => b.workUnits - a.workUnits)
+              .map((st) => (
+                <Card key={st.staffId} size="small">
+                  <Flex justify="space-between">
+                    <Typography.Text strong>{st.name}</Typography.Text>
+                    <Typography.Text type="secondary">근무일 {st.workUnits}</Typography.Text>
+                  </Flex>
+                  <Typography.Text type="secondary">
+                    풀 {st.fullDays} · 하프 {st.halfDays} · 휴무 {st.offDays}
+                  </Typography.Text>
+                </Card>
+              ))}
+          </Space>
 
-                const workEquivalent = fullWorkDays.length + halfDays.length * 0.5;
-                const offDays = person.requestedDaysOff;
-                const offEquivalent = offDays.length + halfDays.length * 0.5;
-                
-                return (
-                  <div key={person.id} className="person-stats">
-                    <h4>{person.name}</h4>
-                    <div className="stat-item">
-                      <strong>근무(환산):</strong>
-                      <span>{formatStaff(workEquivalent)}일</span>
-                    </div>
-                    <div className="stat-item">
-                      <strong>하프:</strong>
-                      <span>{halfDays.length}일</span>
-                    </div>
-                    <div className="stat-item">
-                      <strong>휴무:</strong>
-                      <span>{formatStaff(offEquivalent)}일</span>
-                    </div>
-                
+          <Typography.Title level={5} style={{ marginTop: 12 }}>
+            일자별 배정
+          </Typography.Title>
+          <Calendar
+            fullscreen={false}
+            value={selectedDate}
+            cellRender={(d: Dayjs, info: CellRenderInfo<Dayjs>) => {
+              if (info.type !== 'date') return info.originNode
+
+              const iso = d.format('YYYY-MM-DD')
+              const assignment = result.assignments.find((a) => a.dateISO === iso)
+              if (!assignment) return null
+
+              const inRange = validDatesSet.has(iso)
+
+              const shiftColors: Record<Shift, string> = { open: '#52c41a', middle: '#1890ff', close: '#722ed1' }
+              const shiftLabels: Record<Shift, string> = { open: '오', middle: '미', close: '마' }
+
+              return (
+                <div className="leedeli-cal-cellContent" style={{ opacity: inRange ? 1 : 0.25 }}>
+                  <div className="leedeli-cal-pills" style={{ fontSize: 9 }}>
+                    {(['open', 'middle', 'close'] as Shift[]).map((shift) => {
+                      const names = assignment.byShift[shift]
+                        .map((x) => staff.find((s) => s.id === x.staffId)?.name || '?')
+                        .join(',')
+                      if (!names) return null
+                      return (
+                        <Tag
+                          key={shift}
+                          color={shiftColors[shift]}
+                          style={{ marginInlineEnd: 0, borderRadius: 4, padding: '0 3px', fontSize: 9, lineHeight: '14px' }}
+                        >
+                          {shiftLabels[shift]}:{names}
+                        </Tag>
+                      )
+                    })}
                   </div>
-                );
-              })}
-            </div>
+                </div>
+              )
+            }}
+          />
+        </Card>
+      ) : null}
+
+      <Modal
+        open={presetModalOpen}
+        title="직원 구성 저장/불러오기"
+        onCancel={() => setPresetModalOpen(false)}
+        footer={null}
+      >
+        <Space direction="vertical" style={{ width: '100%' }} size={12}>
+          <Card size="small" title="저장">
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <Input value={presetName} onChange={(e) => setPresetName(e.target.value)} placeholder="구성 이름" />
+              <Button
+                type="primary"
+                onClick={() => {
+                  const staff = (form.getFieldValue('staff') ?? []) as StaffMember[]
+                  const name = presetName.trim()
+                  if (!name) {
+                    message.error('이름을 입력하세요.')
+                    return
+                  }
+                  const preset: StaffPreset = { id: newId(), name, staff, updatedAtISO: new Date().toISOString() }
+                  upsertStaffPreset(preset)
+                  setPresets(loadStaffPresets())
+                  setPresetName('')
+                  message.success('저장 완료')
+                }}
+                block
+              >
+                저장
+              </Button>
+            </Space>
           </Card>
 
-          <Card title={`${schedule.year}년 ${schedule.month}월 스케줄`}>
-          <div className="actions">
-            <Button onClick={handleExportExcel} variant="secondary">
-              엑셀 내보내기
-            </Button>
-          </div>
-
-          <div className="calendar-wrapper">{renderCalendar(schedule)}</div>
-
-          <div className="actions">
-            <Button onClick={handleSave} variant="primary">
-              저장하기
-            </Button>
-          </div>
-        </Card>
-        </>
-      )}
-    </div>
-  );
+          <Card size="small" title="불러오기">
+            <Select
+              style={{ width: '100%' }}
+              placeholder="저장된 구성 선택"
+              options={presets.map((p) => ({ value: p.id, label: `${p.name} (${p.staff.length}명)` }))}
+              onChange={(id) => {
+                const p = presets.find((x) => x.id === id)
+                if (!p) return
+                form.setFieldValue('staffCount', p.staff.length)
+                form.setFieldValue('staff', p.staff)
+                setSelectedStaffId(p.staff[0]?.id ?? null)
+                message.success('불러오기 완료')
+                setPresetModalOpen(false)
+              }}
+            />
+          </Card>
+        </Space>
+      </Modal>
+    </MobileShell>
+  )
 }
+
+

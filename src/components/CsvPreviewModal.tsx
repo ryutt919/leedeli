@@ -1,249 +1,185 @@
-import { useState, useEffect } from 'react';
-import type { CsvPreviewItem, CsvAction } from '../types';
-import { Button } from './Button';
+import { CheckCircleOutlined, ExclamationCircleOutlined, StopOutlined } from '@ant-design/icons'
+import { Alert, Button, Flex, Modal, Segmented, Space, Table, Tag, Typography } from 'antd'
+import { useMemo } from 'react'
+import type { ReactNode } from 'react'
 
-type Props = {
-  items: CsvPreviewItem[];
-  open: boolean;
-  onClose: () => void;
-  // onApply: pass back updated items and chosen actions
-  onApply: (items: CsvPreviewItem[], actions: Record<number, CsvAction>) => void;
-};
+export type CsvRowAction = 'upsert' | 'skip'
 
-export function CsvPreviewModal({ items, open, onClose, onApply }: Props) {
-  const [actions, setActions] = useState<Record<number, CsvAction>>(() => {
-    const map: Record<number, CsvAction> = {};
-    items.forEach(it => { map[it.rowNumber] = 'update'; });
-    return map;
-  });
-  const [bulkAction, setBulkAction] = useState<CsvAction>('create');
-  const [selected, setSelected] = useState<Record<number, boolean>>({});
-
-  useEffect(() => {
-    // initialize selections when items change
-    const sel: Record<number, boolean> = {};
-    items.forEach(it => { sel[it.rowNumber] = true; });
-    setSelected(sel);
-    // reset actions defaults
-    const act: Record<number, CsvAction> = {};
-    items.forEach(it => { act[it.rowNumber] = 'update'; });
-    setActions(act);
-  }, [items]);
-
-  if (!open) return null;
-
-  const handleToggleAction = (row: number) => {
-    setActions(prev => ({ ...prev, [row]: prev[row] === 'skip' ? 'update' : 'skip' }));
-  };
-
-  const toggleSelect = (row: number) => {
-    setSelected(prev => ({ ...prev, [row]: !prev[row] }));
-  };
-
-  
-
-  const handleApply = () => {
-    // build updated items (no inline edits in simple view)
-    onApply(items, actions);
-  };
-
-  // compute max left label width (in characters) across all items' ingredient lines
-  const computeLeftStringsFromItem = (it: CsvPreviewItem): string[] => {
-    const lefts: string[] = [];
-    // existing
-    if (it.detectedMatch && it.detectedMatch.existing) {
-      const ex = it.detectedMatch.existing as any;
-      if (ex.ingredients && Array.isArray(ex.ingredients) && ex.ingredients.length > 0) {
-        ex.ingredients.forEach((ing: any) => lefts.push(`재료 : ${String(ing.ingredientName || ing.name || ing.ingredient || '')}`));
-      } else if (ex.name) {
-        lefts.push(`프렙/소스명 : ${String(ex.name)}`);
-      }
-      if (ex.name && ex.purchaseUnit !== undefined) {
-        // ingredient object
-        lefts.push(`재료 : ${String(ex.name)}`);
-      }
-    }
-
-    // parsed
-    const parsed = it.parsed || {};
-    const ingName = parsed.ingredientName || parsed.name || parsed['ingredientName'] || parsed['ingredient'];
-    if (ingName) {
-      lefts.push(`재료 : ${String(ingName)}`);
-    } else if (parsed.prepName || parsed.name) {
-      lefts.push(`프렙/소스명 : ${String(parsed.prepName || parsed.name)}`);
-    }
-
-    return lefts;
-  };
-
-  const maxLeftChars = items.reduce((max, it) => {
-    const arr = computeLeftStringsFromItem(it);
-    arr.forEach(s => { if (s.length > max) max = s.length; });
-    return max;
-  }, 0);
-
-  function renderParsedSummary(parsed?: Record<string, any>) {
-    if (!parsed) return null;
-    // detect ingredient-style parsed (name, price, purchaseUnit)
-    const ingName = parsed.name || parsed.ingredientName || parsed['ingredientName'];
-    const price = parsed.price || parsed.unitPrice || parsed['price'];
-    const purchaseUnit = parsed.purchaseUnit || parsed['purchaseUnit'];
-
-    if (ingName && (price !== undefined || purchaseUnit !== undefined)) {
-      return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: `${maxLeftChars}ch auto`, gap: '0.5rem', alignItems: 'center' }}>
-            <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}><strong>재료 :</strong></div>
-            <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}>{ingName}</div>
-
-            <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}><strong>구매 가격 :</strong></div>
-            {price !== undefined ? <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}>{price}</div> : null}
-
-            {purchaseUnit !== undefined ? (
-              <>
-                  <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}><strong>구매 단위 :</strong></div>
-                  <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}>{purchaseUnit}</div>
-              </>
-            ) : null}
-          </div>
-        </div>
-      );
-    }
-
-    // otherwise treat as prep-style parsed
-    const pName = parsed.prepName || parsed.name || parsed['prepName'];
-    const iName = parsed.ingredientName || parsed['ingredientName'] || parsed['ingredient'];
-    const qty = parsed.quantity || parsed.qty || parsed['수량'];
-    const dates = parsed.replenishDates || parsed.replenish || parsed['replenishDates'];
-
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-        {pName ? (
-          <div style={{ display: 'grid', gridTemplateColumns: `${maxLeftChars}ch auto`, gap: '0.5rem', alignItems: 'center' }}>
-            <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}><strong>프렙/소스명 :</strong></div>
-            <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}>{pName}</div>
-          </div>
-        ) : null}
-        {iName || qty ? (
-          <div style={{ display: 'grid', gridTemplateColumns: `${maxLeftChars}ch auto`, gap: '0.5rem', alignItems: 'center' }}>
-            <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}><strong>재료 :</strong></div>
-            <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}>{iName}</div>
-            <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}><strong>투입량 :</strong></div>
-            {qty !== undefined && qty !== '' ? <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}>{qty}</div> : null}
-          </div>
-        ) : null}
-        {dates && Array.isArray(dates) && dates.length ? <div style={{ color: '#666', fontSize: 12 }}>보충: {dates.join(', ')}</div> : null}
-      </div>
-    );
-  }
-
-  function renderExistingSummary(existing: any) {
-    if (!existing) return null;
-    // Ingredient existing
-    if (existing.hasOwnProperty('purchaseUnit') || existing.hasOwnProperty('unitPrice')) {
-      return (
-        <div style={{ display: 'grid', gridTemplateColumns: `${maxLeftChars}ch auto`, gap: '0.5rem', alignItems: 'center' }}>
-          <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}><strong>재료 :</strong></div>
-          <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}>{existing.name}</div>
-
-          <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}><strong>구매 가격 :</strong></div>
-          <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}>{existing.price}</div>
-
-            <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}><strong>구매 단위 :</strong></div>
-            <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}>{existing.purchaseUnit}</div>
-        </div>
-      );
-    }
-
-    // Prep existing
-    if (existing.hasOwnProperty('ingredients')) {
-      return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: `${maxLeftChars}ch auto`, gap: '0.5rem', alignItems: 'center' }}>
-            <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}><strong>프렙/소스명 :</strong></div>
-            <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}>{existing.name}</div>
-          </div>
-          {Array.isArray(existing.ingredients) && existing.ingredients.length > 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              {existing.ingredients.map((ing: any, idx: number) => (
-                <div key={idx} style={{ display: 'grid', gridTemplateColumns: `${maxLeftChars}ch auto`, gap: '0.5rem', alignItems: 'center' }}>
-                  <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}><strong>재료 :</strong></div>
-                  <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}>{ing.ingredientName || ing.name || ing.ingredient}</div>
-                  <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}><strong>투입량 :</strong></div>
-                  <div style={{ whiteSpace: 'nowrap', overflow: 'visible' }}>{ing.quantity}</div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div style={{ color: '#666' }}>현재 없음</div>
-          )}
-        </div>
-      );
-    }
-
-    return null;
-  }
-
-  return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 }}>
-      <div style={{ width: '90%', maxWidth: 1000, maxHeight: '80vh', overflow: 'auto', background: 'white', borderRadius: 8, padding: 16 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-            <h3 style={{ margin: 0 }}>CSV 업로드 미리보기</h3>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 12 }}>
-            <Button variant="secondary" onClick={onClose}>취소</Button>
-            <Button variant="primary" onClick={handleApply}>선택 적용</Button>
-            </div>
-        </div>
-        <div style={{ marginBottom: 8, color: '#555' }}>총 항목: {items.length}</div>
-        <div style={{ overflowX: 'auto' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-            <div style={{ fontSize: 13, color: '#555' }}>행 수: {items.length}</div>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <select value={bulkAction} onChange={(e) => setBulkAction(e.target.value as CsvAction)}>
-                <option value="update">모두 갱신</option>
-                <option value="skip">모두 무시</option>
-              </select>
-              <Button variant="secondary" onClick={() => { const m: Record<number, CsvAction> = {}; items.forEach(it => { m[it.rowNumber] = bulkAction; }); setActions(prev => ({ ...prev, ...m })); }}>모두 적용</Button>
-            </div>
-          </div>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr>
-                <th style={{ borderBottom: '1px solid #ddd', textAlign: 'left', width: 40 }}>#</th>
-                <th style={{ borderBottom: '1px solid #ddd', textAlign: 'left' }}>원본 아이템</th>
-                <th style={{ borderBottom: '1px solid #ddd', textAlign: 'left' }}>추가 시도 아이템</th>
-                <th style={{ borderBottom: '1px solid #ddd', textAlign: 'left', width: 140 }}>액션</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map(it => (
-                <tr key={it.rowNumber} style={{ background: selected[it.rowNumber] ? 'rgba(59,130,246,0.03)' : 'transparent' }}>
-                  <td style={{ padding: '8px 4px', verticalAlign: 'top' }}>
-                    <input type="checkbox" checked={!!selected[it.rowNumber]} onChange={() => toggleSelect(it.rowNumber)} />
-                    <div style={{ marginTop: 6 }}>{it.rowNumber}</div>
-                  </td>
-                  <td style={{ padding: '8px 4px', verticalAlign: 'top', maxWidth: 320, wordBreak: 'break-word' }}>
-                    {it.detectedMatch && it.detectedMatch.existing ? renderExistingSummary(it.detectedMatch.existing) : <div style={{ color: '#666' }}>현재 없음</div>}
-                  </td>
-                  <td style={{ padding: '8px 4px', verticalAlign: 'top', wordBreak: 'break-word' }}>{renderParsedSummary(it.parsed)}</td>
-                  <td style={{ padding: '8px 4px', verticalAlign: 'top' }}>
-                    <button onClick={() => handleToggleAction(it.rowNumber)} style={{ padding: '6px 10px', cursor: 'pointer' }}>
-                      {actions[it.rowNumber] === 'skip' ? '무시' : '갱신'}
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 12 }}>
-          <Button variant="secondary" onClick={onClose}>취소</Button>
-          <Button variant="primary" onClick={handleApply}>선택 적용</Button>
-        </div>
-      </div>
-    </div>
-  );
+export type CsvPreviewRow<TParsed> = {
+  key: string
+  rowNo: number
+  parsed: TParsed
+  parsedLabel: ReactNode
+  existingLabel?: ReactNode
+  kind: 'create' | 'update' | 'same' | 'invalid'
+  errors: string[]
+  action: CsvRowAction
 }
 
-export default CsvPreviewModal;
+export function CsvPreviewModal<TParsed>({
+  open,
+  title,
+  rows,
+  onClose,
+  onChangeRowAction,
+  onBulkAction,
+  onApply,
+}: {
+  open: boolean
+  title: string
+  rows: CsvPreviewRow<TParsed>[]
+  onClose: () => void
+  onChangeRowAction: (key: string, action: CsvRowAction) => void
+  onBulkAction: (action: CsvRowAction) => void
+  onApply: () => void
+}) {
+  const summary = useMemo(() => {
+    let create = 0
+    let update = 0
+    let same = 0
+    let invalid = 0
+    for (const r of rows) {
+      if (r.kind === 'create') create++
+      else if (r.kind === 'update') update++
+      else if (r.kind === 'same') same++
+      else invalid++
+    }
+    return { create, update, same, invalid, total: rows.length }
+  }, [rows])
+
+  return (
+    <Modal
+      open={open}
+      title={title}
+      onCancel={onClose}
+      width={720}
+      footer={
+        <Flex justify="space-between" align="center" gap={8} wrap>
+          <Space size={6} wrap>
+            <Tag icon={<CheckCircleOutlined />} color="green">
+              추가 {summary.create}
+            </Tag>
+            <Tag icon={<CheckCircleOutlined />} color="blue">
+              갱신 {summary.update}
+            </Tag>
+            <Tag icon={<StopOutlined />} color="default">
+              동일 {summary.same}
+            </Tag>
+            <Tag icon={<ExclamationCircleOutlined />} color="red">
+              오류 {summary.invalid}
+            </Tag>
+          </Space>
+
+          <Flex gap={8}>
+            <Segmented
+              options={[
+                { label: '전체 갱신', value: 'upsert' },
+                { label: '전체 무시', value: 'skip' },
+              ]}
+              onChange={(v) => onBulkAction(v as CsvRowAction)}
+            />
+            <Button type="primary" onClick={onApply} disabled={rows.length === 0}>
+              적용
+            </Button>
+          </Flex>
+        </Flex>
+      }
+    >
+      {rows.length === 0 ? (
+        <Alert type="info" message="미리볼 데이터가 없습니다." />
+      ) : null}
+
+      <Typography.Paragraph type="secondary" style={{ marginTop: 8 }}>
+        행별로 <b>갱신/무시</b>를 선택한 뒤 적용하세요. 오류가 있는 행은 기본적으로 무시로
+        설정됩니다.
+      </Typography.Paragraph>
+
+      <Table<CsvPreviewRow<TParsed>>
+        size="small"
+        dataSource={rows}
+        rowKey="key"
+        pagination={{ pageSize: 8, hideOnSinglePage: true }}
+        tableLayout="fixed"
+        scroll={{ x: 980 }}
+        columns={[
+          {
+            title: '#',
+            dataIndex: 'rowNo',
+            width: 56,
+          },
+          {
+            title: 'CSV',
+            dataIndex: 'parsedLabel',
+            width: 240,
+            onCell: () => ({
+              style: {
+                whiteSpace: 'normal',
+                overflowWrap: 'anywhere',
+                wordBreak: 'break-word',
+              },
+            }),
+          },
+          {
+            title: '기존',
+            dataIndex: 'existingLabel',
+            width: 220,
+            render: (v) => v ?? <Typography.Text type="secondary">없음</Typography.Text>,
+            onCell: () => ({
+              style: {
+                whiteSpace: 'normal',
+                overflowWrap: 'anywhere',
+                wordBreak: 'break-word',
+              },
+            }),
+          },
+          {
+            title: '상태',
+            dataIndex: 'kind',
+            width: 90,
+            render: (k) => {
+              if (k === 'invalid') return <Tag color="red">오류</Tag>
+              if (k === 'same') return <Tag>동일</Tag>
+              if (k === 'update') return <Tag color="blue">갱신</Tag>
+              return <Tag color="green">추가</Tag>
+            },
+          },
+          {
+            title: '오류',
+            dataIndex: 'errors',
+            width: 220,
+            render: (errs: string[]) =>
+              errs?.length ? (
+                <Space direction="vertical" size={2}>
+                  {errs.slice(0, 2).map((e) => (
+                    <Typography.Text key={e} type="danger">
+                      {e}
+                    </Typography.Text>
+                  ))}
+                </Space>
+              ) : (
+                <Typography.Text type="secondary">-</Typography.Text>
+              ),
+          },
+          {
+            title: '액션',
+            dataIndex: 'action',
+            width: 160,
+            render: (action: CsvRowAction, row) => (
+              <Segmented
+                value={action}
+                options={[
+                  { label: '갱신', value: 'upsert' },
+                  { label: '무시', value: 'skip' },
+                ]}
+                disabled={row.kind === 'invalid'}
+                onChange={(v) => onChangeRowAction(row.key, v as CsvRowAction)}
+              />
+            ),
+          },
+        ]}
+      />
+    </Modal>
+  )
+}
+
+

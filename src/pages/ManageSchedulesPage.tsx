@@ -1,236 +1,354 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Card } from '../components/Card';
-import { Button } from '../components/Button';
-import { Input } from '../components/Input';
-import { Person, Schedule } from '../types';
-import { loadSchedules, deleteSchedule } from '../storage';
-import { exportSchedulesToXlsx } from '../generator';
-import { getDaysInMonth } from '../validator';
+import { DeleteOutlined, DownloadOutlined, EditOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons'
+import { Button, Card, DatePicker, List, Modal, Popconfirm, Space, Typography, Form, Select, InputNumber, Input, message } from 'antd'
+import { Calendar } from 'antd'
+import dayjs, { Dayjs } from 'dayjs'
+import { useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import type { Shift, ExtraWork } from '../domain/types'
+import { calculateTotalWorkHours } from '../domain/scheduleEngine'
+import { MobileShell } from '../layouts/MobileShell'
+import { deleteSchedule, loadSchedules } from '../storage/schedulesRepo'
+import { getExtraWorksBySchedule, upsertExtraWork } from '../storage/extraWorkRepo'
+import { exportScheduleXlsx } from '../utils/scheduleExport'
+import { downloadXlsx } from '../utils/xlsxExport'
+import { newId } from '../utils/id'
 
 export function ManageSchedulesPage() {
-  const navigate = useNavigate();
-  const [schedules, setSchedules] = useState<Schedule[]>([]);
-  const [filterYear, setFilterYear] = useState('');
-  const [filterMonth, setFilterMonth] = useState('');
-  const [filterName, setFilterName] = useState('');
+  const nav = useNavigate()
+  const [tick, setTick] = useState(0)
+  const [filterYm, setFilterYm] = useState<Dayjs | null>(null)
+  const [detail, setDetail] = useState<(ReturnType<typeof loadSchedules>[number]) | null>(null)
+  const [extraWorkModalOpen, setExtraWorkModalOpen] = useState(false)
+  const [extraWorkForm] = Form.useForm()
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  const schedules = useMemo(() => {
+    void tick
+    return loadSchedules()
+  }, [tick])
+  const filtered = useMemo(() => {
+    return schedules
+      .filter((s) => {
+        if (!filterYm) return true
+        const monthStart = filterYm.startOf('month')
+        const monthEnd = filterYm.endOf('month')
+        const sStart = dayjs(s.startDateISO)
+        const sEnd = dayjs(s.endDateISO)
+        return !sEnd.isBefore(monthStart, 'day') && !sStart.isAfter(monthEnd, 'day')
+      })
+      .sort((a, b) => b.updatedAtISO.localeCompare(a.updatedAtISO))
+  }, [filterYm, schedules])
 
-  const loadData = () => {
-    const data = loadSchedules();
-    setSchedules(data);
-  };
+  const handleOpenExtraWorkModal = () => {
+    if (!detail) return
+    extraWorkForm.resetFields()
+    extraWorkForm.setFieldsValue({
+      dateISO: dayjs(detail.startDateISO),
+      staffId: detail.staff[0]?.id,
+      hours: 0,
+    })
+    setExtraWorkModalOpen(true)
+  }
 
-  const handleDelete = (id: string) => {
-    if (confirm('정말 삭제하시겠습니까?')) {
-      deleteSchedule(id);
-      loadData();
-    }
-  };
-
-  const handleExport = () => {
-    const filtered = getFilteredSchedules();
-    if (filtered.length === 0) {
-      alert('내보낼 스케줄이 없습니다.');
-      return;
-    }
-    exportSchedulesToXlsx(filtered);
-  };
-
-  const renderCalendar = (s: Schedule) => {
-    const daysInMonth = getDaysInMonth(s.year, s.month);
-    const firstWeekday = new Date(s.year, s.month - 1, 1).getDay();
-    const totalCells = firstWeekday + daysInMonth;
-    const weekCount = Math.ceil(totalCells / 7);
-    const cells = Array.from({ length: weekCount * 7 }, (_, i) => {
-      const dayNum = i - firstWeekday + 1;
-      return dayNum >= 1 && dayNum <= daysInMonth ? dayNum : null;
-    });
-
-    const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
-
-    return (
-      <div className="calendar">
-        {dayNames.map((name: string) => (
-          <div key={name} className="calendar-header">
-            {name}
-          </div>
-        ))}
-
-        {cells.map((dayNum: number | null, idx: number) => {
-          if (!dayNum) {
-            return <div key={`e-${idx}`} className="calendar-cell empty" />;
-          }
-
-          const assignment = s.assignments.find(a => a.date === dayNum);
-          const openPeople = assignment ? assignment.people.filter(p => p.shift === 'open') : [];
-          const middlePeople = assignment ? assignment.people.filter(p => p.shift === 'middle') : [];
-          const closePeople = assignment ? assignment.people.filter(p => p.shift === 'close') : [];
-
-          const formatAssignedName = (personName: string, isHalf?: boolean) => (isHalf ? `${personName}(하프)` : personName);
-
-          const dateObj = new Date(s.year, s.month - 1, dayNum);
-          const isWeekend = dateObj.getDay() === 0 || dateObj.getDay() === 6;
-
-          return (
-            <div key={dayNum} className={`calendar-cell ${isWeekend ? 'weekend' : ''}`}>
-              <div className="calendar-date">{dayNum}</div>
-              <div className="calendar-line">
-                <span className="calendar-label">오픈</span>
-                <span>{openPeople.map(p => formatAssignedName(p.personName, p.isHalf)).join(', ') || '-'}</span>
-              </div>
-              <div className="calendar-line">
-                <span className="calendar-label">미들</span>
-                <span>{middlePeople.map(p => formatAssignedName(p.personName, p.isHalf)).join(', ') || '-'}</span>
-              </div>
-              <div className="calendar-line">
-                <span className="calendar-label">마감</span>
-                <span>{closePeople.map(p => formatAssignedName(p.personName, p.isHalf)).join(', ') || '-'}</span>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    );
-  };
-
-  const getFilteredSchedules = () => {
-    return schedules.filter(schedule => {
-      if (filterYear && schedule.year !== parseInt(filterYear)) return false;
-      if (filterMonth && schedule.month !== parseInt(filterMonth)) return false;
-      if (filterName) {
-        const hasName = schedule.people.some(p => 
-          p.name.toLowerCase().includes(filterName.toLowerCase())
-        );
-        if (!hasName) return false;
+  const handleSaveExtraWork = () => {
+    if (!detail) return
+    extraWorkForm.validateFields().then(values => {
+      const work: ExtraWork = {
+        id: newId(),
+        scheduleId: detail.id,
+        dateISO: values.dateISO.format('YYYY-MM-DD'),
+        staffId: values.staffId,
+        hours: values.hours,
+        note: values.note,
+        createdAtISO: new Date().toISOString(),
       }
-      return true;
-    });
-  };
-
-  const filtered = getFilteredSchedules();
+      upsertExtraWork(work)
+      message.success('추가근무를 저장했습니다')
+      setExtraWorkModalOpen(false)
+      setTick(x => x + 1)
+    })
+  }
 
   return (
-    <div className="container">
-      <h1>스케줄 관리/조회</h1>
-
-      <Card title="필터">
-        <div className="form-row">
-          <Input
-            type="number"
-            label="연도"
-            value={filterYear}
-            onChange={(e) => setFilterYear((e.target as HTMLInputElement).value)}
-            placeholder="전체"
+    <MobileShell
+      title="스케줄 관리/조회"
+      right={
+        <Button
+          icon={<DownloadOutlined />}
+          onClick={() => {
+            const rows = filtered.map((s) => ({
+              시작일: s.startDateISO,
+              종료일: s.endDateISO,
+              인원수: s.staff.length,
+              직원: s.staff.map((m) => m.name).join(', '),
+              업데이트: dayjs(s.updatedAtISO).format('YYYY-MM-DD HH:mm'),
+            }))
+            downloadXlsx('schedules_filtered.xlsx', 'Schedules', rows)
+          }}
+          disabled={filtered.length === 0}
+        >
+          필터 엑셀
+        </Button>
+      }
+    >
+      <Card size="small" title="필터">
+        <Space direction="vertical" style={{ width: '100%' }}>
+          <DatePicker
+            picker="month"
+            value={filterYm}
+            onChange={(v) => setFilterYm(v)}
+            style={{ width: '100%' }}
+            placeholder="연/월 선택(전체면 비움)"
           />
-          <Input
-            type="number"
-            label="월"
-            value={filterMonth}
-            onChange={(e) => setFilterMonth((e.target as HTMLInputElement).value)}
-            placeholder="전체"
-            min={1}
-            max={12}
-          />
-          <Input
-            label="인원 이름"
-            value={filterName}
-            onChange={(e) => setFilterName((e.target as HTMLInputElement).value)}
-            placeholder="검색"
-          />
-        </div>
-        <div className="actions">
-          <Button onClick={handleExport} variant="secondary">
-            엑셀 내보내기
-          </Button>
-        </div>
+        </Space>
       </Card>
 
-      {filtered.length === 0 ? (
-        <Card>
-          <p className="empty-message">저장된 스케줄이 없습니다.</p>
-          <Button onClick={() => navigate('/create')}>
-            새 스케줄 만들기
-          </Button>
-        </Card>
-      ) : (
-        <div className="schedules-list">
-          {filtered.map(schedule => (
-            <Card key={schedule.id} title={`${schedule.year}년 ${schedule.month}월`}>
-              <div className="schedule-summary">
-                <div className="summary-item">
-                  <strong>근무 인원:</strong>
-                  <span>{schedule.people.map((p: Person) => p.name).join(', ')}</span>
-                </div>
-                <div className="summary-item">
-                  <strong>생성일:</strong>
-                  <span>{new Date(schedule.createdAt).toLocaleDateString('ko-KR')}</span>
-                </div>
-                <div className="summary-item">
-                  <strong>수정일:</strong>
-                  <span>{new Date(schedule.updatedAt).toLocaleDateString('ko-KR')}</span>
-                </div>
-              </div>
-
-              <h4 className="subsection-title">인원별 근무 통계</h4>
-              <div className="stats-grid">
-                {schedule.people.map((person: Person) => {
-                  const fullWorkDays = schedule.assignments
-                    .filter(day => day.people.some(p => p.personId === person.id && !p.isHalf))
-                    .map(day => day.date);
-
-                  const halfDays = schedule.assignments
-                    .filter(day => day.people.some(p => p.personId === person.id && !!p.isHalf))
-                    .map(day => day.date);
-
-                  const workEquivalent = fullWorkDays.length + halfDays.length * 0.5;
-                  const offDays = person.requestedDaysOff;
-                  const offEquivalent = offDays.length + halfDays.length * 0.5;
-
-                  return (
-                    <div key={person.id} className="person-stats">
-                      <h4>{person.name}</h4>
-                      <div className="stat-item">
-                        <strong>근무(환산):</strong>
-                        <span>{workEquivalent}일</span>
-                      </div>
-                      <div className="stat-item">
-                        <strong>하프:</strong>
-                        <span>{halfDays.length}일</span>
-                      </div>
-                      <div className="stat-item">
-                        <strong>휴무(환산):</strong>
-                        <span>{offEquivalent}일</span>
-                      </div>
-                      {offDays.length > 0 && (
-                        <div className="stat-item">
-                          <strong>휴무일:</strong>
-                          <span>{offDays.sort((a, b) => a - b).join(', ')}일</span>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-
-              <h4 className="subsection-title">달력 전체 보기</h4>
-              <div className="calendar-wrapper">{renderCalendar(schedule)}</div>
-
-              <div className="actions">
-                <Button onClick={() => navigate('/create', { state: { editScheduleId: schedule.id } })} variant="secondary">
+      <Card size="small" style={{ marginTop: 12 }}>
+        <List
+          dataSource={filtered}
+          locale={{ emptyText: '저장된 스케줄이 없습니다.' }}
+          renderItem={(s) => (
+            <List.Item>
+               <List.Item.Meta
+                title={`${s.startDateISO} ~ ${s.endDateISO} (${s.staff.length}명)`}
+                description={
+                  <Space direction="vertical" size={2}>
+                    <Typography.Text type="secondary">
+                      업데이트: {dayjs(s.updatedAtISO).format('YYYY-MM-DD HH:mm')}
+                    </Typography.Text>
+                    <Typography.Text type="secondary">
+                      인원: {s.staff.map((m) => m.name).join(', ')}
+                    </Typography.Text>
+                  </Space>
+                }
+              />
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(2, 1fr)',
+                  gridTemplateRows: 'repeat(2, 1fr)',
+                  gap: 2,
+                  marginBottom: 2,
+                  width: 110,
+                  minHeight: 54,
+                }}
+              >
+                <Button
+                  key="edit"
+                  type="link"
+                  icon={<EditOutlined />}
+                  style={{ padding: 0, height: 24, fontSize: 12, minWidth: 0 }}
+                  onClick={() => nav(`/create?editId=${encodeURIComponent(s.id)}`)}
+                >
                   수정
                 </Button>
-                <Button onClick={() => handleDelete(schedule.id)} variant="danger">
-                  삭제
+                <Button
+                  key="view"
+                  type="link"
+                  icon={<EyeOutlined />}
+                  style={{ padding: 0, height: 24, fontSize: 12, minWidth: 0 }}
+                  onClick={() => setDetail(s)}
+                >
+                  보기
                 </Button>
+                <Button
+                  key="exp"
+                  type="link"
+                  icon={<DownloadOutlined />}
+                  style={{ padding: 0, height: 24, fontSize: 12, minWidth: 0 }}
+                  onClick={() => exportScheduleXlsx(s)}
+                >
+                  다운
+                </Button>
+                <Popconfirm
+                  key="del"
+                  title="삭제할까요?"
+                  okText="삭제"
+                  cancelText="취소"
+                  onConfirm={() => {
+                    deleteSchedule(s.id)
+                    setTick((x) => x + 1)
+                  }}
+                >
+                  <Button danger type="link" icon={<DeleteOutlined />} style={{ padding: 0, height: 24, fontSize: 12, minWidth: 0 }}>
+                    삭제
+                  </Button>
+                </Popconfirm>
+              </div>
+             
+            </List.Item>
+          )}
+        />
+      </Card>
+
+
+
+      <Modal
+        open={!!detail}
+        title={detail ? `${detail.startDateISO} ~ ${detail.endDateISO} 스케줄` : '스케줄'}
+        onCancel={() => setDetail(null)}
+        footer={null}
+        width={720}
+      >
+        {detail ? (
+          <Space direction="vertical" style={{ width: '100%' }} size={12}>
+            <Card 
+              size="small" 
+              title="인원별 통계" 
+              extra={
+                <Button 
+                  type="primary" 
+                  size="small" 
+                  icon={<PlusOutlined />}
+                  onClick={handleOpenExtraWorkModal}
+                >
+                  추가근무
+                </Button>
+              }
+            >
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                  <thead>
+                    <tr style={{ background: '#fafafa' }}>
+                      <th style={{ padding: '4px 8px', fontWeight: 700, textAlign: 'left' }}>이름</th>
+                      <th style={{ padding: '4px 8px', fontWeight: 700 }}>근무일</th>
+                      <th style={{ padding: '4px 8px', fontWeight: 700 }}>풀</th>
+                      <th style={{ padding: '4px 8px', fontWeight: 700 }}>하프</th>
+                      <th style={{ padding: '4px 8px', fontWeight: 700 }}>휴무</th>
+                      <th style={{ padding: '4px 8px', fontWeight: 700 }}>총 시간(h)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(() => {
+                      const extraWorks = getExtraWorksBySchedule(detail.id)
+                      const extraHoursMap = new Map<string, number>()
+                      for (const work of extraWorks) {
+                        extraHoursMap.set(work.staffId, (extraHoursMap.get(work.staffId) ?? 0) + work.hours)
+                      }
+                      const totalHours = calculateTotalWorkHours(detail, extraHoursMap)
+                      
+                      return detail.stats
+                        .slice()
+                        .sort((a, b) => (totalHours.get(b.staffId) ?? 0) - (totalHours.get(a.staffId) ?? 0))
+                        .map((st) => (
+                          <tr key={st.staffId}>
+                            <td style={{ padding: '4px 8px', fontWeight: 700 }}>{st.name}</td>
+                            <td style={{ padding: '4px 8px', textAlign: 'center' }}>{st.workUnits}</td>
+                            <td style={{ padding: '4px 8px', textAlign: 'center' }}>{st.fullDays}</td>
+                            <td style={{ padding: '4px 8px', textAlign: 'center' }}>{st.halfDays}</td>
+                            <td style={{ padding: '4px 8px', textAlign: 'center' }}>{st.offDays}</td>
+                            <td style={{ padding: '4px 8px', textAlign: 'center', fontWeight: 700 }}>
+                              {totalHours.get(st.staffId) ?? 0}
+                            </td>
+                          </tr>
+                        ))
+                    })()}
+                  </tbody>
+                </table>
               </div>
             </Card>
-          ))}
-        </div>
-      )}
-    </div>
-  );
+
+            <Card size="small" title="월간 전체 달력(일자별)">
+              <Calendar
+                fullscreen={false}
+                  className="leedeli-modal-calendar"
+                  value={dayjs(detail.startDateISO)}
+                validRange={[dayjs(detail.startDateISO), dayjs(detail.endDateISO)]}
+                cellRender={(d: dayjs.Dayjs) => {
+                  const iso = d.format('YYYY-MM-DD')
+                  const assignment = detail.assignments.find((a) => a.dateISO === iso)
+                  if (!assignment) return null
+                  const shiftBgColors = { open: '#eaffea', middle: '#e6f4ff', close: '#f3eaff' }
+                  const shiftTextColors = { open: '#389e0d', middle: '#1677ff', close: '#722ed1' }
+                  const shiftLabels = { open: '오', middle: '미', close: '마' }
+                  return (
+                    <div style={{ fontSize: 10, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      {(['open', 'middle', 'close'] as Shift[]).map((shift) => {
+                        const names = assignment.byShift[shift]
+                          .map((x) => detail.staff.find((s) => s.id === x.staffId)?.name || '?')
+                          .join(',')
+                        if (!names) return null
+                        return (
+                          <span
+                            key={shift}
+                            style={{
+                              background: shiftBgColors[shift],
+                              color: shiftTextColors[shift],
+                              borderRadius: 4,
+                              padding: '0 4px',
+                              display: 'inline-block',
+                              minWidth: 0,
+                            }}
+                          >
+                            {shiftLabels[shift]}: {names}
+                          </span>
+                        )
+                      })}
+                    </div>
+                  )
+                }}
+              />
+            </Card>
+          </Space>
+        ) : null}
+      </Modal>
+
+      <Modal
+        open={extraWorkModalOpen}
+        title="추가근무 입력"
+        onCancel={() => setExtraWorkModalOpen(false)}
+        onOk={handleSaveExtraWork}
+        okText="저장"
+        cancelText="취소"
+      >
+        <Form form={extraWorkForm} layout="vertical">
+          <Form.Item
+            label="날짜"
+            name="dateISO"
+            rules={[{ required: true, message: '날짜를 선택하세요' }]}
+          >
+            <DatePicker
+              style={{ width: '100%' }}
+              format="YYYY-MM-DD"
+              minDate={detail ? dayjs(detail.startDateISO) : undefined}
+              maxDate={detail ? dayjs(detail.endDateISO) : undefined}
+            />
+          </Form.Item>
+          <Form.Item
+            label="직원"
+            name="staffId"
+            rules={[{ required: true, message: '직원을 선택하세요' }]}
+          >
+            <Select placeholder="직원 선택">
+              {detail?.staff.map(s => (
+                <Select.Option key={s.id} value={s.id}>
+                  {s.name}
+                </Select.Option>
+              ))}
+            </Select>
+          </Form.Item>
+          <Form.Item
+            label="추가 근무시간 (시간)"
+            name="hours"
+            rules={[
+              { required: true, message: '시간을 입력하세요' },
+              { type: 'number', min: 0, max: 24, message: '0~24 범위로 입력하세요' },
+            ]}
+          >
+            <InputNumber
+              style={{ width: '100%' }}
+              min={0}
+              max={24}
+              step={0.5}
+              placeholder="예:2"
+            />
+          </Form.Item>
+          <Form.Item label="메모" name="note">
+            <Input style={{ width: '100%' }} placeholder="메모 (선택)" />
+          </Form.Item>
+        </Form>
+      </Modal>
+    </MobileShell>
+  )
 }
+
+
