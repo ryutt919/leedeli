@@ -4,6 +4,7 @@ import { CreateSchedulePage } from './pages/CreateSchedulePage'
 import { ManageSchedulesPage } from './pages/ManageSchedulesPage'
 import { IngredientsPage } from './pages/IngredientsPage'
 import { PrepsPage } from './pages/PrepsPage'
+import './leedeli-home.css'
 
 export default function App() {
   return (

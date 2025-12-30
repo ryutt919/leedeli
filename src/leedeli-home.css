@@ -1,0 +1,29 @@
+/* LEE DELI 연두색 및 카드 네온 효과 */
+.leedeli-title {
+  color: #42f34296;
+  font-weight: 800;
+  letter-spacing: 1px;
+  font-size: 2.2rem;
+  -webkit-text-stroke: 0.5px #111;
+}
+
+.leedeli-card {
+  height: 130px;
+  min-width: 120px;
+  max-width: 180px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: 600;
+  font-family: 'Noto Sans', 'Apple SD Gothic', 'Segoe UI', 'sans-serif';
+  border-radius: 10px;
+  box-shadow: 0 2px 8px #0001;
+  padding: 0;
+  transition: box-shadow 0.2s, border 0.2s;
+  border: 2px solid transparent;
+}
+.leedeli-card:hover {
+  border: 2px solid #42f34296;
+  box-shadow: 0 0 14px 2px #42f34296, 0 2px 8px #0001;
+}
