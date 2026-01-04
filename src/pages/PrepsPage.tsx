@@ -472,6 +472,7 @@ export function PrepsPage() {
           renderItem={(p) => {
             const avg = avgIntervalDays(p.restockDatesISO)
             const next = nextRestockISO(p.restockDatesISO)
+            const cost = calcPrepCost(p)
             return (
               <List.Item
                 actions={[
@@ -502,7 +503,7 @@ export function PrepsPage() {
                   description={
                     <Space direction="vertical" size={2}>
                       <Typography.Text type="secondary">
-                        평균 보충 {avg ? `${avg}일` : '-'} · 다음 예상 {next ?? '-'}
+                        다음 예상 {next ?? '-'} · 총 비용 {cost}
                       </Typography.Text>
                     </Space>
                   }
