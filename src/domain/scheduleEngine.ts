@@ -158,17 +158,20 @@ export function generateSchedule(input: ScheduleInputs): { assignments: Schedule
     for (const staff of availableStaff) {
       const allowed = new Set<ShiftCode>()
       const halfRequest = req.halfStaff.find(h => h.staffId === staff.id)
-      
-      for (const shift of staff.availableShifts) {
-        const block = shiftToBlock(shift)
-        if (halfRequest) {
-          // half 요청 시 해당 블록의 _H만 허용
-          const halfReqBlock = shiftToBlock(halfRequest.shift)
-          if (block === halfReqBlock) {
-            allowed.add(`${block}_H` as ShiftCode)
-          }
-        } else {
-          // 일반: _F와 _H 둘 다 허용
+
+      if (halfRequest) {
+        // half 요청은 우선적으로 해당 블록의 하프를 허용하되,
+        // 가능한 유연성을 위해 다른 블록의 F/H도 허용하도록 변경
+        const halfReqBlock = shiftToBlock(halfRequest.shift)
+        allowed.add(`${halfReqBlock}_H` as ShiftCode)
+        for (const shift of staff.availableShifts) {
+          const block = shiftToBlock(shift)
+          allowed.add(`${block}_F` as ShiftCode)
+          allowed.add(`${block}_H` as ShiftCode)
+        }
+      } else {
+        for (const shift of staff.availableShifts) {
+          const block = shiftToBlock(shift)
           allowed.add(`${block}_F` as ShiftCode)
           allowed.add(`${block}_H` as ShiftCode)
         }
