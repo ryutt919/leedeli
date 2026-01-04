@@ -470,7 +470,6 @@ export function PrepsPage() {
           dataSource={preps}
           locale={{ emptyText: '프렙이 없습니다. “추가” 또는 엑셀 업로드를 사용하세요.' }}
           renderItem={(p) => {
-            const avg = avgIntervalDays(p.restockDatesISO)
             const next = nextRestockISO(p.restockDatesISO)
             const cost = calcPrepCost(p)
             return (
