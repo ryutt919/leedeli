@@ -1,5 +1,5 @@
 import { DeleteOutlined, DownloadOutlined, EditOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons'
-import { Button, Card, DatePicker, List, Modal, Popconfirm, Space, Typography, Form, Select, InputNumber, Input, message } from 'antd'
+import { Button, Card, DatePicker, List, Modal, Popconfirm, Space, Typography, Form, Select, InputNumber, Input, message, Tag } from 'antd'
 import { Calendar } from 'antd'
 import dayjs, { Dayjs } from 'dayjs'
 import { useMemo, useState } from 'react'
@@ -257,34 +257,48 @@ export function ManageSchedulesPage() {
                   const iso = d.format('YYYY-MM-DD')
                   const assignment = detail.assignments.find((a) => a.dateISO === iso)
                   if (!assignment) return null
-                  const shiftBgColors = { open: '#eaffea', middle: '#e6f4ff', close: '#f3eaff' }
-                  const shiftTextColors = { open: '#389e0d', middle: '#1677ff', close: '#722ed1' }
-                  const shiftLabels = { open: '오', middle: '미', close: '마' }
-                  return (
-                    <div style={{ fontSize: 10, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                      {(['open', 'middle', 'close'] as Shift[]).map((shift) => {
-                        const names = assignment.byShift[shift]
-                          .map((x) => detail.staff.find((s) => s.id === x.staffId)?.name || '?')
-                          .join(',')
-                        if (!names) return null
-                        return (
-                          <span
-                            key={shift}
-                            style={{
-                              background: shiftBgColors[shift],
-                              color: shiftTextColors[shift],
-                              borderRadius: 4,
-                              padding: '0 4px',
-                              display: 'inline-block',
-                              minWidth: 0,
-                            }}
-                          >
-                            {shiftLabels[shift]}: {names}
-                          </span>
-                        )
-                      })}
-                    </div>
-                  )
+                    // 시프트 텍스트는 유지하되 색/배경은 제거. 저장된 요청(Requests)에 의한 하프(halfStaff)만 주황색 pill로 표시
+                    const shiftLabels = { open: '오', middle: '미', close: '마' }
+                    const req = (detail.requests ?? []).find((r) => r.dateISO === iso)
+                    const halfPills = req?.halfStaff ?? []
+
+                    return (
+                      <div style={{ fontSize: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                          {(['open', 'middle', 'close'] as Shift[]).map((shift) => {
+                            const names = assignment.byShift[shift]
+                              .map((x) => detail.staff.find((s) => s.id === x.staffId)?.name || '?')
+                              .join(',')
+                            if (!names) return null
+                            return (
+                              <span
+                                key={shift}
+                                style={{ borderRadius: 4, padding: '0 4px', display: 'inline-block', minWidth: 0 }}
+                              >
+                                {shiftLabels[shift]}: {names}
+                              </span>
+                            )
+                          })}
+                        </div>
+
+                        {halfPills.length ? (
+                          <div>
+                            {halfPills.map((h) => {
+                              const name = detail.staff.find((s) => s.id === h.staffId)?.name ?? String(h.staffId)
+                              return (
+                                <Tag
+                                  key={String(h.staffId)}
+                                  color="orange"
+                                  style={{ borderRadius: 4, padding: '0 6px', display: 'inline-block', minWidth: 0, marginRight: 6 }}
+                                >
+                                  {name}
+                                </Tag>
+                              )
+                            })}
+                          </div>
+                        ) : null}
+                      </div>
+                    )
                 }}
               />
             </Card>

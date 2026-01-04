@@ -698,8 +698,10 @@ export function CreateSchedulePage() {
 
               const inRange = validDatesSet.has(iso)
 
-              const shiftColors: Record<Shift, string> = { open: '#52c41a', middle: '#1890ff', close: '#722ed1' }
+              // 시프트 텍스트는 유지하되 색/배경은 제거. 요청(Requests)에 의한 하프(halfStaff)만 주황색 pill로 표시
               const shiftLabels: Record<Shift, string> = { open: '오', middle: '미', close: '마' }
+              const req = reqByDate.get(iso)
+              const halfPills = req?.halfStaff ?? []
 
               return (
                 <div className="leedeli-cal-cellContent" style={{ opacity: inRange ? 1 : 0.25 }}>
@@ -710,16 +712,32 @@ export function CreateSchedulePage() {
                         .join(',')
                       if (!names) return null
                       return (
-                        <Tag
+                        <span
                           key={shift}
-                          color={shiftColors[shift]}
-                          style={{ marginInlineEnd: 0, borderRadius: 4, padding: '0 3px', fontSize: 9, lineHeight: '14px' }}
+                          style={{ marginInlineEnd: 6, padding: '0 3px', fontSize: 9, lineHeight: '14px', display: 'inline-block' }}
                         >
-                          {shiftLabels[shift]}:{names}
-                        </Tag>
+                          {shiftLabels[shift]}: {names}
+                        </span>
                       )
                     })}
                   </div>
+
+                  {halfPills.length ? (
+                    <div className="leedeli-cal-pills" style={{ fontSize: 9, marginTop: 4 }}>
+                      {halfPills.map((h) => {
+                        const name = staffNameById.get(String(h.staffId)) ?? String(h.staffId)
+                        return (
+                          <Tag
+                            key={String(h.staffId)}
+                            color="orange"
+                            style={{ marginInlineEnd: 4, borderRadius: 4, padding: '0 6px', fontSize: 9, lineHeight: '14px' }}
+                          >
+                            {name}
+                          </Tag>
+                        )
+                      })}
+                    </div>
+                  ) : null}
                 </div>
               )
             }}
