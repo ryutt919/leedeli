@@ -259,7 +259,6 @@ export function ManageSchedulesPage() {
                   if (!assignment) return null
                     // 시프트 텍스트는 유지하되 색/배경은 제거. 저장된 요청(Requests)에 의한 하프(halfStaff)만 주황색 pill로 표시
                     const shiftLabels = { open: '오', middle: '미', close: '마' }
-                    const req = (detail.requests ?? []).find((r) => r.dateISO === iso)
 
                     return (
                       <div style={{ fontSize: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
