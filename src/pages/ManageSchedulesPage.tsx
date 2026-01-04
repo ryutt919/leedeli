@@ -1,5 +1,5 @@
 import { DeleteOutlined, DownloadOutlined, EditOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons'
-import { Button, Card, DatePicker, List, Modal, Popconfirm, Space, Typography, Form, Select, InputNumber, Input, message, Tag } from 'antd'
+import { Button, Card, DatePicker, List, Modal, Popconfirm, Space, Typography, Form, Select, InputNumber, Input, message } from 'antd'
 import { Calendar } from 'antd'
 import dayjs, { Dayjs } from 'dayjs'
 import { useMemo, useState } from 'react'
@@ -260,7 +260,6 @@ export function ManageSchedulesPage() {
                     // 시프트 텍스트는 유지하되 색/배경은 제거. 저장된 요청(Requests)에 의한 하프(halfStaff)만 주황색 pill로 표시
                     const shiftLabels = { open: '오', middle: '미', close: '마' }
                     const req = (detail.requests ?? []).find((r) => r.dateISO === iso)
-                    const halfPills = req?.halfStaff ?? []
 
                     return (
                       <div style={{ fontSize: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
