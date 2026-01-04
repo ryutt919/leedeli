@@ -711,10 +711,19 @@ export function CreateSchedulePage() {
                         .map((x) => staff.find((s) => s.id === x.staffId)?.name || '?')
                         .join(',')
                       if (!names) return null
+                      // 해당 시프트에 할당된 사람 중 요청(Requests)으로 하프인 사람 있는지 확인
+                      const isHalfRequestedForShift = (req?.halfStaff ?? []).some(h => h.shift === shift && assignment.byShift[shift].some(a => a.staffId === h.staffId))
                       return (
                         <span
                           key={shift}
-                          style={{ marginInlineEnd: 6, padding: '0 3px', fontSize: 9, lineHeight: '14px', display: 'inline-block' }}
+                          style={{
+                            marginInlineEnd: 6,
+                            padding: '0 3px',
+                            fontSize: 9,
+                            lineHeight: '14px',
+                            display: 'inline-block',
+                            ...(isHalfRequestedForShift ? { background: '#fff2e6', color: '#d46b08', borderRadius: 4, paddingLeft: 6, paddingRight: 6 } : {}),
+                          }}
                         >
                           {shiftLabels[shift]}: {names}
                         </span>
@@ -722,22 +731,6 @@ export function CreateSchedulePage() {
                     })}
                   </div>
 
-                  {halfPills.length ? (
-                    <div className="leedeli-cal-pills" style={{ fontSize: 9, marginTop: 4 }}>
-                      {halfPills.map((h) => {
-                        const name = staffNameById.get(String(h.staffId)) ?? String(h.staffId)
-                        return (
-                          <Tag
-                            key={String(h.staffId)}
-                            color="orange"
-                            style={{ marginInlineEnd: 4, borderRadius: 4, padding: '0 6px', fontSize: 9, lineHeight: '14px' }}
-                          >
-                            {name}
-                          </Tag>
-                        )
-                      })}
-                    </div>
-                  ) : null}
                 </div>
               )
             }}

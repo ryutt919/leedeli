@@ -270,10 +270,18 @@ export function ManageSchedulesPage() {
                               .map((x) => detail.staff.find((s) => s.id === x.staffId)?.name || '?')
                               .join(',')
                             if (!names) return null
+                            const req = (detail.requests ?? []).find((r) => r.dateISO === iso)
+                            const isHalfRequestedForShift = (req?.halfStaff ?? []).some(h => h.shift === shift && assignment.byShift[shift].some(a => a.staffId === h.staffId))
                             return (
                               <span
                                 key={shift}
-                                style={{ borderRadius: 4, padding: '0 4px', display: 'inline-block', minWidth: 0 }}
+                                style={{
+                                  borderRadius: 4,
+                                  padding: '0 4px',
+                                  display: 'inline-block',
+                                  minWidth: 0,
+                                  ...(isHalfRequestedForShift ? { background: '#fff2e6', color: '#d46b08' } : {}),
+                                }}
                               >
                                 {shiftLabels[shift]}: {names}
                               </span>
