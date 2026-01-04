@@ -289,22 +289,7 @@ export function ManageSchedulesPage() {
                           })}
                         </div>
 
-                        {halfPills.length ? (
-                          <div>
-                            {halfPills.map((h) => {
-                              const name = detail.staff.find((s) => s.id === h.staffId)?.name ?? String(h.staffId)
-                              return (
-                                <Tag
-                                  key={String(h.staffId)}
-                                  color="orange"
-                                  style={{ borderRadius: 4, padding: '0 6px', display: 'inline-block', minWidth: 0, marginRight: 6 }}
-                                >
-                                  {name}
-                                </Tag>
-                              )
-                            })}
-                          </div>
-                        ) : null}
+
                       </div>
                     )
                 }}
