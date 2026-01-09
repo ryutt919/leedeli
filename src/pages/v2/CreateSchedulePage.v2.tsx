@@ -531,7 +531,7 @@ export function CreateSchedulePageV2() {
 
     return (
         <div className="container">
-            <h1>근무 스케줄 생성 (V2)</h1>
+            <h1>근무 스케줄 생성</h1>
 
             <Card title="기본 설정">
                 <div className="form-row">

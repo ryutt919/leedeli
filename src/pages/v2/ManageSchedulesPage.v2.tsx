@@ -116,7 +116,18 @@ export function ManageSchedulesPageV2() {
 
     return (
         <div className="container">
-            <h1>스케줄 관리/조회 (V2)</h1>
+            <style>{`
+                .title-modern {
+                    font-size: 24px;
+                    font-weight: 700;
+                    color: #333;
+                    padding-bottom: 10px;
+                    border-bottom: 3px solid #4A90E2; /* 포인트 컬러 파란색 */
+                    display: inline-block; /* 밑줄이 글자 길이만큼만 생기게 함 */
+                    letter-spacing: -0.5px; /* 글자 간격을 좁혀 세련되게 */
+                }
+            `}</style>
+            <h1 className="title-modern">스케줄 관리/조회</h1>
 
             <Card title="필터">
                 <div className="form-row">
