@@ -1,0 +1,39 @@
+import { forwardRef, type CSSProperties, type ChangeEvent } from 'react';
+
+interface InputProps {
+    type?: string;
+    value?: string | number;
+    onChange?: (e: ChangeEvent<HTMLInputElement>) => void;
+    placeholder?: string;
+    label?: string;
+    min?: number;
+    max?: number;
+    step?: number;
+    disabled?: boolean;
+    style?: CSSProperties;
+    autoFocus?: boolean;
+}
+
+export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
+    { type = 'text', value, onChange, placeholder, label, min, max, step, disabled, style, autoFocus },
+    ref
+) {
+    return (
+        <div className="input-group">
+            {label && <label>{label}</label>}
+            <input
+                ref={ref}
+                type={type}
+                value={value}
+                onChange={onChange}
+                placeholder={placeholder}
+                min={min}
+                max={max}
+                step={step}
+                disabled={disabled}
+                style={style}
+                autoFocus={autoFocus}
+            />
+        </div>
+    );
+});
