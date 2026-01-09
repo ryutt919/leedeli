@@ -1,4 +1,4 @@
-import { ShiftType } from './types';
+import type { ShiftType } from './types';
 
 // 근무 규칙
 export type WorkRules = {
