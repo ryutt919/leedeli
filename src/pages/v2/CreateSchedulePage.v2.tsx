@@ -39,6 +39,7 @@ export function CreateSchedulePageV2() {
     const [dailyStaffByDate, setDailyStaffByDate] = useState<Record<number, number>>({});
     const [editingScheduleId, setEditingScheduleId] = useState<string | null>(null);
     const [editingCreatedAt, setEditingCreatedAt] = useState<string | null>(null);
+    const [highlightedPersonId, setHighlightedPersonId] = useState<string | null>(null);
 
     const rules = getWorkRules();
 
@@ -359,7 +360,23 @@ export function CreateSchedulePageV2() {
                     const middlePeople = assignment ? assignment.people.filter(p => p.shift === 'middle') : [];
                     const closePeople = assignment ? assignment.people.filter(p => p.shift === 'close') : [];
 
-                    const formatAssignedName = (personName: string, isHalf?: boolean) => (isHalf ? `${personName}(하프)` : personName);
+                    const formatAssignedName = (personId: string, personName: string, isHalf?: boolean) => {
+                        const name = isHalf ? `${personName}(하프)` : personName;
+                        const isHighlighted = highlightedPersonId === personId;
+                        return (
+                            <span
+                                key={personId}
+                                className={isHighlighted ? 'highlight-active' : ''}
+                                style={{
+                                    padding: isHighlighted ? '0 2px' : '0',
+                                    borderRadius: '2px',
+                                    transition: 'all 0.2s'
+                                }}
+                            >
+                                {name}
+                            </span>
+                        );
+                    };
 
                     const dateObj = new Date(s.year, s.month - 1, dayNum);
                     const isWeekend = dateObj.getDay() === 0 || dateObj.getDay() === 6;
@@ -370,15 +387,42 @@ export function CreateSchedulePageV2() {
                             <div className="calendar-date">{dayNum}</div>
                             <div className="calendar-line">
                                 <span className="calendar-label">오픈</span>
-                                <span>{openPeople.map(p => formatAssignedName(p.personName, p.isHalf)).join(', ') || '-'}</span>
+                                <span>
+                                    {openPeople.length > 0
+                                        ? openPeople.map((p, i) => (
+                                            <span key={p.personId}>
+                                                {formatAssignedName(p.personId, p.personName, p.isHalf)}
+                                                {i < openPeople.length - 1 ? ', ' : ''}
+                                            </span>
+                                        ))
+                                        : '-'}
+                                </span>
                             </div>
                             <div className="calendar-line">
                                 <span className="calendar-label">미들</span>
-                                <span>{middlePeople.map(p => formatAssignedName(p.personName, p.isHalf)).join(', ') || '-'}</span>
+                                <span>
+                                    {middlePeople.length > 0
+                                        ? middlePeople.map((p, i) => (
+                                            <span key={p.personId}>
+                                                {formatAssignedName(p.personId, p.personName, p.isHalf)}
+                                                {i < middlePeople.length - 1 ? ', ' : ''}
+                                            </span>
+                                        ))
+                                        : '-'}
+                                </span>
                             </div>
                             <div className="calendar-line">
                                 <span className="calendar-label">마감</span>
-                                <span>{closePeople.map(p => formatAssignedName(p.personName, p.isHalf)).join(', ') || '-'}</span>
+                                <span>
+                                    {closePeople.length > 0
+                                        ? closePeople.map((p, i) => (
+                                            <span key={p.personId}>
+                                                {formatAssignedName(p.personId, p.personName, p.isHalf)}
+                                                {i < closePeople.length - 1 ? ', ' : ''}
+                                            </span>
+                                        ))
+                                        : '-'}
+                                </span>
                             </div>
                         </div>
                     );
@@ -531,6 +575,48 @@ export function CreateSchedulePageV2() {
 
     return (
         <div className="container">
+            <style>{`
+                .highlight-active {
+                    background-color: #fff176;
+                    color: #000;
+                    font-weight: bold;
+                    box-shadow: 0 0 0 2px #fff176;
+                }
+                .person-highlight-btn {
+                    padding: 0.4rem 0.8rem;
+                    border-radius: 20px;
+                    border: 1px solid var(--border-color);
+                    background: var(--card-bg);
+                    cursor: pointer;
+                    font-size: 0.85rem;
+                    color: var(--text-primary);
+                    transition: all 0.2s;
+                }
+                .person-highlight-btn:hover {
+                    background: var(--bg-secondary);
+                }
+                .person-highlight-btn.active {
+                    background: var(--primary-color);
+                    color: white;
+                    border-color: var(--primary-color);
+                }
+                .highlight-ui {
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 0.5rem;
+                    margin-bottom: 1rem;
+                    padding: 1rem;
+                    background: var(--bg-secondary);
+                    border-radius: 8px;
+                    align-items: center;
+                }
+                .highlight-label {
+                    font-size: 0.9rem;
+                    color: var(--text-secondary);
+                    margin-right: 0.5rem;
+                    font-weight: 500;
+                }
+            `}</style>
             <h1>근무 스케줄 생성</h1>
 
             <Card title="기본 설정">
@@ -772,6 +858,27 @@ export function CreateSchedulePageV2() {
                     </Card>
 
                     <Card title={`${schedule.year}년 ${schedule.month}월 스케줄`}>
+                        <div className="highlight-ui">
+                            <span className="highlight-label">인원 하이라이트:</span>
+                            <button
+                                type="button"
+                                className={`person-highlight-btn ${highlightedPersonId === null ? 'active' : ''}`}
+                                onClick={() => setHighlightedPersonId(null)}
+                            >
+                                전체 해제
+                            </button>
+                            {schedule.people.map(p => (
+                                <button
+                                    key={p.id}
+                                    type="button"
+                                    className={`person-highlight-btn ${highlightedPersonId === p.id ? 'active' : ''}`}
+                                    onClick={() => setHighlightedPersonId(prev => prev === p.id ? null : p.id)}
+                                >
+                                    {p.name}
+                                </button>
+                            ))}
+                        </div>
+
                         <div className="actions">
                             <Button onClick={handleExportExcel} variant="secondary">
                                 엑셀 내보내기
