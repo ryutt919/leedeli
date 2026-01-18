@@ -514,7 +514,7 @@ export function PrepsPage() {
                     }}
                   >
                     {p.name.slice(0, 4)}
-                    {p.name.length > 4 && <span style={{ fontSize: '4px', verticalAlign: 'baseline' }}>..</span>}
+                    {p.name.length > 4 && <span style={{ fontSize: '6px', verticalAlign: 'baseline' }}>..</span>}
                   </Tag>
                 ))}
               </div>
