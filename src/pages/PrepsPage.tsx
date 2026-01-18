@@ -502,7 +502,7 @@ export function PrepsPage() {
             )
             if (prepsOnDate.length === 0) return null
             return (
-              <div style={{ fontSize: 11, lineHeight: 1.3 }}>
+              <div style={{ fontSize: 11, lineHeight: 1.3, display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
                 {prepsOnDate.map((p) => (
                   <Tag
                     key={p.id}
