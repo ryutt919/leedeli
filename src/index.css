@@ -172,6 +172,15 @@ a {
   color: inherit !important;
 }
 
+/* 선택된 날짜의 텍스트를 명시적으로 검은색으로 설정 */
+.ant-picker-calendar-mini .ant-picker-cell-selected .ant-picker-calendar-date-value,
+.ant-picker-calendar-mini .ant-picker-cell-selected .ant-picker-calendar-date-value a,
+.ant-picker-calendar-mini .ant-picker-cell-in-view.ant-picker-cell-selected .ant-picker-calendar-date-value,
+.ant-picker-calendar-mini .ant-picker-cell-in-view.ant-picker-cell-selected .ant-picker-calendar-date-value a {
+  color: rgba(0, 0, 0, 0.88) !important;
+}
+
+
 /* ManageSchedules 모달의 달력도 CreateSchedule과 같은 셀 높이/레이아웃을 쓰도록 조정 */
 .leedeli-modal-calendar .ant-picker-content td {
   height: auto !important;

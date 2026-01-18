@@ -61,6 +61,10 @@ export function PrepsPage() {
   const [csvOpen, setCsvOpen] = useState(false)
   const [csvRows, setCsvRows] = useState<CsvPreviewRow<{ prep: Prep; changedIngredients: Ingredient[] }>[]>([])
 
+  const [dateHistoryOpen, setDateHistoryOpen] = useState(false)
+  const [selectedDate, setSelectedDate] = useState<string | null>(null)
+
+
   const refresh = () => setTick((x) => x + 1)
 
   const ingredientById = useMemo(() => new Map(ingredients.map((x) => [x.id, x])), [ingredients])
@@ -137,6 +141,16 @@ export function PrepsPage() {
     refresh()
     message.success(`${p.name}: 오늘(${today}) 보충 이력을 추가했습니다.`)
   }
+
+  const removeDateRestockFor = (p: Prep, dateStr: string) => {
+    const nextDates = p.restockDatesISO.filter((d) => d !== dateStr)
+    const now = new Date().toISOString()
+    const next: Prep = { ...p, restockDatesISO: nextDates, updatedAtISO: now }
+    upsertPrep(next)
+    refresh()
+    message.success(`${p.name}: ${dateStr} 보충 이력을 삭제했습니다.`)
+  }
+
 
   const onSave = async () => {
     const v = await form.validateFields()
@@ -471,6 +485,16 @@ export function PrepsPage() {
         </Typography.Title>
         <Calendar
           fullscreen={false}
+          onSelect={(date) => {
+            const dateStr = date.format('YYYY-MM-DD')
+            const prepsOnDate = preps.filter((p) =>
+              p.restockDatesISO.includes(dateStr)
+            )
+            if (prepsOnDate.length > 0) {
+              setSelectedDate(dateStr)
+              setDateHistoryOpen(true)
+            }
+          }}
           dateCellRender={(date) => {
             const dateStr = date.format('YYYY-MM-DD')
             const prepsOnDate = preps.filter((p) =>
@@ -487,11 +511,6 @@ export function PrepsPage() {
                       marginBottom: 2,
                       fontSize: 10,
                       padding: '0 4px',
-                      cursor: 'pointer'
-                    }}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      openUpdate(p)
                     }}
                   >
                     {p.name}
@@ -719,6 +738,71 @@ export function PrepsPage() {
         }
         onApply={applyCsv}
       />
+
+      <Modal
+        open={dateHistoryOpen}
+        title={`${selectedDate} 보충 이력`}
+        onCancel={() => setDateHistoryOpen(false)}
+        footer={[
+          <Button key="close" onClick={() => setDateHistoryOpen(false)}>
+            닫기
+          </Button>,
+        ]}
+      >
+        {selectedDate && (
+          <List
+            dataSource={preps.filter((p) => p.restockDatesISO.includes(selectedDate))}
+            locale={{ emptyText: '해당 날짜에 보충된 프렙이 없습니다.' }}
+            renderItem={(p) => {
+              const cost = calcPrepCost(p)
+              return (
+                <List.Item
+                  actions={[
+                    <Button
+                      key="edit"
+                      type="link"
+                      onClick={() => {
+                        setDateHistoryOpen(false)
+                        openUpdate(p)
+                      }}
+                    >
+                      수정
+                    </Button>,
+                    <Popconfirm
+                      key="delete"
+                      title={`${p.name}의 ${selectedDate} 보충 이력을 삭제할까요?`}
+                      okText="삭제"
+                      cancelText="취소"
+                      onConfirm={() => {
+                        removeDateRestockFor(p, selectedDate)
+                        const remainingPreps = preps.filter((prep) =>
+                          prep.id !== p.id && prep.restockDatesISO.includes(selectedDate)
+                        )
+                        if (remainingPreps.length === 0) {
+                          setDateHistoryOpen(false)
+                        }
+                      }}
+                    >
+                      <Button danger type="link">
+                        삭제
+                      </Button>
+                    </Popconfirm>,
+                  ]}
+                >
+                  <List.Item.Meta
+                    title={p.name}
+                    description={
+                      <Typography.Text type="secondary">
+                        총 비용 {cost}
+                      </Typography.Text>
+                    }
+                  />
+                </List.Item>
+              )
+            }}
+          />
+        )}
+      </Modal>
     </MobileShell>
   )
 }
