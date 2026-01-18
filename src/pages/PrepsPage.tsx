@@ -509,11 +509,11 @@ export function PrepsPage() {
                     color="blue"
                     style={{
                       marginBottom: 2,
-                      fontSize: 10,
+                      fontSize: 8,
                       padding: '0 4px',
                     }}
                   >
-                    {p.name.length > 4 ? p.name.slice(0, 4) + '...' : p.name}
+                    {p.name.length > 4 ? p.name.slice(0, 4) + '' : p.name}
                   </Tag>
                 ))}
               </div>
