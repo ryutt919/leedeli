@@ -528,7 +528,7 @@ export function PrepsPage() {
           locale={{ emptyText: '프렙이 없습니다. “추가” 또는 엑셀 업로드를 사용하세요.' }}
           renderItem={(p) => {
             const next = nextRestockISO(p.restockDatesISO)
-            const cost = calcPrepCost(p)
+            const cost = Math.round(calcPrepCost(p))
             return (
               <List.Item
                 style={{ cursor: 'pointer' }}
@@ -600,10 +600,10 @@ export function PrepsPage() {
             {() => {
               const items = (form.getFieldValue('items') ?? []) as PrepIngredientItem[]
               const normalized = items.filter((x) => x?.ingredientId)
-              const cost = calcCostFromFormItems(items)
+              const cost = Math.round(calcCostFromFormItems(items))
               return (
                 <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>
-                  재료 {normalized.length}개 · 총비용 {cost}
+                  재료 {normalized.length}개 · 총비용 {cost}원
                 </Typography.Text>
               )
             }}
@@ -755,7 +755,7 @@ export function PrepsPage() {
             dataSource={preps.filter((p) => p.restockDatesISO.includes(selectedDate))}
             locale={{ emptyText: '해당 날짜에 보충된 프렙이 없습니다.' }}
             renderItem={(p) => {
-              const cost = calcPrepCost(p)
+              const cost = Math.round(calcPrepCost(p))
               return (
                 <List.Item
                   actions={[
