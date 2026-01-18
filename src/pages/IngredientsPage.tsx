@@ -1,4 +1,4 @@
-import { DeleteOutlined, DownloadOutlined, EditOutlined, PlusOutlined, ReloadOutlined, UploadOutlined } from '@ant-design/icons'
+import { DeleteOutlined, DownloadOutlined, PlusOutlined, ReloadOutlined, UploadOutlined } from '@ant-design/icons'
 import { Button, Card, Flex, Form, Input, InputNumber, List, Modal, Popconfirm, Select, Space, Typography, Upload, message } from 'antd'
 import { useMemo, useState } from 'react'
 import { CsvPreviewModal } from '../components/CsvPreviewModal'
@@ -268,25 +268,8 @@ export function IngredientsPage() {
           locale={{ emptyText: '재료가 없습니다. “추가” 또는 엑셀 업로드를 사용하세요.' }}
           renderItem={(it) => (
             <List.Item
-              actions={[
-                <Button key="edit" type="link" icon={<EditOutlined />} onClick={() => openUpdate(it)}>
-                  수정
-                </Button>,
-                <Popconfirm
-                  key="del"
-                  title="삭제할까요?"
-                  okText="삭제"
-                  cancelText="취소"
-                  onConfirm={() => {
-                    deleteIngredient(it.id)
-                    refresh()
-                  }}
-                >
-                  <Button danger type="link" icon={<DeleteOutlined />}>
-                    삭제
-                  </Button>
-                </Popconfirm>,
-              ]}
+              style={{ cursor: 'pointer' }}
+              onClick={() => openUpdate(it)}
             >
               <List.Item.Meta
                 title={it.name}
@@ -307,6 +290,31 @@ export function IngredientsPage() {
         onCancel={() => setOpenEdit(false)}
         onOk={onSave}
         okText="저장"
+        footer={[
+          editing && (
+            <Popconfirm
+              key="delete"
+              title="삭제할까요?"
+              okText="삭제"
+              cancelText="취소"
+              onConfirm={() => {
+                deleteIngredient(editing.id)
+                setOpenEdit(false)
+                refresh()
+              }}
+            >
+              <Button danger icon={<DeleteOutlined />}>
+                삭제
+              </Button>
+            </Popconfirm>
+          ),
+          <Button key="cancel" onClick={() => setOpenEdit(false)}>
+            취소
+          </Button>,
+          <Button key="save" type="primary" onClick={onSave}>
+            저장
+          </Button>,
+        ]}
       >
         <Form form={form} layout="vertical">
           <Form.Item shouldUpdate noStyle>

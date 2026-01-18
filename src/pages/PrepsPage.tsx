@@ -1,13 +1,13 @@
 import {
   DeleteOutlined,
   DownloadOutlined,
-  EditOutlined,
   PlusOutlined,
   ReloadOutlined,
   UploadOutlined,
 } from '@ant-design/icons'
 import {
   Button,
+  Calendar,
   Card,
   DatePicker,
   Flex,
@@ -57,6 +57,7 @@ export function PrepsPage() {
   const [editing, setEditing] = useState<Prep | null>(null)
   const [form] = Form.useForm()
   const [restockPicker, setRestockPicker] = useState<dayjs.Dayjs | null>(null)
+  const [showCalendar, setShowCalendar] = useState(false)
 
   const [csvOpen, setCsvOpen] = useState(false)
   const [csvRows, setCsvRows] = useState<CsvPreviewRow<{ prep: Prep; changedIngredients: Ingredient[] }>[]>([])
@@ -474,27 +475,19 @@ export function PrepsPage() {
             const cost = calcPrepCost(p)
             return (
               <List.Item
+                style={{ cursor: 'pointer' }}
+                onClick={() => openUpdate(p)}
                 actions={[
-                  <Button key="today" type="link" onClick={() => addTodayRestockFor(p)}>
-                    오늘 추가
-                  </Button>,
-                  <Button key="edit" type="link" icon={<EditOutlined />} onClick={() => openUpdate(p)}>
-                    수정
-                  </Button>,
-                  <Popconfirm
-                    key="del"
-                    title="삭제할까요?"
-                    okText="삭제"
-                    cancelText="취소"
-                    onConfirm={() => {
-                      deletePrep(p.id)
-                      refresh()
+                  <Button
+                    key="today"
+                    type="link"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      addTodayRestockFor(p)
                     }}
                   >
-                    <Button danger type="link" icon={<DeleteOutlined />}>
-                      삭제
-                    </Button>
-                  </Popconfirm>,
+                    오늘 추가
+                  </Button>,
                 ]}
               >
                 <List.Item.Meta
@@ -513,6 +506,51 @@ export function PrepsPage() {
         />
       </Card>
 
+      <Card size="small" style={{ marginTop: 16 }}>
+        <Flex justify="space-between" align="center" style={{ marginBottom: 12 }}>
+          <Typography.Title level={5} style={{ margin: 0 }}>
+            보충 이력 달력
+          </Typography.Title>
+          <Button
+            type={showCalendar ? 'default' : 'primary'}
+            onClick={() => setShowCalendar(!showCalendar)}
+          >
+            {showCalendar ? '달력 닫기' : '달력 보기'}
+          </Button>
+        </Flex>
+        {showCalendar && (
+          <Calendar
+            fullscreen={false}
+            dateCellRender={(date) => {
+              const dateStr = date.format('YYYY-MM-DD')
+              const prepsOnDate = preps.filter((p) =>
+                p.restockDatesISO.includes(dateStr)
+              )
+              if (prepsOnDate.length === 0) return null
+              return (
+                <div style={{ fontSize: 11, lineHeight: 1.3 }}>
+                  {prepsOnDate.map((p) => (
+                    <Tag
+                      key={p.id}
+                      color="blue"
+                      style={{
+                        marginBottom: 2,
+                        fontSize: 10,
+                        padding: '0 4px',
+                        cursor: 'pointer'
+                      }}
+                      onClick={() => openUpdate(p)}
+                    >
+                      {p.name}
+                    </Tag>
+                  ))}
+                </div>
+              )
+            }}
+          />
+        )}
+      </Card>
+
       <Modal
         open={openEdit}
         title={editing ? '프렙 수정' : '프렙 추가'}
@@ -520,6 +558,31 @@ export function PrepsPage() {
         onOk={onSave}
         okText="저장"
         width={720}
+        footer={[
+          editing && (
+            <Popconfirm
+              key="delete"
+              title="삭제할까요?"
+              okText="삭제"
+              cancelText="취소"
+              onConfirm={() => {
+                deletePrep(editing.id)
+                setOpenEdit(false)
+                refresh()
+              }}
+            >
+              <Button danger icon={<DeleteOutlined />}>
+                삭제
+              </Button>
+            </Popconfirm>
+          ),
+          <Button key="cancel" onClick={() => setOpenEdit(false)}>
+            취소
+          </Button>,
+          <Button key="save" type="primary" onClick={onSave}>
+            저장
+          </Button>,
+        ]}
       >
         <Form form={form} layout="vertical" initialValues={{ items: [], restockDatesISO: [] }}>
           <Form.Item shouldUpdate noStyle>
