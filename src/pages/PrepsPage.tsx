@@ -513,7 +513,7 @@ export function PrepsPage() {
                       padding: '0 4px',
                     }}
                   >
-                    {p.name}
+                    {p.name.length > 4 ? p.name.slice(0, 4) + '...' : p.name}
                   </Tag>
                 ))}
               </div>
@@ -676,6 +676,7 @@ export function PrepsPage() {
             <Space wrap>
               <DatePicker
                 value={restockPicker}
+                inputReadOnly
                 onChange={(d) => {
                   if (!d) return
                   const cur = (form.getFieldValue('restockDatesISO') ?? []) as string[]
