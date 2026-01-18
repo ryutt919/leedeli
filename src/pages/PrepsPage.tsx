@@ -549,9 +549,12 @@ export function PrepsPage() {
                 <List.Item.Meta
                   title={p.name}
                   description={
-                    <Space direction="vertical" size={2}>
+                    <Space direction="vertical" size={2} style={{ width: '100%' }}>
+                      <Typography.Text type="secondary" ellipsis={{ tooltip: true }} style={{ display: 'block' }}>
+                        재료: {p.items.map(it => `${it.ingredientName} ${it.amount}${unitLabelOf(it.ingredientId)}`).join(', ') || '없음'}
+                      </Typography.Text>
                       <Typography.Text type="secondary">
-                        다음 예상 {next ?? '-'} · 총 비용 {cost}
+                        다음 예상 {next ?? '-'} · 총 비용 {cost}원
                       </Typography.Text>
                     </Space>
                   }
@@ -601,9 +604,12 @@ export function PrepsPage() {
               const items = (form.getFieldValue('items') ?? []) as PrepIngredientItem[]
               const normalized = items.filter((x) => x?.ingredientId)
               const cost = Math.round(calcCostFromFormItems(items))
+              const ingredientSummary = normalized
+                .map((it) => `${it.ingredientName} ${it.amount}${unitLabelOf(it.ingredientId)}`)
+                .join(', ') || '재료 없음'
               return (
                 <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>
-                  재료 {normalized.length}개 · 총비용 {cost}원
+                  재료: {ingredientSummary} · 총비용 {cost}원
                 </Typography.Text>
               )
             }}
