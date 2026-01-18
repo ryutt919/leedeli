@@ -513,9 +513,8 @@ export function PrepsPage() {
                       padding: '0 4px',
                     }}
                   >
-                    <span style={{ fontSize: '4px', lineHeight: 1 }}>
-                      {p.name.length > 4 ? p.name.slice(0, 4) : p.name}
-                    </span>
+                    {p.name.slice(0, 4)}
+                    {p.name.length > 4 && <span style={{ fontSize: '4px', verticalAlign: 'baseline' }}>..</span>}
                   </Tag>
                 ))}
               </div>
