@@ -5,6 +5,7 @@ import { Button } from '../../components/v2/Button';
 import { Input } from '../../components/v2/Input';
 import { Select } from '../../components/v2/Select';
 import { Checkbox } from '../../components/v2/Checkbox';
+import { MobileShell } from '../../layouts/MobileShell';
 import type { Person, Schedule, ShiftType, ValidationError, StaffConfig, DayAssignment } from '../../v2/types';
 import { validateScheduleInputs, getDaysInMonth } from '../../v2/validator';
 import { generateSchedule, validateGeneratedSchedule, ScheduleGenerationError, exportSchedulesToXlsx } from '../../v2/generator';
@@ -574,7 +575,7 @@ export function CreateSchedulePageV2() {
     }));
 
     return (
-        <div className="container">
+        <MobileShell title="스케줄 생성">
             <style>{`
                 .highlight-active {
                     background-color: #fff176;
@@ -617,7 +618,7 @@ export function CreateSchedulePageV2() {
                     font-weight: 500;
                 }
             `}</style>
-            <h1>근무 스케줄 생성</h1>
+
 
             <Card title="기본 설정">
                 <div className="form-row">
@@ -895,6 +896,6 @@ export function CreateSchedulePageV2() {
                     </Card>
                 </>
             )}
-        </div>
+        </MobileShell>
     );
 }

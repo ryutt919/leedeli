@@ -28,10 +28,11 @@ import dayjs from 'dayjs'
 import { useMemo, useState } from 'react'
 import { CsvPreviewModal } from '../components/CsvPreviewModal'
 import type { CsvPreviewRow } from '../components/CsvPreviewModal'
-import type { Ingredient, Prep, PrepIngredientItem } from '../domain/types'
+import type { Ingredient, Prep, PrepIngredientItem, RestockRecord } from '../domain/types'
 import { MobileShell } from '../layouts/MobileShell'
 import { loadIngredients, saveIngredients } from '../storage/ingredientsRepo'
 import { clearPreps, deletePrep, loadPreps, savePreps, upsertPrep } from '../storage/prepsRepo'
+import { addRestockRecord, deleteRestockRecord, loadRestockByDate } from '../storage/restockRepo'
 import { downloadText } from '../utils/download'
 import { newId } from '../utils/id'
 import { round2, safeNumber } from '../utils/money'
@@ -63,7 +64,8 @@ export function PrepsPage() {
 
   const [dateHistoryOpen, setDateHistoryOpen] = useState(false)
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
-
+  // Supabase에서 가져온 보충 이력 레코드 (선택된 날짜)
+  const [dateRecords, setDateRecords] = useState<RestockRecord[]>([])
 
   const refresh = () => setTick((x) => x + 1)
 
@@ -132,21 +134,33 @@ export function PrepsPage() {
     setOpenEdit(true)
   }
 
-  const addTodayRestockFor = (p: Prep) => {
+  const addTodayRestockFor = async (p: Prep) => {
     const today = dayjs().format('YYYY-MM-DD')
     const nextDates = [...new Set([...(p.restockDatesISO ?? []), today])].sort()
     const now = new Date().toISOString()
     const next: Prep = { ...p, restockDatesISO: nextDates, updatedAtISO: now }
     upsertPrep(next)
+    // Supabase에도 보충 이력 기록 (누가 보충했는지 이름 저장)
+    try {
+      await addRestockRecord(p.id, today)
+    } catch (e) {
+      console.error('Supabase 보충 이력 기록 실패:', e)
+    }
     refresh()
     message.success(`${p.name}: 오늘(${today}) 보충 이력을 추가했습니다.`)
   }
 
-  const removeDateRestockFor = (p: Prep, dateStr: string) => {
+  const removeDateRestockFor = async (p: Prep, dateStr: string) => {
     const nextDates = p.restockDatesISO.filter((d) => d !== dateStr)
     const now = new Date().toISOString()
     const next: Prep = { ...p, restockDatesISO: nextDates, updatedAtISO: now }
     upsertPrep(next)
+    // Supabase에서도 해당 보충 이력 삭제
+    try {
+      await deleteRestockRecord(p.id, dateStr)
+    } catch (e) {
+      console.error('Supabase 보충 이력 삭제 실패:', e)
+    }
     refresh()
     message.success(`${p.name}: ${dateStr} 보충 이력을 삭제했습니다.`)
   }
@@ -485,13 +499,21 @@ export function PrepsPage() {
         </Typography.Title>
         <Calendar
           fullscreen={false}
-          onSelect={(date) => {
+          onSelect={async (date) => {
             const dateStr = date.format('YYYY-MM-DD')
             const prepsOnDate = preps.filter((p) =>
               p.restockDatesISO.includes(dateStr)
             )
             if (prepsOnDate.length > 0) {
               setSelectedDate(dateStr)
+              // Supabase에서 해당 날짜의 보충 이력(누가 했는지) 로드
+              try {
+                const records = await loadRestockByDate(dateStr)
+                setDateRecords(records)
+              } catch (e) {
+                console.error('보충 이력 로드 실패:', e)
+                setDateRecords([])
+              }
               setDateHistoryOpen(true)
             }
           }}
@@ -800,9 +822,19 @@ export function PrepsPage() {
                   <List.Item.Meta
                     title={p.name}
                     description={
-                      <Typography.Text type="secondary">
-                        총 비용 {cost}
-                      </Typography.Text>
+                      <Space direction="vertical" size={2}>
+                        <Typography.Text type="secondary">
+                          총 비용 {cost}원
+                        </Typography.Text>
+                        {/* Supabase에서 가져온 보충자 이름 표시 */}
+                        {dateRecords
+                          .filter((r) => r.prep_id === p.id)
+                          .map((r) => (
+                            <Tag key={r.id} color="green" style={{ fontSize: 11 }}>
+                              {r.user_email} 보충
+                            </Tag>
+                          ))}
+                      </Space>
                     }
                   />
                 </List.Item>

@@ -112,6 +112,16 @@ export type Prep = {
   updatedAtISO: string
 }
 
+// Supabase restock_history 테이블에 대응하는 보충 이력 레코드 타입
+export type RestockRecord = {
+  id: string
+  prep_id: string
+  user_email: string
+  restock_date: string // YYYY-MM-DD
+  created_at: string
+}
+
+
 export type ExtraWork = {
   id: Id
   scheduleId: Id

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Card } from '../../components/v2/Card';
 import { Button } from '../../components/v2/Button';
 import { Input } from '../../components/v2/Input';
+import { MobileShell } from '../../layouts/MobileShell';
 import type { Person, Schedule, DayAssignment } from '../../v2/types';
 import { loadSchedules, deleteSchedule } from '../../v2/storage';
 import { exportSchedulesToXlsx } from '../../v2/generator';
@@ -115,19 +116,7 @@ export function ManageSchedulesPageV2() {
     const filtered = getFilteredSchedules();
 
     return (
-        <div className="container">
-            <style>{`
-                .title-modern {
-                    font-size: 24px;
-                    font-weight: 700;
-                    color: #333;
-                    padding-bottom: 10px;
-                    border-bottom: 3px solid #4A90E2; /* 포인트 컬러 파란색 */
-                    display: inline-block; /* 밑줄이 글자 길이만큼만 생기게 함 */
-                    letter-spacing: -0.5px; /* 글자 간격을 좁혀 세련되게 */
-                }
-            `}</style>
-            <h1 className="title-modern">스케줄 관리/조회</h1>
+        <MobileShell title="스케줄 관리">
 
             <Card title="필터">
                 <div className="form-row">
@@ -243,6 +232,6 @@ export function ManageSchedulesPageV2() {
                     ))}
                 </div>
             )}
-        </div>
+        </MobileShell>
     );
 }
