@@ -163,14 +163,15 @@
       "name": "App.tsx 라우트 보호 + BottomNav 조건부 메뉴",
       "name_ascii": "Route protection and conditional nav",
       "description": "/create, /manage, /ingredients, /preps 를 RequireAdmin으로 감싸기. /unauthorized 라우트 추가. BottomNav/HomePage에서 isAdmin=false면 관리자 메뉴 숨김.",
-      "status": "pending",
+      "status": "passing",
       "test_command": "mock_e2e",
       "test_spec": "e2e/mock/auth.spec.ts",
       "acceptance_criteria": [
         "비관리자 로그인 시 하단 메뉴에 관리자 기능 없음",
         "Playwright mock: 3개 시나리오 green",
         "tsc --noEmit 에러 0"
-      ]
+      ],
+      "last_tested": "2026-04-03T02:05:51.364359"
     },
     {
       "id": "S3T4",
@@ -399,9 +400,9 @@
   ],
   "progress": {
     "total": 22,
-    "completed": 8,
-    "passing": 8,
+    "completed": 9,
+    "passing": 9,
     "failing": 0,
-    "pending": 14
+    "pending": 13
   }
 }
