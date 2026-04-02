@@ -235,14 +235,15 @@
       "name": "Supabase schedulesRepo",
       "name_ascii": "Supabase schedulesRepo",
       "description": "src/storage/schedulesRepo.ts 교체. loadSchedules, upsertSchedule, deleteSchedule, getSchedule → Supabase 기반.",
-      "status": "pending",
+      "status": "passing",
       "test_command": "mock_e2e",
       "test_spec": "e2e/mock/storage.spec.ts",
       "acceptance_criteria": [
         "스케줄 CRUD Supabase 반영",
         "기존 localStorage 데이터 호환 (마이그레이션 후)",
         "tsc --noEmit 에러 0"
-      ]
+      ],
+      "last_tested": "2026-04-03T02:20:10.753669"
     },
     {
       "id": "S4T4",
@@ -403,9 +404,9 @@
   ],
   "progress": {
     "total": 22,
-    "completed": 12,
-    "passing": 12,
+    "completed": 13,
+    "passing": 13,
     "failing": 0,
-    "pending": 10
+    "pending": 9
   }
 }
