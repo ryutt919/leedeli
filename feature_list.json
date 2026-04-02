@@ -108,7 +108,7 @@
       "name": "useAdmin 훅",
       "name_ascii": "useAdmin hook",
       "description": "src/auth/useAdmin.ts 구현. admin_users 테이블 쿼리로 현재 사용자 관리자 여부 확인. { isAdmin: boolean | null, loading: boolean } 반환.",
-      "status": "pending",
+      "status": "passing",
       "test_command": "typecheck",
       "test_spec": null,
       "acceptance_criteria": [
@@ -116,7 +116,8 @@
         "useAdmin() 훅 export",
         "loading=true 초기 상태",
         "비로그인 시 isAdmin=false"
-      ]
+      ],
+      "last_tested": "2026-04-02T21:58:48.365680"
     },
     {
       "id": "S3T1",
@@ -396,9 +397,9 @@
   ],
   "progress": {
     "total": 22,
-    "completed": 5,
-    "passing": 5,
+    "completed": 6,
+    "passing": 6,
     "failing": 0,
-    "pending": 17
+    "pending": 16
   }
 }
