@@ -127,14 +127,16 @@
       "name": "AuthContext 전역 상태",
       "name_ascii": "AuthContext global state",
       "description": "src/auth/AuthContext.tsx. session, isAdmin, loading, refreshAdmin 제공. App.tsx Provider 래핑.",
-      "status": "pending",
+      "status": "failing",
       "test_command": "mock_e2e",
       "test_spec": "e2e/mock/auth.spec.ts",
       "acceptance_criteria": [
         "useAuth() 훅으로 session/isAdmin 접근",
         "tsc --noEmit 에러 0",
         "App.tsx AuthProvider 래핑"
-      ]
+      ],
+      "last_tested": "2026-04-02T22:03:25.770293",
+      "failure_reason": "evaluator not found"
     },
     {
       "id": "S3T2",
@@ -399,7 +401,7 @@
     "total": 22,
     "completed": 6,
     "passing": 6,
-    "failing": 0,
-    "pending": 16
+    "failing": 1,
+    "pending": 15
   }
 }

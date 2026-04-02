@@ -6,10 +6,12 @@ import { ManageSchedulesPageV2 as ManageSchedulesPage } from './pages/v2/ManageS
 import { IngredientsPage } from './pages/IngredientsPage'
 import { PrepsPage } from './pages/PrepsPage'
 import { RequireAuth } from './components/RequireAuth'
+import { AuthProvider } from './auth/AuthContext'
 import './leedeli-home.css'
 
 export default function App() {
   return (
+    <AuthProvider>
     <Routes>
       {/* 로그인 페이지: 인증 불필요 */}
       <Route path="/login" element={<LoginPage />} />
@@ -22,5 +24,6 @@ export default function App() {
       <Route path="/preps" element={<RequireAuth><PrepsPage /></RequireAuth>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </AuthProvider>
   )
 }
