@@ -217,14 +217,15 @@
       "name": "Supabase prepsRepo",
       "name_ascii": "Supabase prepsRepo",
       "description": "src/storage/prepsRepo.ts 교체. loadPreps, upsertPrep, deletePrep → Supabase 기반.",
-      "status": "pending",
+      "status": "passing",
       "test_command": "mock_e2e",
       "test_spec": "e2e/mock/storage.spec.ts",
       "acceptance_criteria": [
         "PrepsPage 정상 렌더",
         "CRUD Supabase 반영",
         "tsc --noEmit 에러 0"
-      ]
+      ],
+      "last_tested": "2026-04-03T02:19:30.732985"
     },
     {
       "id": "S4T3",
@@ -402,9 +403,9 @@
   ],
   "progress": {
     "total": 22,
-    "completed": 11,
-    "passing": 11,
+    "completed": 12,
+    "passing": 12,
     "failing": 0,
-    "pending": 11
+    "pending": 10
   }
 }

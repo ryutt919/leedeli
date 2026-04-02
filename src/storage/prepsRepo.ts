@@ -1,37 +1,35 @@
 import type { Prep } from '../domain/types'
-import { readJson, writeJson } from './jsonStore'
-import { LS_KEYS } from './keys'
+import { supabase } from '../utils/supabase'
 
-type Store = {
-  items: Prep[]
+export async function loadPreps(): Promise<Prep[]> {
+  const { data, error } = await supabase.from('preps').select('id, data')
+  if (error) {
+    console.error('[prepsRepo] loadPreps', error)
+    return []
+  }
+  return (data ?? []).map((row) => ({ ...(row.data as Prep), id: row.id }))
 }
 
-const EMPTY: Store = { items: [] }
-
-export function loadPreps(): Prep[] {
-  const r = readJson<Store>(LS_KEYS.preps)
-  if (!r.ok) return EMPTY.items
-  return Array.isArray(r.value.items) ? r.value.items : EMPTY.items
+export async function upsertPrep(next: Prep): Promise<void> {
+  const { error } = await supabase
+    .from('preps')
+    .upsert({ id: next.id, data: next }, { onConflict: 'id' })
+  if (error) console.error('[prepsRepo] upsertPrep', error)
 }
 
-export function savePreps(items: Prep[]) {
-  writeJson<Store>(LS_KEYS.preps, { items })
+export async function deletePrep(id: string): Promise<void> {
+  const { error } = await supabase.from('preps').delete().eq('id', id)
+  if (error) console.error('[prepsRepo] deletePrep', error)
 }
 
-export function upsertPrep(next: Prep) {
-  const items = loadPreps()
-  const idx = items.findIndex((x) => x.id === next.id)
-  if (idx >= 0) items[idx] = next
-  else items.unshift(next)
-  savePreps(items)
+export async function savePreps(items: Prep[]): Promise<void> {
+  if (items.length === 0) return
+  const rows = items.map((p) => ({ id: p.id, data: p }))
+  const { error } = await supabase.from('preps').upsert(rows, { onConflict: 'id' })
+  if (error) console.error('[prepsRepo] savePreps', error)
 }
 
-export function deletePrep(id: string) {
-  savePreps(loadPreps().filter((x) => x.id !== id))
+export async function clearPreps(): Promise<void> {
+  const { error } = await supabase.from('preps').delete().neq('id', '')
+  if (error) console.error('[prepsRepo] clearPreps', error)
 }
-
-export function clearPreps() {
-  savePreps([])
-}
-
-

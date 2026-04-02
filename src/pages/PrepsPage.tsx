@@ -25,7 +25,7 @@ import {
   message,
 } from 'antd'
 import dayjs from 'dayjs'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { CsvPreviewModal } from '../components/CsvPreviewModal'
 import type { CsvPreviewRow } from '../components/CsvPreviewModal'
 import type { Ingredient, Prep, PrepIngredientItem, RestockRecord } from '../domain/types'
@@ -49,9 +49,9 @@ export function PrepsPage() {
     },
     [tick],
   )
-  const preps = useMemo(() => {
-    void tick
-    return loadPreps().sort((a, b) => a.name.localeCompare(b.name))
+  const [preps, setPreps] = useState<Prep[]>([])
+  useEffect(() => {
+    loadPreps().then((items) => setPreps(items.sort((a, b) => a.name.localeCompare(b.name))))
   }, [tick])
 
   const [openEdit, setOpenEdit] = useState(false)
@@ -139,7 +139,7 @@ export function PrepsPage() {
     const nextDates = [...new Set([...(p.restockDatesISO ?? []), today])].sort()
     const now = new Date().toISOString()
     const next: Prep = { ...p, restockDatesISO: nextDates, updatedAtISO: now }
-    upsertPrep(next)
+    await upsertPrep(next)
     // Supabase에도 보충 이력 기록 (누가 보충했는지 이름 저장)
     try {
       await addRestockRecord(p.id, today)
@@ -154,7 +154,7 @@ export function PrepsPage() {
     const nextDates = p.restockDatesISO.filter((d) => d !== dateStr)
     const now = new Date().toISOString()
     const next: Prep = { ...p, restockDatesISO: nextDates, updatedAtISO: now }
-    upsertPrep(next)
+    await upsertPrep(next)
     // Supabase에서도 해당 보충 이력 삭제
     try {
       await deleteRestockRecord(p.id, dateStr)
@@ -185,7 +185,7 @@ export function PrepsPage() {
       ? { ...editing, name, items: normalizedItems, restockDatesISO, updatedAtISO: now }
       : { id: newId(), name, items: normalizedItems, restockDatesISO, updatedAtISO: now }
 
-    upsertPrep(next)
+    await upsertPrep(next)
     setOpenEdit(false)
     refresh()
   }
@@ -389,7 +389,7 @@ export function PrepsPage() {
     }
   }
 
-  const applyCsv = () => {
+  const applyCsv = async () => {
     const nextPreps = [...preps]
     const prepByName = new Map(nextPreps.map((p) => [p.name.toLowerCase(), p]))
     const nextIngredients = [...ingredients]
@@ -440,7 +440,7 @@ export function PrepsPage() {
     }
 
     saveIngredients(nextIngredients)
-    savePreps(nextPreps)
+    await savePreps(nextPreps)
     setCsvOpen(false)
     refresh()
     message.success(
@@ -478,8 +478,8 @@ export function PrepsPage() {
           title="프렙 전체를 초기화할까요?"
           okText="초기화"
           cancelText="취소"
-          onConfirm={() => {
-            clearPreps()
+          onConfirm={async () => {
+            await clearPreps()
             refresh()
           }}
         >
@@ -602,8 +602,8 @@ export function PrepsPage() {
               title="삭제할까요?"
               okText="삭제"
               cancelText="취소"
-              onConfirm={() => {
-                deletePrep(editing.id)
+              onConfirm={async () => {
+                await deletePrep(editing.id)
                 setOpenEdit(false)
                 refresh()
               }}
