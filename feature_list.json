@@ -1,0 +1,399 @@
+{
+  "app": "LeeDeli",
+  "version": "1.0.0",
+  "stack": {
+    "framework": "vite+react+typescript",
+    "db": "supabase",
+    "testing_unit": "vitest",
+    "testing_e2e": "playwright"
+  },
+  "features": [
+    {
+      "id": "S1T1",
+      "sprint": 1,
+      "category": "scaffold",
+      "priority": 1,
+      "name": "의존성 설치 및 테스트 환경 구성",
+      "name_ascii": "Install deps and test env",
+      "description": "Playwright, vitest, tsx 설치. npx playwright install chromium. vitest.config.ts, playwright.config.ts (mock/smoke 프로젝트 분리) 작성.",
+      "status": "pending",
+      "test_command": "npm run build",
+      "test_spec": null,
+      "acceptance_criteria": [
+        "node_modules/@playwright/test 존재",
+        "node_modules/vitest 존재",
+        "npx playwright --version 실행 가능",
+        "npm run build 성공"
+      ]
+    },
+    {
+      "id": "S1T2",
+      "sprint": 1,
+      "category": "scaffold",
+      "priority": 2,
+      "name": "package.json 스크립트 및 하네스 설정",
+      "name_ascii": "package.json scripts and harness config",
+      "description": "package.json에 test:unit, test:mock, test:smoke, lint, typecheck 스크립트 추가. harness/settings/config.yaml 작성.",
+      "status": "pending",
+      "test_command": "npm run build",
+      "test_spec": null,
+      "acceptance_criteria": [
+        "npm run test:unit --passWithNoTests 동작",
+        "npm run lint 동작",
+        "npm run typecheck 동작",
+        "harness/settings/config.yaml 존재"
+      ]
+    },
+    {
+      "id": "S2T1",
+      "sprint": 2,
+      "category": "db",
+      "priority": 3,
+      "name": "타입 파일 통합 (domain/types.ts)",
+      "name_ascii": "Unify types into domain/types.ts",
+      "description": "src/types.ts, src/v2/types.ts, src/domain/types.ts 세 파일을 분석해 src/domain/types.ts 하나로 통합. 기존 두 파일은 re-export 브릿지만 남김.",
+      "status": "pending",
+      "test_command": "typecheck",
+      "test_spec": null,
+      "acceptance_criteria": [
+        "tsc --noEmit 에러 0",
+        "npm run build 성공",
+        "SavedSchedule, Person, StaffConfig, Ingredient, Prep 모두 domain/types.ts에서 export"
+      ]
+    },
+    {
+      "id": "S2T2",
+      "sprint": 2,
+      "category": "db",
+      "priority": 4,
+      "name": "Supabase admin_users 마이그레이션",
+      "name_ascii": "Supabase admin_users migration",
+      "description": "supabase/migrations/001_admin_users.sql 작성. admin_users 테이블 + RLS (관리자만 read/insert). granted_by, granted_at, revoked_at 컬럼 포함.",
+      "status": "pending",
+      "test_command": "typecheck",
+      "test_spec": null,
+      "acceptance_criteria": [
+        "supabase/migrations/001_admin_users.sql 파일 존재",
+        "SQL 문법 오류 없음 (tsc build로 간접 확인)",
+        "RLS policy 2개 포함 (select, insert)"
+      ]
+    },
+    {
+      "id": "S2T3",
+      "sprint": 2,
+      "category": "db",
+      "priority": 5,
+      "name": "Supabase core tables 마이그레이션",
+      "name_ascii": "Supabase core tables migration",
+      "description": "supabase/migrations/002_core_tables.sql 작성. schedules, ingredients, preps 테이블 (data jsonb 전략) + RLS (admin_users 기반).",
+      "status": "pending",
+      "test_command": "typecheck",
+      "test_spec": null,
+      "acceptance_criteria": [
+        "supabase/migrations/002_core_tables.sql 존재",
+        "3개 테이블 DDL 포함",
+        "각 테이블 RLS policy 포함"
+      ]
+    },
+    {
+      "id": "S2T4",
+      "sprint": 2,
+      "category": "db",
+      "priority": 6,
+      "name": "useAdmin 훅",
+      "name_ascii": "useAdmin hook",
+      "description": "src/auth/useAdmin.ts 구현. admin_users 테이블 쿼리로 현재 사용자 관리자 여부 확인. { isAdmin: boolean | null, loading: boolean } 반환.",
+      "status": "pending",
+      "test_command": "typecheck",
+      "test_spec": null,
+      "acceptance_criteria": [
+        "tsc --noEmit 에러 0",
+        "useAdmin() 훅 export",
+        "loading=true 초기 상태",
+        "비로그인 시 isAdmin=false"
+      ]
+    },
+    {
+      "id": "S3T1",
+      "sprint": 3,
+      "category": "auth",
+      "priority": 7,
+      "name": "AuthContext 전역 상태",
+      "name_ascii": "AuthContext global state",
+      "description": "src/auth/AuthContext.tsx. session, isAdmin, loading, refreshAdmin 제공. App.tsx Provider 래핑.",
+      "status": "pending",
+      "test_command": "mock_e2e",
+      "test_spec": "e2e/mock/auth.spec.ts",
+      "acceptance_criteria": [
+        "useAuth() 훅으로 session/isAdmin 접근",
+        "tsc --noEmit 에러 0",
+        "App.tsx AuthProvider 래핑"
+      ]
+    },
+    {
+      "id": "S3T2",
+      "sprint": 3,
+      "category": "auth",
+      "priority": 8,
+      "name": "RequireAdmin + UnauthorizedPage",
+      "name_ascii": "RequireAdmin + UnauthorizedPage",
+      "description": "src/auth/RequireAdmin.tsx: isAdmin=false → /unauthorized 리다이렉트. src/pages/UnauthorizedPage.tsx: 안내 메시지 + 홈 이동 버튼.",
+      "status": "pending",
+      "test_command": "mock_e2e",
+      "test_spec": "e2e/mock/auth.spec.ts",
+      "acceptance_criteria": [
+        "비관리자 /create 접근 → /unauthorized",
+        "/unauthorized 렌더 정상",
+        "tsc --noEmit 에러 0"
+      ]
+    },
+    {
+      "id": "S3T3",
+      "sprint": 3,
+      "category": "auth",
+      "priority": 9,
+      "name": "App.tsx 라우트 보호 + BottomNav 조건부 메뉴",
+      "name_ascii": "Route protection and conditional nav",
+      "description": "/create, /manage, /ingredients, /preps 를 RequireAdmin으로 감싸기. /unauthorized 라우트 추가. BottomNav/HomePage에서 isAdmin=false면 관리자 메뉴 숨김.",
+      "status": "pending",
+      "test_command": "mock_e2e",
+      "test_spec": "e2e/mock/auth.spec.ts",
+      "acceptance_criteria": [
+        "비관리자 로그인 시 하단 메뉴에 관리자 기능 없음",
+        "Playwright mock: 3개 시나리오 green",
+        "tsc --noEmit 에러 0"
+      ]
+    },
+    {
+      "id": "S3T4",
+      "sprint": 3,
+      "category": "auth",
+      "priority": 10,
+      "name": "AdminPage (관리자 권한 부여 UI)",
+      "name_ascii": "AdminPage (grant admin UI)",
+      "description": "src/pages/AdminPage.tsx. 유저 목록 조회 → 선택 → admin_users INSERT. 부여 이력 표시. /admin 라우트 (RequireAdmin 보호).",
+      "status": "pending",
+      "test_command": "mock_e2e",
+      "test_spec": "e2e/mock/auth.spec.ts",
+      "acceptance_criteria": [
+        "관리자 권한 부여 UI 동작",
+        "admin_users 테이블에 행 생성",
+        "tsc --noEmit 에러 0"
+      ]
+    },
+    {
+      "id": "S4T1",
+      "sprint": 4,
+      "category": "storage",
+      "priority": 11,
+      "name": "Supabase ingredientsRepo",
+      "name_ascii": "Supabase ingredientsRepo",
+      "description": "src/storage/ingredientsRepo.ts 교체. loadIngredients, upsertIngredient, deleteIngredient → Supabase 기반. 함수 시그니처 async로 변경.",
+      "status": "pending",
+      "test_command": "mock_e2e",
+      "test_spec": "e2e/mock/storage.spec.ts",
+      "acceptance_criteria": [
+        "IngredientsPage 정상 렌더",
+        "CRUD Supabase 반영",
+        "tsc --noEmit 에러 0"
+      ]
+    },
+    {
+      "id": "S4T2",
+      "sprint": 4,
+      "category": "storage",
+      "priority": 12,
+      "name": "Supabase prepsRepo",
+      "name_ascii": "Supabase prepsRepo",
+      "description": "src/storage/prepsRepo.ts 교체. loadPreps, upsertPrep, deletePrep → Supabase 기반.",
+      "status": "pending",
+      "test_command": "mock_e2e",
+      "test_spec": "e2e/mock/storage.spec.ts",
+      "acceptance_criteria": [
+        "PrepsPage 정상 렌더",
+        "CRUD Supabase 반영",
+        "tsc --noEmit 에러 0"
+      ]
+    },
+    {
+      "id": "S4T3",
+      "sprint": 4,
+      "category": "storage",
+      "priority": 13,
+      "name": "Supabase schedulesRepo",
+      "name_ascii": "Supabase schedulesRepo",
+      "description": "src/storage/schedulesRepo.ts 교체. loadSchedules, upsertSchedule, deleteSchedule, getSchedule → Supabase 기반.",
+      "status": "pending",
+      "test_command": "mock_e2e",
+      "test_spec": "e2e/mock/storage.spec.ts",
+      "acceptance_criteria": [
+        "스케줄 CRUD Supabase 반영",
+        "기존 localStorage 데이터 호환 (마이그레이션 후)",
+        "tsc --noEmit 에러 0"
+      ]
+    },
+    {
+      "id": "S4T4",
+      "sprint": 4,
+      "category": "storage",
+      "priority": 14,
+      "name": "localStorage→Supabase 마이그레이션 스크립트 + 구버전 정리",
+      "name_ascii": "LocalStorage to Supabase migration + cleanup",
+      "description": "harness/skills/migrate_ls_to_supabase.py 작성. --dry-run 지원. 완료 후 src/v2/storage.ts, src/storage/jsonStore.ts, src/storage/keys.ts 삭제 및 import 정리.",
+      "status": "pending",
+      "test_command": "typecheck",
+      "test_spec": null,
+      "acceptance_criteria": [
+        "마이그레이션 스크립트 dry-run 실행 가능",
+        "tsc --noEmit 에러 0",
+        "npm run build 성공"
+      ]
+    },
+    {
+      "id": "S5T1",
+      "sprint": 5,
+      "category": "engine",
+      "priority": 15,
+      "name": "ScheduleParams + ConstraintError 타입",
+      "name_ascii": "ScheduleParams and ConstraintError types",
+      "description": "src/domain/types.ts에 ScheduleParams, ConstraintError 타입 추가. 동적 파라미터: startDateISO, endDateISO, staff, dailyRequiredByDate, workHours, breakHours, requests.",
+      "status": "pending",
+      "test_command": "unit",
+      "test_spec": "tests/unit/",
+      "acceptance_criteria": [
+        "tsc --noEmit 에러 0",
+        "ScheduleParams, ConstraintError export 확인",
+        "vitest --passWithNoTests 성공"
+      ]
+    },
+    {
+      "id": "S5T2",
+      "sprint": 5,
+      "category": "engine",
+      "priority": 16,
+      "name": "스케줄 엔진 — 후보 생성 + 제약 필터링",
+      "name_ascii": "Schedule engine - candidate gen and filter",
+      "description": "src/domain/scheduleEngine.ts에 generateCandidates(), filterByConstraints() 구현. 휴무 요청 직원 제외, mustOpen/mustClose 제약 적용.",
+      "status": "pending",
+      "test_command": "unit",
+      "test_spec": "tests/unit/",
+      "acceptance_criteria": [
+        "vitest: 휴무 요청 직원 후보 제외 테스트 green",
+        "vitest: mustOpen 직원 오픈 배정 테스트 green",
+        "tsc --noEmit 에러 0"
+      ]
+    },
+    {
+      "id": "S5T3",
+      "sprint": 5,
+      "category": "engine",
+      "priority": 17,
+      "name": "스케줄 엔진 — 배정 + 사후 검증 + 공개 API",
+      "name_ascii": "Schedule engine - assign, validate, public API",
+      "description": "assignSchedule(), validateAssignment(), generateSchedule() 구현. 기존 v2/generator.ts 로직 흡수. 구버전 엔진 파일 정리.",
+      "status": "pending",
+      "test_command": "unit",
+      "test_spec": "tests/unit/",
+      "acceptance_criteria": [
+        "vitest: 전체 기간 배정 완료 테스트 green",
+        "vitest: 인원 미달 → UNDERSTAFFED 에러 반환 테스트 green",
+        "vitest: generateSchedule() 통합 테스트 green",
+        "tsc --noEmit 에러 0"
+      ]
+    },
+    {
+      "id": "S6T1",
+      "sprint": 6,
+      "category": "ui",
+      "priority": 18,
+      "name": "CreateSchedulePage 반응형 2패널 레이아웃",
+      "name_ascii": "CreateSchedulePage responsive 2-panel",
+      "description": "src/pages/CreateSchedulePage.tsx 완전 교체. Ant Design Grid, breakpoint lg(≥992px)=2패널(파라미터|미리보기), xs~md=1컬럼. 새 scheduleEngine 사용.",
+      "status": "pending",
+      "test_command": "mock_e2e",
+      "test_spec": "e2e/mock/schedule.spec.ts",
+      "acceptance_criteria": [
+        "Playwright screenshot 1280px: 2컬럼 레이아웃",
+        "Playwright screenshot 375px: 1컬럼 레이아웃",
+        "스케줄 생성 → Supabase 저장",
+        "tsc --noEmit 에러 0"
+      ]
+    },
+    {
+      "id": "S6T2",
+      "sprint": 6,
+      "category": "ui",
+      "priority": 19,
+      "name": "ManageSchedulesPage 반응형 + v2 정리",
+      "name_ascii": "ManageSchedulesPage responsive + v2 cleanup",
+      "description": "src/pages/ManageSchedulesPage.tsx 완전 교체. 목록(왼쪽) + 상세(오른쪽) 2패널. 모바일 드릴다운. v2 페이지/컴포넌트 디렉토리 삭제.",
+      "status": "pending",
+      "test_command": "mock_e2e",
+      "test_spec": "e2e/mock/schedule.spec.ts",
+      "acceptance_criteria": [
+        "Playwright: 스케줄 목록 조회 green",
+        "Playwright: 스케줄 수정 green",
+        "src/pages/v2/, src/components/v2/ 없음",
+        "tsc --noEmit 에러 0"
+      ]
+    },
+    {
+      "id": "S7T1",
+      "sprint": 7,
+      "category": "smoke",
+      "priority": 20,
+      "name": "Smoke E2E — 로그인/세션 + 비관리자 차단",
+      "name_ascii": "Smoke E2E - login/session + non-admin block",
+      "description": "e2e/fixtures/supabase.ts 픽스처 + e2e/smoke/session.spec.ts. 실 Supabase 로그인 → 세션 유지. 비관리자 /create 접근 → 차단.",
+      "status": "pending",
+      "test_command": "smoke_e2e",
+      "test_spec": "e2e/smoke/",
+      "acceptance_criteria": [
+        "로그인 후 새로고침 → 세션 유지",
+        "비관리자 /create → /unauthorized",
+        "Playwright smoke green"
+      ]
+    },
+    {
+      "id": "S7T2",
+      "sprint": 7,
+      "category": "smoke",
+      "priority": 21,
+      "name": "Smoke E2E — 관리자 권한 부여 + 데이터 접근",
+      "name_ascii": "Smoke E2E - admin grant and data access",
+      "description": "e2e/smoke/admin-grant.spec.ts + e2e/smoke/data-access.spec.ts. 관리자 → 비관리자에게 권한 부여 → 권한 부여된 계정 관리자 기능 접근. 재료/프렙 CRUD.",
+      "status": "pending",
+      "test_command": "smoke_e2e",
+      "test_spec": "e2e/smoke/",
+      "acceptance_criteria": [
+        "권한 부여 시나리오 green",
+        "재료/프렙 CRUD Supabase 반영",
+        "Playwright smoke green"
+      ]
+    },
+    {
+      "id": "S7T3",
+      "sprint": 7,
+      "category": "smoke",
+      "priority": 22,
+      "name": "Smoke E2E — 스케줄 생성/관리 + 리포트 생성",
+      "name_ascii": "Smoke E2E - schedule flow + report",
+      "description": "e2e/smoke/schedule-flow.spec.ts. 파라미터 입력 → 생성 → 저장 → 수정. harness/evaluators/report_generator.py 완성. gate-loop 최종 검증.",
+      "status": "pending",
+      "test_command": "smoke_e2e",
+      "test_spec": "e2e/smoke/",
+      "acceptance_criteria": [
+        "스케줄 생성/수정 시나리오 green",
+        "harness/reports/ 에 리포트 생성",
+        "전체 gate-loop 통과"
+      ]
+    }
+  ],
+  "progress": {
+    "total": 22,
+    "completed": 0,
+    "passing": 0,
+    "failing": 0,
+    "pending": 22
+  }
+}

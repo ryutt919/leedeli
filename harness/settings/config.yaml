@@ -1,0 +1,45 @@
+app: LeeDeli
+version: "1.0.0"
+
+model: claude-sonnet-4-6
+
+runner:
+  max_cycles: 60
+  max_retries: 3
+  retry_delay_seconds: 3
+  enable_git_commit: true
+  enable_subagents: false
+
+loops:
+  fast:
+    steps: [lint, typecheck, unit, mock_e2e]
+  gate:
+    steps: [lint, typecheck, unit, mock_e2e, smoke_e2e]
+
+test_commands:
+  lint: "npm run lint"
+  typecheck: "npm run typecheck"
+  unit: "npx vitest run tests/unit/ --passWithNoTests"
+  mock_e2e: "npx playwright test --project=mock"
+  smoke_e2e: "npx playwright test --project=smoke"
+  build: "npm run build"
+
+category_evaluator_map:
+  scaffold: lint
+  db: typecheck
+  auth: mock_e2e
+  storage: mock_e2e
+  engine: unit
+  ui: mock_e2e
+  smoke: smoke_e2e
+
+smoke_required_env:
+  - SUPABASE_SERVICE_ROLE_KEY
+  - TEST_ADMIN_EMAIL
+  - TEST_ADMIN_PASSWORD
+  - TEST_USER_EMAIL
+  - TEST_USER_PASSWORD
+
+report:
+  dir: harness/reports
+  format: markdown
