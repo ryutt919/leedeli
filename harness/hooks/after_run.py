@@ -1,26 +1,35 @@
 #!/usr/bin/env python3
-"""after_run.py — 피처별 실행 후 처리 (git commit, 리포트 생성)"""
+"""Post-run hooks: report generation and optional git commit."""
+
+from __future__ import annotations
 
 import subprocess
 import sys
-from datetime import datetime
 from pathlib import Path
 
 from harness.evaluators.report_generator import generate
+from harness.runner.run_logger import HarnessLogger
 
 
-def after_run(feature: dict, passed: bool, config: dict, run_log_dir: Path, dry_run: bool = False) -> None:
+def after_run(
+    feature: dict,
+    passed: bool,
+    config: dict,
+    run_log_dir: Path,
+    dry_run: bool = False,
+    logger: HarnessLogger | None = None,
+) -> None:
     root = run_log_dir.parent.parent.parent
     fid = feature["id"]
     run_id = run_log_dir.name
 
     if dry_run:
         print("[hook:after_run] dry-run -> skip report generation and git commit")
+        if logger:
+            logger.event("after_run_skipped", feature_id=fid, reason="dry_run")
         return
 
-    # 1. 리포트 생성
     eval_log = run_log_dir / f"{fid}_eval.log"
-    # 가장 최근 eval 로그 찾기
     logs = sorted(run_log_dir.glob(f"{fid}_*eval.log"))
     if logs:
         eval_log = logs[-1]
@@ -32,29 +41,47 @@ def after_run(feature: dict, passed: bool, config: dict, run_log_dir: Path, dry_
         report_dir=run_log_dir.parent,
         run_id=run_id,
     )
-    print(f"[hook:after_run] 리포트 생성: {report_path.name}")
+    print(f"[hook:after_run] report generated: {report_path.name}")
+    if logger:
+        logger.event("report_generated", feature_id=fid, passed=passed, report_path=str(report_path))
 
-    # 2. git commit (설정에서 활성화된 경우)
     if not config.get("runner", {}).get("enable_git_commit", True):
+        if logger:
+            logger.event("git_commit_skipped", feature_id=fid, reason="disabled_by_config")
         return
 
     try:
         result = subprocess.run(
             ["git", "diff", "--quiet", "HEAD"],
-            cwd=str(root), capture_output=True
+            cwd=str(root),
+            capture_output=True,
         )
         has_changes = result.returncode != 0
 
         if not has_changes:
-            print("[hook:after_run] 변경사항 없음, commit 스킵")
+            print("[hook:after_run] no changes detected; skipping commit")
+            if logger:
+                logger.event("git_commit_skipped", feature_id=fid, reason="no_changes")
             return
 
         status = "passing" if passed else "failing"
-        msg = f"feat({fid}): {feature['name_ascii']} [{status}]"
-        subprocess.run(["git", "add", "-A"], cwd=str(root),
-                       shell=(sys.platform == "win32"), check=False)
-        subprocess.run(["git", "commit", "-m", msg], cwd=str(root),
-                       shell=(sys.platform == "win32"), check=False)
-        print(f"[hook:after_run] git commit: {msg}")
-    except Exception as e:
-        print(f"[hook:after_run][warn] git commit 실패: {e}")
+        message = f"feat({fid}): {feature['name_ascii']} [{status}]"
+        subprocess.run(
+            ["git", "add", "-A"],
+            cwd=str(root),
+            shell=(sys.platform == "win32"),
+            check=False,
+        )
+        subprocess.run(
+            ["git", "commit", "-m", message],
+            cwd=str(root),
+            shell=(sys.platform == "win32"),
+            check=False,
+        )
+        print(f"[hook:after_run] git commit: {message}")
+        if logger:
+            logger.event("git_commit", feature_id=fid, message=message)
+    except Exception as exc:  # pragma: no cover - defensive logging path
+        print(f"[hook:after_run][warn] git commit failed: {exc}")
+        if logger:
+            logger.log("WARN", f"git commit failed for {fid}: {exc}")

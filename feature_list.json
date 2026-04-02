@@ -16,7 +16,7 @@
       "name": "의존성 설치 및 테스트 환경 구성",
       "name_ascii": "Install deps and test env",
       "description": "Playwright, vitest, tsx 설치. npx playwright install chromium. vitest.config.ts, playwright.config.ts (mock/smoke 프로젝트 분리) 작성.",
-      "status": "pending",
+      "status": "failing",
       "test_command": "npm run build",
       "test_spec": null,
       "acceptance_criteria": [
@@ -24,7 +24,9 @@
         "node_modules/vitest 존재",
         "npx playwright --version 실행 가능",
         "npm run build 성공"
-      ]
+      ],
+      "last_tested": "2026-04-02T20:38:14.109441",
+      "failure_reason": "[lint_eval] running: lint\n[lint_eval] lint: FAIL\n[lint_eval] running: typecheck\n[lint_eval] typecheck: PASS\n[lint_eval] running: build\n[lint_eval] build: PASS\nException in thread Thread-1 (_readerthread):\nTraceback (most recent call last):\n  File \"C:\\Users\\kimt9\\miniconda3\\Lib\\threading.py\", line 1043, in _bootstrap_inner\n    self.run()\n    ~~~~~~~~^^\n  File \"C:\\Users\\kimt9\\miniconda3\\Lib\\threading.py\", line 994, in run\n    self._target(*self._args, **self._kwargs)\n    ~~~~~~~~~~~~^^^^^^^^^^^^^^"
     },
     {
       "id": "S1T2",
@@ -393,7 +395,7 @@
     "total": 22,
     "completed": 0,
     "passing": 0,
-    "failing": 0,
-    "pending": 22
+    "failing": 1,
+    "pending": 21
   }
 }
