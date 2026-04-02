@@ -11,6 +11,20 @@ runner:
   retry_delay_seconds: 3
   enable_git_commit: true
   enable_subagents: false
+  usage_guard:
+    enabled: true
+    threshold_percent: 95
+    checkpoints:
+      before_run: true
+      before_feature: true
+      before_attempt: true
+      after_agent: true
+    commands:
+      claude:
+        status: ["claude", "auth", "status"]
+        usage: ["claude", "-p", "/cost", "--output-format", "json"]
+      codex:
+        status: ["codex", "login", "status"]
 
 loops:
   fast:
@@ -45,3 +59,6 @@ smoke_required_env:
 report:
   dir: harness/reports
   format: markdown
+
+log:
+  dir: harness/logs

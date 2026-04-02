@@ -25,7 +25,7 @@
         "npx playwright --version 실행 가능",
         "npm run build 성공"
       ],
-      "last_tested": "2026-04-02T20:38:14.109441",
+      "last_tested": "2026-04-02T20:47:23.444484",
       "failure_reason": "[lint_eval] running: lint\n[lint_eval] lint: FAIL\n[lint_eval] running: typecheck\n[lint_eval] typecheck: PASS\n[lint_eval] running: build\n[lint_eval] build: PASS\nException in thread Thread-1 (_readerthread):\nTraceback (most recent call last):\n  File \"C:\\Users\\kimt9\\miniconda3\\Lib\\threading.py\", line 1043, in _bootstrap_inner\n    self.run()\n    ~~~~~~~~^^\n  File \"C:\\Users\\kimt9\\miniconda3\\Lib\\threading.py\", line 994, in run\n    self._target(*self._args, **self._kwargs)\n    ~~~~~~~~~~~~^^^^^^^^^^^^^^"
     },
     {
