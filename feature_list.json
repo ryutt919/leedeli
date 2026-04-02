@@ -35,7 +35,7 @@
       "name": "package.json 스크립트 및 하네스 설정",
       "name_ascii": "package.json scripts and harness config",
       "description": "package.json에 test:unit, test:mock, test:smoke, lint, typecheck 스크립트 추가. harness/settings/config.yaml 작성.",
-      "status": "pending",
+      "status": "passing",
       "test_command": "npm run build",
       "test_spec": null,
       "acceptance_criteria": [
@@ -43,7 +43,8 @@
         "npm run lint 동작",
         "npm run typecheck 동작",
         "harness/settings/config.yaml 존재"
-      ]
+      ],
+      "last_tested": "2026-04-02T21:53:08.923428"
     },
     {
       "id": "S2T1",
@@ -392,9 +393,9 @@
   ],
   "progress": {
     "total": 22,
-    "completed": 1,
-    "passing": 1,
+    "completed": 2,
+    "passing": 2,
     "failing": 0,
-    "pending": 21
+    "pending": 20
   }
 }
