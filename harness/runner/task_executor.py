@@ -71,7 +71,7 @@ class TaskExecutor:
                 "-",
             ]
         if self.agent == "claude":
-            return [executable, "--print", "--dangerously-skip-permissions", prompt]
+            return [executable, "--print", "--dangerously-skip-permissions", "--", prompt]
         raise ValueError(f"Unsupported agent: {self.agent}")
 
     def run_coding_agent(self, feature: dict, log_path: Path, attempt: int | None = None) -> AgentRunResult:

@@ -21,18 +21,26 @@ def main() -> None:
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
 
-    result = subprocess.run(
-        ["npm", "run", "typecheck"],
-        cwd=str(root), capture_output=True, text=True, timeout=60,
-        shell=(sys.platform == "win32")
-    )
-    ok = result.returncode == 0
-    status = "PASS" if ok else "FAIL"
-    print(f"[typecheck_eval] typecheck: {status}")
+    results = []
+    overall_ok = True
 
-    out = f"[{status}] typecheck\n{result.stdout}\n{result.stderr}\nEXIT_CODE: {result.returncode}\n"
-    output.write_text(out, encoding="utf-8")
-    sys.exit(0 if ok else 1)
+    for label, cmd in [
+        ("typecheck", ["npm", "run", "typecheck"]),
+        ("build", ["npm", "run", "build"]),
+    ]:
+        r = subprocess.run(
+            cmd, cwd=str(root), capture_output=True, text=True, timeout=120,
+            shell=(sys.platform == "win32")
+        )
+        ok = r.returncode == 0
+        if not ok:
+            overall_ok = False
+        status = "PASS" if ok else "FAIL"
+        print(f"[typecheck_eval] {label}: {status}")
+        results.append(f"[{status}] {label}\n{r.stdout}\n{r.stderr}\nEXIT_CODE: {r.returncode}\n")
+
+    output.write_text("\n".join(results), encoding="utf-8")
+    sys.exit(0 if overall_ok else 1)
 
 
 if __name__ == "__main__":

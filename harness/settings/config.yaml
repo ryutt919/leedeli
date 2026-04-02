@@ -41,7 +41,7 @@ test_commands:
   build: "npm run build"
 
 category_evaluator_map:
-  scaffold: lint
+  scaffold: typecheck
   db: typecheck
   auth: mock_e2e
   storage: mock_e2e
