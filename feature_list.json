@@ -90,14 +90,15 @@
       "name": "Supabase core tables 마이그레이션",
       "name_ascii": "Supabase core tables migration",
       "description": "supabase/migrations/002_core_tables.sql 작성. schedules, ingredients, preps 테이블 (data jsonb 전략) + RLS (admin_users 기반).",
-      "status": "pending",
+      "status": "passing",
       "test_command": "typecheck",
       "test_spec": null,
       "acceptance_criteria": [
         "supabase/migrations/002_core_tables.sql 존재",
         "3개 테이블 DDL 포함",
         "각 테이블 RLS policy 포함"
-      ]
+      ],
+      "last_tested": "2026-04-02T21:55:39.781283"
     },
     {
       "id": "S2T4",
@@ -395,9 +396,9 @@
   ],
   "progress": {
     "total": 22,
-    "completed": 4,
-    "passing": 4,
+    "completed": 5,
+    "passing": 5,
     "failing": 0,
-    "pending": 18
+    "pending": 17
   }
 }
