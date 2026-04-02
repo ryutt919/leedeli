@@ -39,6 +39,14 @@ from harness.runner.usage_guard import UsageGuard
 
 def configure_stdio() -> None:
     """Avoid Windows cp949 crashes when printing Unicode."""
+    import os
+    
+    # Set environment variables for UTF-8
+    os.environ.setdefault("PYTHONUTF8", "1")
+    os.environ.setdefault("PYTHONIOENCODING", "utf-8")
+    os.environ.setdefault("LANG", "C.UTF-8")
+    
+    # Reconfigure stdout and stderr
     for stream_name in ("stdout", "stderr"):
         stream = getattr(sys, stream_name, None)
         if hasattr(stream, "reconfigure"):
@@ -227,9 +235,9 @@ def main() -> None:
     logger = HarnessLogger(LOGS_DIR, run_id)
     logger.event("run_context", loop_mode=loop_mode, agent=args.agent, dry_run=args.dry_run)
 
-    print(f"\n[harness] LeeDeli 하네스 :: {loop_mode} 루프")
-    print(f"[harness] 에이전트: {args.agent}")
-    print(f"[harness] 실행 ID: {run_id}")
+    print(f"\n[하네스] LeeDeli 하네스 :: {loop_mode} 루프")
+    print(f"[하네스] 에이전트: {args.agent}")
+    print(f"[하네스] 실행 ID: {run_id}")
     print_status(data)
     logger.snapshot_status(data)
 
@@ -260,12 +268,12 @@ def main() -> None:
                 blocking=reason,
             )
         logger.event("safe_stop", feature_id=target, reason=reason, cycle=cycle)
-        print(f"[harness][중단] {reason}")
+        print(f"[하네스][중단] {reason}")
         current = load_features()
         print_status(current)
         logger.snapshot_status(current)
-        print(f"[harness] 리포트 디렉토리: {run_report_dir}")
-        print(f"[harness] 로그 파일: {logger.run_log_path}")
+        print(f"[하네스] 리포트 디렉토리: {run_report_dir}")
+        print(f"[하네스] 로그 파일: {logger.run_log_path}")
         sys.exit(0)
 
     initial_usage = usage_guard.checkpoint("before_run")
@@ -275,7 +283,7 @@ def main() -> None:
     while True:
         cycle += 1
         if cycle > max_cycles:
-            print(f"[harness][오류] 최대 사이클 초과 ({max_cycles})")
+            print(f"[하네스][오류] 최대 사이클 수 {max_cycles}회를 초과했습니다")
             print_status(data)
             logger.log("ERROR", f"max_cycles_exceeded value={max_cycles}")
             sys.exit(1)
@@ -285,10 +293,10 @@ def main() -> None:
 
         if feature is None:
             if all_passing(data["features"]):
-                print("\n[harness][완료] 모든 피처가 통과 상태입니다")
+                print("\n[하네스][완료] 모든 피처가 통과했습니다! 🎉")
                 logger.log("INFO", "all features are passing")
             else:
-                print("\n[harness][완료] 실행할 후보 피처가 없습니다")
+                print("\n[하네스][완료] 실행할 후보 피처가 없습니다")
                 logger.log("INFO", "no remaining candidate feature")
             break
 
@@ -299,7 +307,7 @@ def main() -> None:
 
         print(f"\n{'=' * 55}")
         print(
-            f"[harness] 사이클 {cycle} :: 진행 {current_index}/{total_count} "
+            f"[하네스] 사이클 {cycle} :: 피처 {current_index}/{total_count} "
             f"[{feature_id}] {feature_name} (카테고리: {category})"
         )
         print(f"{'=' * 55}")
@@ -315,7 +323,7 @@ def main() -> None:
         success = False
         coding_succeeded_once = False
         for attempt in range(1, max_retries + 1):
-            print(f"[harness]   시도 {attempt}/{max_retries}")
+            print(f"[하네스]   시도 {attempt}/{max_retries} (피처 {current_index}/{total_count})")
             logger.event("attempt_start", cycle=cycle, feature_id=feature_id, attempt=attempt)
             coding_log = logger.detail_dir / f"{feature_id}_cycle{cycle}_attempt{attempt}_coding.log"
             eval_log = logger.detail_dir / f"{feature_id}_cycle{cycle}_attempt{attempt}_eval.log"
@@ -328,7 +336,7 @@ def main() -> None:
             if coding_result.stop_requested:
                 safe_stop(feature_id, coding_result.stop_reason or "agent quota/limit signal detected")
             if not coding_result.ok:
-                print(f"[harness][경고] 코딩 에이전트 실행 실패 (시도 {attempt})")
+                print(f"[하네스][경고] 코딩 에이전트 실행이 실패했습니다 (시도 {attempt}/{max_retries})")
                 logger.event("coding_failed", cycle=cycle, feature_id=feature_id, attempt=attempt)
                 continue
 
@@ -377,17 +385,17 @@ def main() -> None:
                 save_features(data)
 
             if passed:
-                print(f"[harness][성공] [{feature_id}] 통과")
+                print(f"[하네스][성공] 피처 {current_index}/{total_count} [{feature_id}] 통과! (시도 {attempt}회) ✓")
                 logger.event("feature_passed", cycle=cycle, feature_id=feature_id, attempt=attempt)
                 success = True
                 break
 
-            print(f"[harness][경고] [{feature_id}] 실패 (시도 {attempt})")
+            print(f"[하네스][경고] 피처 {current_index}/{total_count} [{feature_id}] 실패 (시도 {attempt}/{max_retries})")
             if summary_lines:
-                print("[harness][평가] 실패 원인 요약:")
+                print("[하네스][평가] 실패 원인 요약:")
                 for line in summary_lines:
-                    print(f"[harness][평가] - {line}")
-            print(f"[harness][평가] 상세 로그: {rel_path(eval_log)}")
+                    print(f"[하네스][평가] - {line}")
+            print(f"[하네스][평가] 상세 로그: {rel_path(eval_log)}")
             logger.event(
                 "feature_failed",
                 cycle=cycle,
@@ -397,7 +405,7 @@ def main() -> None:
                 eval_log=rel_path(eval_log),
             )
             if attempt < max_retries:
-                print("[harness]   재시도합니다...")
+                print("[하네스]   재시도합니다...")
 
         if not coding_succeeded_once:
             if not args.dry_run:
@@ -405,11 +413,11 @@ def main() -> None:
                     feature_id,
                     "blocked",
                     cycle,
-                    f"사이클 {cycle}: 코딩 에이전트가 {feature_name}을 실행하지 못함",
+                    f"사이클 {cycle}: 코딩 에이전트가 {feature_name}을(를) 실행하지 못했습니다",
                     blocking=f"{args.agent} 코딩 실행 실패",
                 )
             logger.event("coding_blocked", cycle=cycle, feature_id=feature_id, agent=args.agent)
-            print(f"[harness][오류] [{feature_id}] 코딩 에이전트 실행 실패로 하네스를 종료합니다")
+            print(f"[하네스][오류] [{feature_id}] 코딩 에이전트 실행 실패로 하네스를 종료합니다")
             sys.exit(1)
 
         if not args.dry_run:
@@ -428,8 +436,8 @@ def main() -> None:
     data = load_features()
     print_status(data)
     logger.snapshot_status(data)
-    print(f"[harness] 리포트 디렉토리: {run_report_dir}")
-    print(f"[harness] 로그 파일: {logger.run_log_path}")
+    print(f"[하네스] 리포트 디렉토리: {run_report_dir}")
+    print(f"[하네스] 로그 파일: {logger.run_log_path}")
 
 
 if __name__ == "__main__":

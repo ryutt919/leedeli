@@ -46,24 +46,35 @@ class TaskExecutor:
 
     @staticmethod
     def _build_retry_context(feature: dict) -> str:
+        """Build context from previous evaluation failure for retry attempts."""
         summary = feature.get("failure_summary") or []
         reason = feature.get("failure_reason") or ""
         eval_log_path = feature.get("last_eval_log") or ""
+        last_attempt = feature.get("last_attempt")
 
         lines: list[str] = []
         if isinstance(summary, list) and summary:
-            lines.append("PREVIOUS_EVALUATION_SUMMARY:")
+            lines.append("=" * 60)
+            lines.append("이전 평가 실패 요약 (PREVIOUS EVALUATION FAILURE SUMMARY):")
+            lines.append("=" * 60)
             for item in summary[:8]:
-                lines.append(f"- {item}")
+                lines.append(f"  ✗ {item}")
         elif reason:
-            lines.append("PREVIOUS_EVALUATION_SUMMARY:")
+            lines.append("=" * 60)
+            lines.append("이전 평가 실패 원인:")
+            lines.append("=" * 60)
             lines.append(reason[:1000])
 
         if eval_log_path:
-            lines.append(f"PREVIOUS_EVAL_LOG: {eval_log_path}")
+            lines.append(f"\n상세 평가 로그: {eval_log_path}")
+            
+        if last_attempt:
+            lines.append(f"이전 시도 횟수: {last_attempt}")
 
         if lines:
-            lines.append("Address these failure causes before finalizing your change.")
+            lines.append("\n" + "=" * 60)
+            lines.append("⚠️  위 실패 원인을 해결한 후 변경사항을 최종 확정하세요.")
+            lines.append("=" * 60)
 
         return "\n".join(lines)
 
@@ -96,12 +107,15 @@ class TaskExecutor:
             ]
         if self.agent == "claude":
             return [executable, "--print", "--dangerously-skip-permissions", "--", prompt]
-        raise ValueError(f"Unsupported agent: {self.agent}")
+        if self.agent == "gemini":
+            # Gemini CLI command structure (similar to Claude)
+            return [executable, "chat", "--non-interactive", "--", prompt]
+        raise ValueError(f"지원하지 않는 에이전트: {self.agent}")
 
     def run_coding_agent(self, feature: dict, log_path: Path, attempt: int | None = None) -> AgentRunResult:
         coding_prompt = self._read_prompt("coding_prompt.md")
         if not coding_prompt:
-            print("[executor][경고] prompts/coding_prompt.md 파일을 찾을 수 없습니다")
+            print("[실행기][경고] prompts/coding_prompt.md 파일을 찾을 수 없습니다")
             if self.logger:
                 self.logger.log("WARN", "prompts/coding_prompt.md not found")
             return AgentRunResult(ok=False)
@@ -120,12 +134,12 @@ DESCRIPTION: {description}
 ACCEPTANCE_CRITERIA:
 {criteria_str}
 
-Implement this feature. After implementation, update feature_list.json so this feature becomes \"implemented\" and refresh claude-progress.txt.{retry_block}"""
+이 피처를 구현하세요. 구현 후 feature_list.json을 업데이트하여 이 피처를 "implemented" 상태로 변경하고 claude-progress.txt를 갱신하세요.{retry_block}"""
 
         full_prompt = f"{coding_prompt}\n\n---\n{task_msg}"
 
         if self.dry_run:
-            print(f"[executor][드라이런] {self.agent} 실행 생략: {feature_id}")
+            print(f"[실행기][드라이런] {self.agent} 실행 생략: {feature_id}")
             log_path.write_text(f"[dry-run] agent={self.agent} feature={feature_id}\n", encoding="utf-8")
             if self.logger:
                 self.logger.command(label="coding_agent", cmd=["dry-run", self.agent], output_path=log_path)
@@ -158,7 +172,7 @@ Implement this feature. After implementation, update feature_list.json so this f
                     return AgentRunResult(ok=False, stop_requested=True, stop_reason=decision.reason)
             return AgentRunResult(ok=returncode == 0)
         except subprocess.TimeoutExpired:
-            print(f"[executor][오류] 코딩 에이전트 시간 초과: {feature_id}")
+            print(f"[실행기][오류] 코딩 에이전트 시간 초과: {feature_id}")
             if self.logger:
                 self.logger.log("ERROR", f"coding agent timeout for {feature_id}")
             return AgentRunResult(ok=False)
@@ -166,8 +180,9 @@ Implement this feature. After implementation, update feature_list.json so this f
             install_hint = {
                 "claude": "npm install -g @anthropic-ai/claude-code",
                 "codex": "Codex CLI를 설치하고 PATH에 codex를 등록하세요",
+                "gemini": "Google Gemini CLI를 설치하고 PATH에 gemini를 등록하세요 (https://ai.google.dev/gemini-api/docs/cli)",
             }.get(self.agent, "선택한 에이전트 CLI를 설치하세요")
-            print(f"[executor][오류] '{self.agent}' 명령을 찾지 못했습니다. 설치 가이드: {install_hint}")
+            print(f"[실행기][오류] '{self.agent}' 명령을 찾지 못했습니다. 설치 가이드: {install_hint}")
             sys.exit(1)
 
     def run_evaluator(self, feature: dict, log_path: Path) -> tuple[bool, str, UsageDecision]:
@@ -176,12 +191,12 @@ Implement this feature. After implementation, update feature_list.json so this f
         eval_type = evaluator_map.get(category, "lint")
 
         if eval_type == "smoke_e2e" and self.loop_mode != "gate":
-            print("[executor] smoke_e2e는 gate 모드에서만 실행됩니다. 건너뜁니다.")
+            print("[실행기] smoke_e2e는 gate 모드에서만 실행됩니다. 건너뜁니다.")
             return True, "skipped", UsageDecision()
 
         evaluator_script = self.evaluators_dir / f"{eval_type}_eval.py"
         if not evaluator_script.exists():
-            print(f"[executor][경고] evaluator 파일이 없습니다: {evaluator_script}")
+            print(f"[실행기][경고] evaluator 파일이 없습니다: {evaluator_script}")
             if self.logger:
                 self.logger.log("WARN", f"evaluator not found: {evaluator_script}")
             return False, "evaluator not found", UsageDecision()
@@ -189,7 +204,7 @@ Implement this feature. After implementation, update feature_list.json so this f
         test_spec = feature.get("test_spec") or ""
 
         if self.dry_run:
-            print(f"[executor][드라이런] evaluator 실행 생략: {eval_type}_eval.py")
+            print(f"[실행기][드라이런] evaluator 실행 생략: {eval_type}_eval.py")
             log_path.write_text("[dry-run]\n", encoding="utf-8")
             if self.logger:
                 self.logger.command(label=f"evaluator:{eval_type}", cmd=["dry-run", eval_type], output_path=log_path)
