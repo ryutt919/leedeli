@@ -326,7 +326,7 @@
       "name": "CreateSchedulePage 반응형 2패널 레이아웃",
       "name_ascii": "CreateSchedulePage responsive 2-panel",
       "description": "src/pages/CreateSchedulePage.tsx 완전 교체. Ant Design Grid, breakpoint lg(≥992px)=2패널(파라미터|미리보기), xs~md=1컬럼. 새 scheduleEngine 사용.",
-      "status": "pending",
+      "status": "passing",
       "test_command": "mock_e2e",
       "test_spec": "e2e/mock/schedule.spec.ts",
       "acceptance_criteria": [
@@ -334,7 +334,8 @@
         "Playwright screenshot 375px: 1컬럼 레이아웃",
         "스케줄 생성 → Supabase 저장",
         "tsc --noEmit 에러 0"
-      ]
+      ],
+      "last_tested": "2026-04-03T02:23:20.930519"
     },
     {
       "id": "S6T2",
@@ -408,9 +409,9 @@
   ],
   "progress": {
     "total": 22,
-    "completed": 17,
-    "passing": 17,
+    "completed": 18,
+    "passing": 18,
     "failing": 0,
-    "pending": 5
+    "pending": 4
   }
 }
