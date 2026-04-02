@@ -72,14 +72,15 @@
       "name": "Supabase admin_users 마이그레이션",
       "name_ascii": "Supabase admin_users migration",
       "description": "supabase/migrations/001_admin_users.sql 작성. admin_users 테이블 + RLS (관리자만 read/insert). granted_by, granted_at, revoked_at 컬럼 포함.",
-      "status": "pending",
+      "status": "passing",
       "test_command": "typecheck",
       "test_spec": null,
       "acceptance_criteria": [
         "supabase/migrations/001_admin_users.sql 파일 존재",
         "SQL 문법 오류 없음 (tsc build로 간접 확인)",
         "RLS policy 2개 포함 (select, insert)"
-      ]
+      ],
+      "last_tested": "2026-04-02T21:54:44.869672"
     },
     {
       "id": "S2T3",
@@ -394,9 +395,9 @@
   ],
   "progress": {
     "total": 22,
-    "completed": 3,
-    "passing": 3,
+    "completed": 4,
+    "passing": 4,
     "failing": 0,
-    "pending": 19
+    "pending": 18
   }
 }
