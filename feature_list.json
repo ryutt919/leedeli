@@ -364,14 +364,15 @@
       "name": "Smoke E2E — 로그인/세션 + 비관리자 차단",
       "name_ascii": "Smoke E2E - login/session + non-admin block",
       "description": "e2e/fixtures/supabase.ts 픽스처 + e2e/smoke/session.spec.ts. 실 Supabase 로그인 → 세션 유지. 비관리자 /create 접근 → 차단.",
-      "status": "pending",
+      "status": "passing",
       "test_command": "smoke_e2e",
       "test_spec": "e2e/smoke/",
       "acceptance_criteria": [
         "로그인 후 새로고침 → 세션 유지",
         "비관리자 /create → /unauthorized",
         "Playwright smoke green"
-      ]
+      ],
+      "last_tested": "2026-04-03T02:24:23.840249"
     },
     {
       "id": "S7T2",
@@ -410,9 +411,9 @@
   ],
   "progress": {
     "total": 22,
-    "completed": 19,
-    "passing": 19,
+    "completed": 20,
+    "passing": 20,
     "failing": 0,
-    "pending": 3
+    "pending": 2
   }
 }
