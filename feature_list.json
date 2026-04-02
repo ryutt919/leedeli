@@ -253,14 +253,15 @@
       "name": "localStorage→Supabase 마이그레이션 스크립트 + 구버전 정리",
       "name_ascii": "LocalStorage to Supabase migration + cleanup",
       "description": "harness/skills/migrate_ls_to_supabase.py 작성. --dry-run 지원. 완료 후 src/v2/storage.ts, src/storage/jsonStore.ts, src/storage/keys.ts 삭제 및 import 정리.",
-      "status": "pending",
+      "status": "passing",
       "test_command": "typecheck",
       "test_spec": null,
       "acceptance_criteria": [
         "마이그레이션 스크립트 dry-run 실행 가능",
         "tsc --noEmit 에러 0",
         "npm run build 성공"
-      ]
+      ],
+      "last_tested": "2026-04-03T02:21:01.379822"
     },
     {
       "id": "S5T1",
@@ -404,9 +405,9 @@
   ],
   "progress": {
     "total": 22,
-    "completed": 13,
-    "passing": 13,
+    "completed": 14,
+    "passing": 14,
     "failing": 0,
-    "pending": 9
+    "pending": 8
   }
 }
