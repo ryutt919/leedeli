@@ -201,6 +201,7 @@ def main() -> None:
             update_progress_file(feature_id, "coding", cycle, f"Cycle {cycle}: implementing {feature_name}")
 
         success = False
+        coding_succeeded_once = False
         for attempt in range(1, max_retries + 1):
             print(f"[harness]   attempt {attempt}/{max_retries}")
             coding_log = run_log_dir / f"{feature_id}_cycle{cycle}_attempt{attempt}_coding.log"
@@ -210,6 +211,8 @@ def main() -> None:
             if not coding_ok:
                 print(f"[harness][warn] Coding agent failed (attempt {attempt})")
                 continue
+
+            coding_succeeded_once = True
 
             if not args.dry_run:
                 for item in data["features"]:
@@ -243,6 +246,18 @@ def main() -> None:
             print(f"[harness][warn] [{feature_id}] FAIL (attempt {attempt})")
             if attempt < max_retries:
                 print("[harness]   retrying...")
+
+        if not coding_succeeded_once:
+            if not args.dry_run:
+                update_progress_file(
+                    feature_id,
+                    "blocked",
+                    cycle,
+                    f"Cycle {cycle}: coding agent could not execute {feature_name}",
+                    blocking=f"{args.agent} coding invocation failed",
+                )
+            print(f"[harness][err] Coding agent could not execute for [{feature_id}]. Stopping harness.")
+            sys.exit(1)
 
         if not args.dry_run:
             update_progress_file(

@@ -53,7 +53,7 @@ class TaskExecutor:
                 "--skip-git-repo-check",
                 "-C",
                 str(self.root),
-                prompt,
+                "-",
             ]
         if self.agent == "claude":
             return [executable, "--print", "--dangerously-skip-permissions", prompt]
@@ -89,11 +89,13 @@ Implement this feature. After implementation, update feature_list.json so this f
         cmd = self._build_agent_command(full_prompt)
 
         try:
+            stdin_input = full_prompt if self.agent == "codex" else None
             result = subprocess.run(
                 cmd,
                 cwd=str(self.root),
                 capture_output=True,
                 text=True,
+                input=stdin_input,
                 timeout=600,
             )
             output = (result.stdout or "") + (result.stderr or "")
