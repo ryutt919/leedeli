@@ -5,10 +5,17 @@ auth, storage, ui 카테고리에 사용
 """
 
 import argparse
-import subprocess
 import sys
 import re
 from pathlib import Path
+
+try:
+    from harness.runner.process_utils import run_capture
+except ModuleNotFoundError:
+    ROOT = Path(__file__).resolve().parents[2]
+    if str(ROOT) not in sys.path:
+        sys.path.insert(0, str(ROOT))
+    from harness.runner.process_utils import run_capture
 
 
 def parse_playwright_output(output: str) -> tuple[int, int, list[str]]:
@@ -47,12 +54,14 @@ def main() -> None:
     # spec이 파일이면 해당 파일만, 디렉토리면 전체
     cmd = ["npx", "playwright", "test", spec, "--project=mock"]
 
-    print(f"[mock_eval] running: {' '.join(cmd)}")
-    result = subprocess.run(
-        cmd, cwd=str(root), capture_output=True, text=True, timeout=180,
-        shell=(sys.platform == "win32")
+    print(f"[mock_eval] 실행: {' '.join(cmd)}")
+    returncode, stdout, stderr = run_capture(
+        cmd=cmd,
+        cwd=root,
+        timeout=180,
+        shell=(sys.platform == "win32"),
     )
-    full_output = result.stdout + result.stderr
+    full_output = stdout + stderr
     passed, failed, errors = parse_playwright_output(full_output)
 
     # spec 파일이 아직 없으면 PASS로 간주 (점진적 구현)
@@ -61,14 +70,14 @@ def main() -> None:
         output.write_text(f"[PASS] no tests found\n{full_output}\n", encoding="utf-8")
         sys.exit(0)
 
-    ok = result.returncode == 0 and failed == 0
+    ok = returncode == 0 and failed == 0
     status = "PASS" if ok else "FAIL"
-    print(f"[mock_eval] {status}: {passed} passed, {failed} failed")
+    print(f"[mock_eval] {status}: 통과 {passed}, 실패 {failed}")
     if errors:
         for e in errors:
             print(f"[mock_eval]   {e}")
 
-    out = f"[{status}] playwright mock\n{full_output}\nEXIT_CODE: {result.returncode}\n"
+    out = f"[{status}] playwright mock\n{full_output}\nEXIT_CODE: {returncode}\n"
     output.write_text(out, encoding="utf-8")
     sys.exit(0 if ok else 1)
 

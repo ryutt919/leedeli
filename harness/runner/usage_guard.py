@@ -6,10 +6,10 @@ from __future__ import annotations
 import json
 import re
 import shutil
-import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
+from harness.runner.process_utils import run_capture
 from harness.runner.run_logger import HarnessLogger
 
 RATE_LIMIT_PATTERNS = (
@@ -127,15 +127,12 @@ class UsageGuard:
         if executable:
             resolved[0] = executable
 
-        result = subprocess.run(
-            resolved,
-            cwd=str(self.root),
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
+        returncode, stdout, stderr = run_capture(
+            cmd=resolved,
+            cwd=self.root,
             timeout=60,
         )
-        output = ((result.stdout or "") + (result.stderr or "")).strip()
+        output = ((stdout or "") + (stderr or "")).strip()
         suffix = "_".join(
             part
             for part in (
@@ -151,10 +148,10 @@ class UsageGuard:
         self.logger.command(
             label=f"usage_probe:{probe_name}",
             cmd=resolved,
-            returncode=result.returncode,
+            returncode=returncode,
             output_path=out_path,
         )
-        return output, result.returncode
+        return output, returncode
 
     def _extract_percent_used(self, output: str) -> float | None:
         if not output:

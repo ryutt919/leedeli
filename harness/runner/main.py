@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -59,13 +60,21 @@ def save_features(data: dict) -> None:
         json.dump(data, handle, ensure_ascii=False, indent=2)
 
 
+def sorted_by_priority(features: list[dict]) -> list[dict]:
+    return sorted(features, key=lambda item: item["priority"])
+
+
 def get_next_feature(features: list[dict], target_id: str | None = None) -> dict | None:
     if target_id:
         return next((feature for feature in features if feature["id"] == target_id), None)
 
-    failing = sorted((feature for feature in features if feature["status"] == "failing"), key=lambda item: item["priority"])
-    pending = sorted((feature for feature in features if feature["status"] == "pending"), key=lambda item: item["priority"])
-    candidates = failing + pending
+    candidates = sorted_by_priority(
+        [
+            feature
+            for feature in features
+            if feature["status"] in ("failing", "pending", "implemented")
+        ]
+    )
     return candidates[0] if candidates else None
 
 
@@ -73,19 +82,75 @@ def all_passing(features: list[dict]) -> bool:
     return all(feature["status"] == "passing" for feature in features)
 
 
+def feature_position(features: list[dict], feature_id: str) -> tuple[int, int]:
+    ordered = sorted_by_priority(features)
+    for index, item in enumerate(ordered, start=1):
+        if item["id"] == feature_id:
+            return index, len(ordered)
+    return 0, len(ordered)
+
+
+def rel_path(path: Path) -> str:
+    try:
+        return str(path.relative_to(ROOT))
+    except ValueError:
+        return str(path)
+
+
+def summarize_eval_output(output: str, limit: int = 8) -> list[str]:
+    if not output:
+        return []
+
+    patterns = [
+        r"\bFAIL\b",
+        r"\bfailed\b",
+        r"\bFAILED\b",
+        r"\bTraceback\b",
+        r"\bException\b",
+        r"\bError\b",
+        r"\berror:\b",
+        r"\bAssertionError\b",
+        r"\bTypeError\b",
+        r"✘",
+        r"×",
+    ]
+    matcher = re.compile("|".join(patterns), re.IGNORECASE)
+
+    hits = []
+    for line in output.splitlines():
+        stripped = line.strip()
+        if stripped and matcher.search(stripped):
+            hits.append(stripped)
+            if len(hits) >= limit:
+                break
+
+    if hits:
+        return hits
+
+    fallback = [line.strip() for line in output.splitlines() if line.strip()]
+    return fallback[-limit:]
+
+
 def print_status(data: dict) -> None:
-    features = data["features"]
+    features = sorted_by_priority(data["features"])
     icons = {"pending": "[ ]", "implemented": "[I]", "passing": "[OK]", "failing": "[X]"}
+    labels = {
+        "pending": "대기",
+        "implemented": "구현완료",
+        "passing": "통과",
+        "failing": "실패",
+    }
 
     print(f"\n{'=' * 55}")
-    print(f"  {data['app']} Harness Status")
+    print(f"  {data['app']} 하네스 상태")
     print(f"{'=' * 55}")
-    for feature in sorted(features, key=lambda item: item["priority"]):
+    for index, feature in enumerate(features, start=1):
         icon = icons.get(feature["status"], "?")
-        print(f"  {icon} [{feature['id']}] {feature['name_ascii']} ({feature['status']})")
+        label = labels.get(feature["status"], feature["status"])
+        print(f"  {index:02d}. {icon} [{feature['id']}] {feature['name_ascii']} ({label})")
 
     progress = data.get("progress", {})
-    print(f"\n  Summary: {progress.get('passing', 0)}/{progress.get('total', len(features))} passing")
+    print(f"\n  요약: {progress.get('passing', 0)}/{progress.get('total', len(features))} 통과")
     print(f"{'=' * 55}\n")
 
 
@@ -162,9 +227,9 @@ def main() -> None:
     logger = HarnessLogger(LOGS_DIR, run_id)
     logger.event("run_context", loop_mode=loop_mode, agent=args.agent, dry_run=args.dry_run)
 
-    print(f"\n[harness] LeeDeli Harness :: {loop_mode} loop")
-    print(f"[harness] Agent: {args.agent}")
-    print(f"[harness] Run ID: {run_id}")
+    print(f"\n[harness] LeeDeli 하네스 :: {loop_mode} 루프")
+    print(f"[harness] 에이전트: {args.agent}")
+    print(f"[harness] 실행 ID: {run_id}")
     print_status(data)
     logger.snapshot_status(data)
 
@@ -191,16 +256,16 @@ def main() -> None:
                 target,
                 "paused",
                 cycle,
-                f"Safe stop: {reason}. Resume with python harness/runner/main.py --agent {args.agent}",
+                f"안전중단: {reason}. 재개: python harness/runner/main.py --agent {args.agent}",
                 blocking=reason,
             )
         logger.event("safe_stop", feature_id=target, reason=reason, cycle=cycle)
-        print(f"[harness][stop] {reason}")
+        print(f"[harness][중단] {reason}")
         current = load_features()
         print_status(current)
         logger.snapshot_status(current)
-        print(f"[harness] Report dir: {run_report_dir}")
-        print(f"[harness] Log file: {logger.run_log_path}")
+        print(f"[harness] 리포트 디렉토리: {run_report_dir}")
+        print(f"[harness] 로그 파일: {logger.run_log_path}")
         sys.exit(0)
 
     initial_usage = usage_guard.checkpoint("before_run")
@@ -210,7 +275,7 @@ def main() -> None:
     while True:
         cycle += 1
         if cycle > max_cycles:
-            print(f"[harness][err] Max cycles exceeded ({max_cycles}).")
+            print(f"[harness][오류] 최대 사이클 초과 ({max_cycles})")
             print_status(data)
             logger.log("ERROR", f"max_cycles_exceeded value={max_cycles}")
             sys.exit(1)
@@ -220,19 +285,23 @@ def main() -> None:
 
         if feature is None:
             if all_passing(data["features"]):
-                print("\n[harness][ok] All features are passing.")
+                print("\n[harness][완료] 모든 피처가 통과 상태입니다")
                 logger.log("INFO", "all features are passing")
             else:
-                print("\n[harness][ok] No remaining candidate feature.")
+                print("\n[harness][완료] 실행할 후보 피처가 없습니다")
                 logger.log("INFO", "no remaining candidate feature")
             break
 
         feature_id = feature["id"]
         feature_name = feature["name_ascii"]
         category = feature["category"]
+        current_index, total_count = feature_position(data["features"], feature_id)
 
         print(f"\n{'=' * 55}")
-        print(f"[harness] Cycle {cycle} :: [{feature_id}] {feature_name} (category: {category})")
+        print(
+            f"[harness] 사이클 {cycle} :: 진행 {current_index}/{total_count} "
+            f"[{feature_id}] {feature_name} (카테고리: {category})"
+        )
         print(f"{'=' * 55}")
         logger.event("cycle_start", cycle=cycle, feature_id=feature_id, feature_name=feature_name, category=category)
 
@@ -241,12 +310,12 @@ def main() -> None:
             safe_stop(feature_id, feature_usage.reason or "usage threshold reached before feature")
 
         if not args.dry_run:
-            update_progress_file(feature_id, "coding", cycle, f"Cycle {cycle}: implementing {feature_name}")
+            update_progress_file(feature_id, "coding", cycle, f"사이클 {cycle}: {feature_name} 구현 중")
 
         success = False
         coding_succeeded_once = False
         for attempt in range(1, max_retries + 1):
-            print(f"[harness]   attempt {attempt}/{max_retries}")
+            print(f"[harness]   시도 {attempt}/{max_retries}")
             logger.event("attempt_start", cycle=cycle, feature_id=feature_id, attempt=attempt)
             coding_log = logger.detail_dir / f"{feature_id}_cycle{cycle}_attempt{attempt}_coding.log"
             eval_log = logger.detail_dir / f"{feature_id}_cycle{cycle}_attempt{attempt}_eval.log"
@@ -259,7 +328,7 @@ def main() -> None:
             if coding_result.stop_requested:
                 safe_stop(feature_id, coding_result.stop_reason or "agent quota/limit signal detected")
             if not coding_result.ok:
-                print(f"[harness][warn] Coding agent failed (attempt {attempt})")
+                print(f"[harness][경고] 코딩 에이전트 실행 실패 (시도 {attempt})")
                 logger.event("coding_failed", cycle=cycle, feature_id=feature_id, attempt=attempt)
                 continue
 
@@ -279,6 +348,8 @@ def main() -> None:
             if eval_usage.should_stop:
                 safe_stop(feature_id, eval_usage.reason or "evaluator output reported a limit")
 
+            summary_lines = summarize_eval_output(eval_output) if not passed else []
+
             if not args.dry_run:
                 now = datetime.now().isoformat()
                 for item in data["features"]:
@@ -287,24 +358,46 @@ def main() -> None:
                             item["status"] = "passing"
                             item["last_tested"] = now
                             item.pop("failure_reason", None)
+                            item.pop("failure_summary", None)
+                            item.pop("last_eval_log", None)
+                            item.pop("last_attempt", None)
                         else:
                             item["status"] = "failing"
                             item["last_tested"] = now
-                            item["failure_reason"] = eval_output[:500] if eval_output else "Unknown"
+                            item["failure_reason"] = (
+                                "\n".join(summary_lines)[:1200]
+                                if summary_lines
+                                else (eval_output[:1200] if eval_output else "평가 출력 없음")
+                            )
+                            item["failure_summary"] = summary_lines
+                            item["last_eval_log"] = rel_path(eval_log)
+                            item["last_attempt"] = attempt
 
                 update_progress(data)
                 save_features(data)
 
             if passed:
-                print(f"[harness][ok] [{feature_id}] PASS")
+                print(f"[harness][성공] [{feature_id}] 통과")
                 logger.event("feature_passed", cycle=cycle, feature_id=feature_id, attempt=attempt)
                 success = True
                 break
 
-            print(f"[harness][warn] [{feature_id}] FAIL (attempt {attempt})")
-            logger.event("feature_failed", cycle=cycle, feature_id=feature_id, attempt=attempt)
+            print(f"[harness][경고] [{feature_id}] 실패 (시도 {attempt})")
+            if summary_lines:
+                print("[harness][평가] 실패 원인 요약:")
+                for line in summary_lines:
+                    print(f"[harness][평가] - {line}")
+            print(f"[harness][평가] 상세 로그: {rel_path(eval_log)}")
+            logger.event(
+                "feature_failed",
+                cycle=cycle,
+                feature_id=feature_id,
+                attempt=attempt,
+                summary=summary_lines[:5],
+                eval_log=rel_path(eval_log),
+            )
             if attempt < max_retries:
-                print("[harness]   retrying...")
+                print("[harness]   재시도합니다...")
 
         if not coding_succeeded_once:
             if not args.dry_run:
@@ -312,11 +405,11 @@ def main() -> None:
                     feature_id,
                     "blocked",
                     cycle,
-                    f"Cycle {cycle}: coding agent could not execute {feature_name}",
-                    blocking=f"{args.agent} coding invocation failed",
+                    f"사이클 {cycle}: 코딩 에이전트가 {feature_name}을 실행하지 못함",
+                    blocking=f"{args.agent} 코딩 실행 실패",
                 )
             logger.event("coding_blocked", cycle=cycle, feature_id=feature_id, agent=args.agent)
-            print(f"[harness][err] Coding agent could not execute for [{feature_id}]. Stopping harness.")
+            print(f"[harness][오류] [{feature_id}] 코딩 에이전트 실행 실패로 하네스를 종료합니다")
             sys.exit(1)
 
         if not args.dry_run:
@@ -324,7 +417,7 @@ def main() -> None:
                 feature_id,
                 "passing" if success else "failing",
                 cycle,
-                f"Cycle {cycle}: {feature_name} {'completed' if success else 'failed'}",
+                f"사이클 {cycle}: {feature_name} {'완료' if success else '실패'}",
             )
 
         after_run(feature, success, config, run_report_dir, dry_run=args.dry_run, logger=logger)
@@ -335,8 +428,8 @@ def main() -> None:
     data = load_features()
     print_status(data)
     logger.snapshot_status(data)
-    print(f"[harness] Report dir: {run_report_dir}")
-    print(f"[harness] Log file: {logger.run_log_path}")
+    print(f"[harness] 리포트 디렉토리: {run_report_dir}")
+    print(f"[harness] 로그 파일: {logger.run_log_path}")
 
 
 if __name__ == "__main__":

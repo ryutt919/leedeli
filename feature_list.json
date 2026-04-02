@@ -145,7 +145,7 @@
       "name": "RequireAdmin + UnauthorizedPage",
       "name_ascii": "RequireAdmin + UnauthorizedPage",
       "description": "src/auth/RequireAdmin.tsx: isAdmin=false → /unauthorized 리다이렉트. src/pages/UnauthorizedPage.tsx: 안내 메시지 + 홈 이동 버튼.",
-      "status": "failing",
+      "status": "passing",
       "test_command": "mock_e2e",
       "test_spec": "e2e/mock/auth.spec.ts",
       "acceptance_criteria": [
@@ -153,8 +153,7 @@
         "/unauthorized 렌더 정상",
         "tsc --noEmit 에러 0"
       ],
-      "last_tested": "2026-04-03T01:43:42.750340",
-      "failure_reason": "[mock_eval] running: npx playwright test e2e/mock/auth.spec.ts --project=mock\nException in thread Thread-1 (_readerthread):\nTraceback (most recent call last):\n  File \"C:\\Users\\kimt9\\miniconda3\\Lib\\threading.py\", line 1043, in _bootstrap_inner\n    self.run()\n    ~~~~~~~~^^\n  File \"C:\\Users\\kimt9\\miniconda3\\Lib\\threading.py\", line 994, in run\n    self._target(*self._args, **self._kwargs)\n    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\kimt9\\miniconda3\\Lib\\subprocess.py\", line 1615, "
+      "last_tested": "2026-04-03T02:02:56.590728"
     },
     {
       "id": "S3T3",
@@ -400,9 +399,9 @@
   ],
   "progress": {
     "total": 22,
-    "completed": 7,
-    "passing": 7,
-    "failing": 1,
+    "completed": 8,
+    "passing": 8,
+    "failing": 0,
     "pending": 14
   }
 }

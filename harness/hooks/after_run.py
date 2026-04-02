@@ -29,8 +29,9 @@ def after_run(
             logger.event("after_run_skipped", feature_id=fid, reason="dry_run")
         return
 
-    eval_log = run_log_dir / f"{fid}_eval.log"
-    logs = sorted(run_log_dir.glob(f"{fid}_*eval.log"))
+    eval_log_root = logger.detail_dir if logger else run_log_dir
+    eval_log = eval_log_root / f"{fid}_eval.log"
+    logs = sorted(eval_log_root.glob(f"{fid}_*eval.log"))
     if logs:
         eval_log = logs[-1]
 
@@ -41,7 +42,7 @@ def after_run(
         report_dir=run_log_dir.parent,
         run_id=run_id,
     )
-    print(f"[hook:after_run] report generated: {report_path.name}")
+    print(f"[hook:after_run] 리포트 생성 완료: {report_path.name}")
     if logger:
         logger.event("report_generated", feature_id=fid, passed=passed, report_path=str(report_path))
 
@@ -59,7 +60,7 @@ def after_run(
         has_changes = result.returncode != 0
 
         if not has_changes:
-            print("[hook:after_run] no changes detected; skipping commit")
+            print("[hook:after_run] 변경 사항이 없어 커밋을 건너뜁니다")
             if logger:
                 logger.event("git_commit_skipped", feature_id=fid, reason="no_changes")
             return
@@ -78,10 +79,10 @@ def after_run(
             shell=(sys.platform == "win32"),
             check=False,
         )
-        print(f"[hook:after_run] git commit: {message}")
+        print(f"[hook:after_run] git 커밋 완료: {message}")
         if logger:
             logger.event("git_commit", feature_id=fid, message=message)
     except Exception as exc:  # pragma: no cover - defensive logging path
-        print(f"[hook:after_run][warn] git commit failed: {exc}")
+        print(f"[hook:after_run][warn] git 커밋 실패: {exc}")
         if logger:
             logger.log("WARN", f"git commit failed for {fid}: {exc}")

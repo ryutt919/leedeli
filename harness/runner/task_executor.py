@@ -9,6 +9,7 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
+from harness.runner.process_utils import run_capture
 from harness.runner.run_logger import HarnessLogger
 from harness.runner.usage_guard import UsageDecision, UsageGuard
 
@@ -42,6 +43,29 @@ class TaskExecutor:
         self.evaluators_dir = harness / "evaluators"
         self.logger = logger
         self.usage_guard = usage_guard
+
+    @staticmethod
+    def _build_retry_context(feature: dict) -> str:
+        summary = feature.get("failure_summary") or []
+        reason = feature.get("failure_reason") or ""
+        eval_log_path = feature.get("last_eval_log") or ""
+
+        lines: list[str] = []
+        if isinstance(summary, list) and summary:
+            lines.append("PREVIOUS_EVALUATION_SUMMARY:")
+            for item in summary[:8]:
+                lines.append(f"- {item}")
+        elif reason:
+            lines.append("PREVIOUS_EVALUATION_SUMMARY:")
+            lines.append(reason[:1000])
+
+        if eval_log_path:
+            lines.append(f"PREVIOUS_EVAL_LOG: {eval_log_path}")
+
+        if lines:
+            lines.append("Address these failure causes before finalizing your change.")
+
+        return "\n".join(lines)
 
     def _read_prompt(self, name: str) -> str:
         stem = Path(name).stem
@@ -77,7 +101,7 @@ class TaskExecutor:
     def run_coding_agent(self, feature: dict, log_path: Path, attempt: int | None = None) -> AgentRunResult:
         coding_prompt = self._read_prompt("coding_prompt.md")
         if not coding_prompt:
-            print("[executor][warn] prompts/coding_prompt.md not found")
+            print("[executor][경고] prompts/coding_prompt.md 파일을 찾을 수 없습니다")
             if self.logger:
                 self.logger.log("WARN", "prompts/coding_prompt.md not found")
             return AgentRunResult(ok=False)
@@ -87,6 +111,8 @@ class TaskExecutor:
         description = feature.get("description", "")
         criteria = feature.get("acceptance_criteria", [])
         criteria_str = "\n".join(f"- {criterion}" for criterion in criteria)
+        retry_context = self._build_retry_context(feature)
+        retry_block = f"\n\n{retry_context}" if retry_context else ""
 
         task_msg = f"""FEATURE_ID: {feature_id}
 FEATURE_NAME: {feature_name}
@@ -94,12 +120,12 @@ DESCRIPTION: {description}
 ACCEPTANCE_CRITERIA:
 {criteria_str}
 
-Implement this feature. After implementation, update feature_list.json so this feature becomes "implemented" and refresh claude-progress.txt."""
+Implement this feature. After implementation, update feature_list.json so this feature becomes \"implemented\" and refresh claude-progress.txt.{retry_block}"""
 
         full_prompt = f"{coding_prompt}\n\n---\n{task_msg}"
 
         if self.dry_run:
-            print(f"[executor][dry-run] {self.agent} invocation skipped: {feature_id}")
+            print(f"[executor][드라이런] {self.agent} 실행 생략: {feature_id}")
             log_path.write_text(f"[dry-run] agent={self.agent} feature={feature_id}\n", encoding="utf-8")
             if self.logger:
                 self.logger.command(label="coding_agent", cmd=["dry-run", self.agent], output_path=log_path)
@@ -111,19 +137,16 @@ Implement this feature. After implementation, update feature_list.json so this f
             stdin_input = full_prompt if self.agent == "codex" else None
             if self.logger:
                 self.logger.command(label="coding_agent:start", cmd=cmd, output_path=log_path)
-            result = subprocess.run(
-                cmd,
-                cwd=str(self.root),
-                capture_output=True,
-                text=True,
-                input=stdin_input,
-                encoding="utf-8",
+            returncode, stdout, stderr = run_capture(
+                cmd=cmd,
+                cwd=self.root,
                 timeout=600,
+                input_text=stdin_input,
             )
-            output = (result.stdout or "") + (result.stderr or "")
-            log_path.write_text(output or f"exit_code: {result.returncode}\n", encoding="utf-8")
+            output = (stdout or "") + (stderr or "")
+            log_path.write_text(output or f"exit_code: {returncode}\n", encoding="utf-8")
             if self.logger:
-                self.logger.command(label="coding_agent:end", cmd=cmd, returncode=result.returncode, output_path=log_path)
+                self.logger.command(label="coding_agent:end", cmd=cmd, returncode=returncode, output_path=log_path)
             if self.usage_guard:
                 decision = self.usage_guard.inspect_output(
                     source="coding_agent",
@@ -133,18 +156,18 @@ Implement this feature. After implementation, update feature_list.json so this f
                 )
                 if decision.should_stop:
                     return AgentRunResult(ok=False, stop_requested=True, stop_reason=decision.reason)
-            return AgentRunResult(ok=result.returncode == 0)
+            return AgentRunResult(ok=returncode == 0)
         except subprocess.TimeoutExpired:
-            print(f"[executor][err] Coding agent timeout: {feature_id}")
+            print(f"[executor][오류] 코딩 에이전트 시간 초과: {feature_id}")
             if self.logger:
                 self.logger.log("ERROR", f"coding agent timeout for {feature_id}")
             return AgentRunResult(ok=False)
         except FileNotFoundError:
             install_hint = {
                 "claude": "npm install -g @anthropic-ai/claude-code",
-                "codex": "install Codex CLI and ensure `codex` is on PATH",
-            }.get(self.agent, "install the selected agent CLI")
-            print(f"[executor][err] '{self.agent}' command not found. Install hint: {install_hint}")
+                "codex": "Codex CLI를 설치하고 PATH에 codex를 등록하세요",
+            }.get(self.agent, "선택한 에이전트 CLI를 설치하세요")
+            print(f"[executor][오류] '{self.agent}' 명령을 찾지 못했습니다. 설치 가이드: {install_hint}")
             sys.exit(1)
 
     def run_evaluator(self, feature: dict, log_path: Path) -> tuple[bool, str, UsageDecision]:
@@ -153,12 +176,12 @@ Implement this feature. After implementation, update feature_list.json so this f
         eval_type = evaluator_map.get(category, "lint")
 
         if eval_type == "smoke_e2e" and self.loop_mode != "gate":
-            print("[executor] smoke_e2e only runs in gate mode. Skipping.")
+            print("[executor] smoke_e2e는 gate 모드에서만 실행됩니다. 건너뜁니다.")
             return True, "skipped", UsageDecision()
 
         evaluator_script = self.evaluators_dir / f"{eval_type}_eval.py"
         if not evaluator_script.exists():
-            print(f"[executor][warn] evaluator not found: {evaluator_script}")
+            print(f"[executor][경고] evaluator 파일이 없습니다: {evaluator_script}")
             if self.logger:
                 self.logger.log("WARN", f"evaluator not found: {evaluator_script}")
             return False, "evaluator not found", UsageDecision()
@@ -166,7 +189,7 @@ Implement this feature. After implementation, update feature_list.json so this f
         test_spec = feature.get("test_spec") or ""
 
         if self.dry_run:
-            print(f"[executor][dry-run] evaluator skipped: {eval_type}_eval.py")
+            print(f"[executor][드라이런] evaluator 실행 생략: {eval_type}_eval.py")
             log_path.write_text("[dry-run]\n", encoding="utf-8")
             if self.logger:
                 self.logger.command(label=f"evaluator:{eval_type}", cmd=["dry-run", eval_type], output_path=log_path)
@@ -185,18 +208,15 @@ Implement this feature. After implementation, update feature_list.json so this f
 
         if self.logger:
             self.logger.command(label=f"evaluator:{eval_type}:start", cmd=cmd, output_path=log_path)
-        result = subprocess.run(
-            cmd,
-            cwd=str(self.root),
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
+        returncode, stdout, stderr = run_capture(
+            cmd=cmd,
+            cwd=self.root,
             timeout=300,
         )
-        output = result.stdout + result.stderr
+        output = (stdout or "") + (stderr or "")
         log_path.write_text(output, encoding="utf-8")
         if self.logger:
-            self.logger.command(label=f"evaluator:{eval_type}:end", cmd=cmd, returncode=result.returncode, output_path=log_path)
+            self.logger.command(label=f"evaluator:{eval_type}:end", cmd=cmd, returncode=returncode, output_path=log_path)
 
         decision = UsageDecision()
         if self.usage_guard:
@@ -205,4 +225,4 @@ Implement this feature. After implementation, update feature_list.json so this f
                 output=output,
                 feature_id=feature.get("id"),
             )
-        return result.returncode == 0, output, decision
+        return returncode == 0, output, decision

@@ -5,10 +5,17 @@ engine 카테고리에 사용
 """
 
 import argparse
-import subprocess
 import sys
 import re
 from pathlib import Path
+
+try:
+    from harness.runner.process_utils import run_capture
+except ModuleNotFoundError:
+    ROOT = Path(__file__).resolve().parents[2]
+    if str(ROOT) not in sys.path:
+        sys.path.insert(0, str(ROOT))
+    from harness.runner.process_utils import run_capture
 
 
 def parse_vitest_output(output: str) -> tuple[int, int, list[str]]:
@@ -45,22 +52,24 @@ def main() -> None:
     spec = args.spec or "tests/unit/"
     cmd = ["npx", "vitest", "run", spec, "--passWithNoTests"]
 
-    print(f"[unit_eval] running: {' '.join(cmd)}")
-    result = subprocess.run(
-        cmd, cwd=str(root), capture_output=True, text=True, timeout=120,
-        shell=(sys.platform == "win32")
+    print(f"[unit_eval] 실행: {' '.join(cmd)}")
+    returncode, stdout, stderr = run_capture(
+        cmd=cmd,
+        cwd=root,
+        timeout=120,
+        shell=(sys.platform == "win32"),
     )
-    full_output = result.stdout + result.stderr
+    full_output = stdout + stderr
     passed, failed, errors = parse_vitest_output(full_output)
 
-    ok = result.returncode == 0 and failed == 0
+    ok = returncode == 0 and failed == 0
     status = "PASS" if ok else "FAIL"
-    print(f"[unit_eval] {status}: {passed} passed, {failed} failed")
+    print(f"[unit_eval] {status}: 통과 {passed}, 실패 {failed}")
     if errors:
         for e in errors:
             print(f"[unit_eval]   {e}")
 
-    out = f"[{status}] vitest\n{full_output}\nEXIT_CODE: {result.returncode}\n"
+    out = f"[{status}] vitest\n{full_output}\nEXIT_CODE: {returncode}\n"
     output.write_text(out, encoding="utf-8")
     sys.exit(0 if ok else 1)
 

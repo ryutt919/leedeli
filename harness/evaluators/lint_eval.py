@@ -5,9 +5,16 @@ scaffold, db 카테고리에 사용
 """
 
 import argparse
-import subprocess
 import sys
 from pathlib import Path
+
+try:
+    from harness.runner.process_utils import run_capture
+except ModuleNotFoundError:
+    ROOT = Path(__file__).resolve().parents[2]
+    if str(ROOT) not in sys.path:
+        sys.path.insert(0, str(ROOT))
+    from harness.runner.process_utils import run_capture
 
 
 def main() -> None:
@@ -29,16 +36,18 @@ def main() -> None:
         ("typecheck", ["npm", "run", "typecheck"]),
         ("build", ["npm", "run", "build"]),
     ]:
-        print(f"[lint_eval] running: {cmd_label}")
-        result = subprocess.run(
-            cmd, cwd=str(root), capture_output=True, text=True, timeout=120,
-            shell=(sys.platform == "win32")
+        print(f"[lint_eval] 실행: {cmd_label}")
+        returncode, stdout, stderr = run_capture(
+            cmd=cmd,
+            cwd=root,
+            timeout=120,
+            shell=(sys.platform == "win32"),
         )
-        ok = result.returncode == 0
+        ok = returncode == 0
         if not ok:
             overall_ok = False
         status = "PASS" if ok else "FAIL"
-        results.append(f"[{status}] {cmd_label}\n{result.stdout}\n{result.stderr}\n")
+        results.append(f"[{status}] {cmd_label}\n{stdout}\n{stderr}\nEXIT_CODE: {returncode}\n")
         print(f"[lint_eval] {cmd_label}: {status}")
 
     output.write_text("\n".join(results), encoding="utf-8")

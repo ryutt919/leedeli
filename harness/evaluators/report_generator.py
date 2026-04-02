@@ -4,10 +4,36 @@ report_generator.py — 하네스 실행 결과 마크다운 리포트 생성
 after_run.py에서 호출됨
 """
 
-import json
 import re
 from datetime import datetime
 from pathlib import Path
+
+
+def extract_failures(eval_output: str, limit: int = 12) -> list[str]:
+    patterns = [
+        r"\bFAIL\b",
+        r"\bfailed\b",
+        r"\bFAILED\b",
+        r"\bTraceback\b",
+        r"\bException\b",
+        r"\bError\b",
+        r"\berror:\b",
+        r"\bAssertionError\b",
+        r"\bTypeError\b",
+        r"✘",
+        r"×",
+        r"●",
+    ]
+    matcher = re.compile("|".join(patterns), re.IGNORECASE)
+
+    failures: list[str] = []
+    for line in eval_output.splitlines():
+        stripped = line.strip()
+        if stripped and matcher.search(stripped):
+            failures.append(stripped)
+            if len(failures) >= limit:
+                break
+    return failures
 
 
 def generate(
@@ -24,12 +50,7 @@ def generate(
     if eval_log.exists():
         eval_output = eval_log.read_text(encoding="utf-8", errors="replace")
 
-    # 실패한 테스트 추출
-    failures = []
-    for line in eval_output.splitlines():
-        if any(kw in line for kw in ["FAIL", "✘", "●", "Error", "error:"]):
-            failures.append(line.strip())
-    failures = failures[:10]
+    failures = extract_failures(eval_output, limit=12)
 
     status_emoji = "✅" if passed else "❌"
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -41,17 +62,20 @@ def generate(
         f"**결과**: {'PASS' if passed else 'FAIL'}  ",
         f"**카테고리**: {feature['category']}  ",
         f"**Sprint**: {feature['sprint']}  ",
+        f"**평가 로그**: {eval_log}  ",
         f"",
-        f"## Acceptance Criteria",
+        f"## 인수 기준",
         "",
     ]
     for c in feature.get("acceptance_criteria", []):
         lines.append(f"- {'✅' if passed else '❌'} {c}")
 
     if failures:
-        lines += ["", "## 실패 내용 (상위 10줄)", "", "```"]
+        lines += ["", "## 실패 요약 (상위 12줄)", "", "```"]
         lines += failures
         lines += ["```"]
+    elif not passed:
+        lines += ["", "## 실패 요약", "", "평가 로그에 명확한 실패 키워드가 없어 원문 로그를 확인하세요."]
 
     lines += [
         "",
