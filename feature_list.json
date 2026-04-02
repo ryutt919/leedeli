@@ -307,7 +307,7 @@
       "name": "스케줄 엔진 — 배정 + 사후 검증 + 공개 API",
       "name_ascii": "Schedule engine - assign, validate, public API",
       "description": "assignSchedule(), validateAssignment(), generateSchedule() 구현. 기존 v2/generator.ts 로직 흡수. 구버전 엔진 파일 정리.",
-      "status": "pending",
+      "status": "passing",
       "test_command": "unit",
       "test_spec": "tests/unit/",
       "acceptance_criteria": [
@@ -315,7 +315,8 @@
         "vitest: 인원 미달 → UNDERSTAFFED 에러 반환 테스트 green",
         "vitest: generateSchedule() 통합 테스트 green",
         "tsc --noEmit 에러 0"
-      ]
+      ],
+      "last_tested": "2026-04-03T02:22:39.857873"
     },
     {
       "id": "S6T1",
@@ -407,9 +408,9 @@
   ],
   "progress": {
     "total": 22,
-    "completed": 16,
-    "passing": 16,
+    "completed": 17,
+    "passing": 17,
     "failing": 0,
-    "pending": 6
+    "pending": 5
   }
 }
