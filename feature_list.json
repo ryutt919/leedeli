@@ -135,7 +135,7 @@
         "tsc --noEmit 에러 0",
         "App.tsx AuthProvider 래핑"
       ],
-      "last_tested": "2026-04-02T22:14:41.088613",
+      "last_tested": "2026-04-02T22:17:45.159289",
       "failure_reason": "[mock_eval] running: npx playwright test e2e/mock/auth.spec.ts --project=mock\nException in thread Thread-1 (_readerthread):\nTraceback (most recent call last):\n  File \"C:\\Users\\kimt9\\miniconda3\\Lib\\threading.py\", line 1043, in _bootstrap_inner\n    self.run()\n    ~~~~~~~~^^\n  File \"C:\\Users\\kimt9\\miniconda3\\Lib\\threading.py\", line 994, in run\n    self._target(*self._args, **self._kwargs)\n    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\kimt9\\miniconda3\\Lib\\subprocess.py\", line 1615, "
     },
     {
