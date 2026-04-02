@@ -271,14 +271,15 @@
       "name": "ScheduleParams + ConstraintError 타입",
       "name_ascii": "ScheduleParams and ConstraintError types",
       "description": "src/domain/types.ts에 ScheduleParams, ConstraintError 타입 추가. 동적 파라미터: startDateISO, endDateISO, staff, dailyRequiredByDate, workHours, breakHours, requests.",
-      "status": "pending",
+      "status": "passing",
       "test_command": "unit",
       "test_spec": "tests/unit/",
       "acceptance_criteria": [
         "tsc --noEmit 에러 0",
         "ScheduleParams, ConstraintError export 확인",
         "vitest --passWithNoTests 성공"
-      ]
+      ],
+      "last_tested": "2026-04-03T02:21:38.699113"
     },
     {
       "id": "S5T2",
@@ -405,9 +406,9 @@
   ],
   "progress": {
     "total": 22,
-    "completed": 14,
-    "passing": 14,
+    "completed": 15,
+    "passing": 15,
     "failing": 0,
-    "pending": 8
+    "pending": 7
   }
 }
