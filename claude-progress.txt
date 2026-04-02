@@ -1,6 +1,6 @@
-LAST_UPDATED: 2026-04-03T02:23:20.932473
-CURRENT_FEATURE: S6T1
+LAST_UPDATED: 2026-04-03T02:23:56.807021
+CURRENT_FEATURE: S6T2
 PHASE: passing
-CYCLE: 10
-NOTES: 사이클 10: CreateSchedulePage responsive 2-panel 완료
+CYCLE: 11
+NOTES: 사이클 11: ManageSchedulesPage responsive + v2 cleanup 완료
 BLOCKING: none

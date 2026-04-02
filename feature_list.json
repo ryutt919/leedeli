@@ -345,7 +345,7 @@
       "name": "ManageSchedulesPage 반응형 + v2 정리",
       "name_ascii": "ManageSchedulesPage responsive + v2 cleanup",
       "description": "src/pages/ManageSchedulesPage.tsx 완전 교체. 목록(왼쪽) + 상세(오른쪽) 2패널. 모바일 드릴다운. v2 페이지/컴포넌트 디렉토리 삭제.",
-      "status": "pending",
+      "status": "passing",
       "test_command": "mock_e2e",
       "test_spec": "e2e/mock/schedule.spec.ts",
       "acceptance_criteria": [
@@ -353,7 +353,8 @@
         "Playwright: 스케줄 수정 green",
         "src/pages/v2/, src/components/v2/ 없음",
         "tsc --noEmit 에러 0"
-      ]
+      ],
+      "last_tested": "2026-04-03T02:23:56.804288"
     },
     {
       "id": "S7T1",
@@ -409,9 +410,9 @@
   ],
   "progress": {
     "total": 22,
-    "completed": 18,
-    "passing": 18,
+    "completed": 19,
+    "passing": 19,
     "failing": 0,
-    "pending": 4
+    "pending": 3
   }
 }
