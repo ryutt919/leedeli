@@ -5,25 +5,29 @@ import { CreateSchedulePageV2 as CreateSchedulePage } from './pages/v2/CreateSch
 import { ManageSchedulesPageV2 as ManageSchedulesPage } from './pages/v2/ManageSchedulesPage.v2'
 import { IngredientsPage } from './pages/IngredientsPage'
 import { PrepsPage } from './pages/PrepsPage'
+import { UnauthorizedPage } from './pages/UnauthorizedPage'
 import { RequireAuth } from './components/RequireAuth'
+import { RequireAdmin } from './auth/RequireAdmin'
 import { AuthProvider } from './auth/AuthContext'
 import './leedeli-home.css'
 
 export default function App() {
   return (
     <AuthProvider>
-    <Routes>
-      {/* 로그인 페이지: 인증 불필요 */}
-      <Route path="/login" element={<LoginPage />} />
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
 
-      {/* 아래 모든 페이지: 로그인 필수 (RequireAuth로 보호) */}
-      <Route path="/" element={<RequireAuth><HomePage /></RequireAuth>} />
-      <Route path="/create" element={<RequireAuth><CreateSchedulePage /></RequireAuth>} />
-      <Route path="/manage" element={<RequireAuth><ManageSchedulesPage /></RequireAuth>} />
-      <Route path="/ingredients" element={<RequireAuth><IngredientsPage /></RequireAuth>} />
-      <Route path="/preps" element={<RequireAuth><PrepsPage /></RequireAuth>} />
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+        <Route path="/" element={<RequireAuth><HomePage /></RequireAuth>} />
+        <Route
+          path="/create"
+          element={<RequireAuth><RequireAdmin><CreateSchedulePage /></RequireAdmin></RequireAuth>}
+        />
+        <Route path="/manage" element={<RequireAuth><ManageSchedulesPage /></RequireAuth>} />
+        <Route path="/ingredients" element={<RequireAuth><IngredientsPage /></RequireAuth>} />
+        <Route path="/preps" element={<RequireAuth><PrepsPage /></RequireAuth>} />
+        <Route path="/unauthorized" element={<RequireAuth><UnauthorizedPage /></RequireAuth>} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
     </AuthProvider>
   )
 }

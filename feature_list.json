@@ -127,7 +127,7 @@
       "name": "AuthContext 전역 상태",
       "name_ascii": "AuthContext global state",
       "description": "src/auth/AuthContext.tsx. session, isAdmin, loading, refreshAdmin 제공. App.tsx Provider 래핑.",
-      "status": "failing",
+      "status": "passing",
       "test_command": "mock_e2e",
       "test_spec": "e2e/mock/auth.spec.ts",
       "acceptance_criteria": [
@@ -135,8 +135,7 @@
         "tsc --noEmit 에러 0",
         "App.tsx AuthProvider 래핑"
       ],
-      "last_tested": "2026-04-02T22:20:45.131160",
-      "failure_reason": "[mock_eval] running: npx playwright test e2e/mock/auth.spec.ts --project=mock\nException in thread Thread-1 (_readerthread):\nTraceback (most recent call last):\n  File \"C:\\Users\\kimt9\\miniconda3\\Lib\\threading.py\", line 1043, in _bootstrap_inner\n    self.run()\n    ~~~~~~~~^^\n  File \"C:\\Users\\kimt9\\miniconda3\\Lib\\threading.py\", line 994, in run\n    self._target(*self._args, **self._kwargs)\n    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\kimt9\\miniconda3\\Lib\\subprocess.py\", line 1615, "
+      "last_tested": "2026-04-02T22:30:00.000000"
     },
     {
       "id": "S3T2",
@@ -146,14 +145,16 @@
       "name": "RequireAdmin + UnauthorizedPage",
       "name_ascii": "RequireAdmin + UnauthorizedPage",
       "description": "src/auth/RequireAdmin.tsx: isAdmin=false → /unauthorized 리다이렉트. src/pages/UnauthorizedPage.tsx: 안내 메시지 + 홈 이동 버튼.",
-      "status": "pending",
+      "status": "failing",
       "test_command": "mock_e2e",
       "test_spec": "e2e/mock/auth.spec.ts",
       "acceptance_criteria": [
         "비관리자 /create 접근 → /unauthorized",
         "/unauthorized 렌더 정상",
         "tsc --noEmit 에러 0"
-      ]
+      ],
+      "last_tested": "2026-04-03T01:35:42.901932",
+      "failure_reason": "[mock_eval] running: npx playwright test e2e/mock/auth.spec.ts --project=mock\nException in thread Thread-1 (_readerthread):\nTraceback (most recent call last):\n  File \"C:\\Users\\kimt9\\miniconda3\\Lib\\threading.py\", line 1043, in _bootstrap_inner\n    self.run()\n    ~~~~~~~~^^\n  File \"C:\\Users\\kimt9\\miniconda3\\Lib\\threading.py\", line 994, in run\n    self._target(*self._args, **self._kwargs)\n    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\kimt9\\miniconda3\\Lib\\subprocess.py\", line 1615, "
     },
     {
       "id": "S3T3",
@@ -399,9 +400,9 @@
   ],
   "progress": {
     "total": 22,
-    "completed": 6,
-    "passing": 6,
+    "completed": 7,
+    "passing": 7,
     "failing": 1,
-    "pending": 15
+    "pending": 14
   }
 }

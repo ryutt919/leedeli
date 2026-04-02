@@ -35,6 +35,14 @@ async function mockLoggedIn(page: import('@playwright/test').Page, isAdmin: bool
   })
 }
 
+async function signInWithMockUser(page: import('@playwright/test').Page) {
+  await page.goto(`${BASE}/#/login`)
+  await page.getByPlaceholder('email@example.com').fill('test@example.com')
+  await page.locator('input[type="password"]').fill('password123')
+  await page.locator('button[type="submit"]').click()
+  await expect(page).toHaveURL(/#\/$/)
+}
+
 /** 비로그인 상태 모킹 */
 async function mockLoggedOut(page: import('@playwright/test').Page) {
   await page.route('**/auth/v1/**', async (route) => {
@@ -92,5 +100,27 @@ test.describe('S3T1 — AuthContext global state', () => {
     // 정상 렌더 시 그 에러가 없어야 함
     const authErrors = consoleErrors.filter((e) => e.includes('useAuth must be used'))
     expect(authErrors).toHaveLength(0)
+  })
+})
+
+test.describe('S3T2 — RequireAdmin + UnauthorizedPage', () => {
+  test('비관리자 사용자가 /create 접근 시 /unauthorized 로 리다이렉트된다', async ({ page }) => {
+    await mockLoggedIn(page, false)
+    await signInWithMockUser(page)
+
+    await page.goto(`${BASE}/#/create`)
+    await expect(page).toHaveURL(/#\/unauthorized$/)
+  })
+
+  test('/unauthorized 페이지가 렌더되고 홈 이동 버튼이 동작한다', async ({ page }) => {
+    await mockLoggedIn(page, false)
+    await signInWithMockUser(page)
+
+    await page.goto(`${BASE}/#/unauthorized`)
+    await expect(page.getByRole('heading', { name: /Unauthorized/i })).toBeVisible()
+    await expect(page.getByRole('button', { name: /Go Home/i })).toBeVisible()
+
+    await page.getByRole('button', { name: /Go Home/i }).click()
+    await expect(page).toHaveURL(/#\/$/)
   })
 })
