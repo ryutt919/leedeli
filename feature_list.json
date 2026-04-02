@@ -135,7 +135,7 @@
         "tsc --noEmit 에러 0",
         "App.tsx AuthProvider 래핑"
       ],
-      "last_tested": "2026-04-02T22:03:25.770293",
+      "last_tested": "2026-04-02T22:04:44.212355",
       "failure_reason": "evaluator not found"
     },
     {
