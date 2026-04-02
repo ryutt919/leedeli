@@ -289,14 +289,15 @@
       "name": "스케줄 엔진 — 후보 생성 + 제약 필터링",
       "name_ascii": "Schedule engine - candidate gen and filter",
       "description": "src/domain/scheduleEngine.ts에 generateCandidates(), filterByConstraints() 구현. 휴무 요청 직원 제외, mustOpen/mustClose 제약 적용.",
-      "status": "pending",
+      "status": "passing",
       "test_command": "unit",
       "test_spec": "tests/unit/",
       "acceptance_criteria": [
         "vitest: 휴무 요청 직원 후보 제외 테스트 green",
         "vitest: mustOpen 직원 오픈 배정 테스트 green",
         "tsc --noEmit 에러 0"
-      ]
+      ],
+      "last_tested": "2026-04-03T02:22:09.761009"
     },
     {
       "id": "S5T3",
@@ -406,9 +407,9 @@
   ],
   "progress": {
     "total": 22,
-    "completed": 15,
-    "passing": 15,
+    "completed": 16,
+    "passing": 16,
     "failing": 0,
-    "pending": 7
+    "pending": 6
   }
 }
