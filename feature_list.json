@@ -16,7 +16,7 @@
       "name": "의존성 설치 및 테스트 환경 구성",
       "name_ascii": "Install deps and test env",
       "description": "Playwright, vitest, tsx 설치. npx playwright install chromium. vitest.config.ts, playwright.config.ts (mock/smoke 프로젝트 분리) 작성.",
-      "status": "pending",
+      "status": "passing",
       "test_command": "npm run build",
       "test_spec": null,
       "acceptance_criteria": [
@@ -24,7 +24,8 @@
         "node_modules/vitest 존재",
         "npx playwright --version 실행 가능",
         "npm run build 성공"
-      ]
+      ],
+      "last_tested": "2026-04-02T19:49:31.983138"
     },
     {
       "id": "S1T2",
@@ -391,9 +392,9 @@
   ],
   "progress": {
     "total": 22,
-    "completed": 0,
-    "passing": 0,
+    "completed": 1,
+    "passing": 1,
     "failing": 0,
-    "pending": 22
+    "pending": 21
   }
 }

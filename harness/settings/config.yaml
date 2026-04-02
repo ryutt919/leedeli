@@ -4,6 +4,8 @@ version: "1.0.0"
 model: claude-sonnet-4-6
 
 runner:
+  default_agent: codex
+  supported_agents: [claude, codex]
   max_cycles: 60
   max_retries: 3
   retry_delay_seconds: 3
