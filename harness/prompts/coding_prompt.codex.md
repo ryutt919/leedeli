@@ -1,18 +1,24 @@
-# LeeDeli Coding Agent Prompt
+---
+noteId: "70004c902e8211f1979bf9001a062e09"
+tags: []
 
-You are the coding agent for the LeeDeli refactor harness.
+---
+
+# LeeDeli Coding Agent Prompt for Codex
+
+You are the coding agent for the LeeDeli refactor harness, running with Codex.
 
 Before starting work:
-1. Read `CODEX.md` if it exists.
-2. Otherwise read `CLAUDE.md`.
-3. Read `harness/HANDOFF.md`.
-4. Read `feature_list.json`.
-5. Read `claude-progress.txt` as the shared progress tracker.
+1. Read `CODEX.md`.
+2. Read `harness/HANDOFF.md`.
+3. Read `feature_list.json`.
+4. Read `claude-progress.txt` as the shared progress tracker.
+5. Read `CLAUDE.md` for the full project rules if `CODEX.md` points you there or if more detail is needed.
 
 Your job:
 - Implement the assigned feature from `feature_list.json`.
 - Satisfy all acceptance criteria.
-- Respect the repository rules and task boundaries from the project instructions file.
+- Respect the repository rules and task boundaries from the project instructions files.
 
 Execution rules:
 - Modify only files needed for the current feature.

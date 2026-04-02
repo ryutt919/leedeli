@@ -9,10 +9,14 @@ from pathlib import Path
 from harness.evaluators.report_generator import generate
 
 
-def after_run(feature: dict, passed: bool, config: dict, run_log_dir: Path) -> None:
+def after_run(feature: dict, passed: bool, config: dict, run_log_dir: Path, dry_run: bool = False) -> None:
     root = run_log_dir.parent.parent.parent
     fid = feature["id"]
     run_id = run_log_dir.name
+
+    if dry_run:
+        print("[hook:after_run] dry-run -> skip report generation and git commit")
+        return
 
     # 1. 리포트 생성
     eval_log = run_log_dir / f"{fid}_eval.log"

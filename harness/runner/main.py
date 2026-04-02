@@ -197,7 +197,8 @@ def main() -> None:
         print(f"[harness] Cycle {cycle} :: [{feature_id}] {feature_name} (category: {category})")
         print(f"{'=' * 55}")
 
-        update_progress_file(feature_id, "coding", cycle, f"Cycle {cycle}: implementing {feature_name}")
+        if not args.dry_run:
+            update_progress_file(feature_id, "coding", cycle, f"Cycle {cycle}: implementing {feature_name}")
 
         success = False
         for attempt in range(1, max_retries + 1):
@@ -210,27 +211,29 @@ def main() -> None:
                 print(f"[harness][warn] Coding agent failed (attempt {attempt})")
                 continue
 
-            for item in data["features"]:
-                if item["id"] == feature_id:
-                    item["status"] = "implemented"
-            save_features(data)
+            if not args.dry_run:
+                for item in data["features"]:
+                    if item["id"] == feature_id:
+                        item["status"] = "implemented"
+                save_features(data)
 
             passed, eval_output = executor.run_evaluator(feature, eval_log)
 
-            now = datetime.now().isoformat()
-            for item in data["features"]:
-                if item["id"] == feature_id:
-                    if passed:
-                        item["status"] = "passing"
-                        item["last_tested"] = now
-                        item.pop("failure_reason", None)
-                    else:
-                        item["status"] = "failing"
-                        item["last_tested"] = now
-                        item["failure_reason"] = eval_output[:500] if eval_output else "Unknown"
+            if not args.dry_run:
+                now = datetime.now().isoformat()
+                for item in data["features"]:
+                    if item["id"] == feature_id:
+                        if passed:
+                            item["status"] = "passing"
+                            item["last_tested"] = now
+                            item.pop("failure_reason", None)
+                        else:
+                            item["status"] = "failing"
+                            item["last_tested"] = now
+                            item["failure_reason"] = eval_output[:500] if eval_output else "Unknown"
 
-            update_progress(data)
-            save_features(data)
+                update_progress(data)
+                save_features(data)
 
             if passed:
                 print(f"[harness][ok] [{feature_id}] PASS")
@@ -241,14 +244,15 @@ def main() -> None:
             if attempt < max_retries:
                 print("[harness]   retrying...")
 
-        update_progress_file(
-            feature_id,
-            "passing" if success else "failing",
-            cycle,
-            f"Cycle {cycle}: {feature_name} {'completed' if success else 'failed'}",
-        )
+        if not args.dry_run:
+            update_progress_file(
+                feature_id,
+                "passing" if success else "failing",
+                cycle,
+                f"Cycle {cycle}: {feature_name} {'completed' if success else 'failed'}",
+            )
 
-        after_run(feature, success, config, run_log_dir)
+        after_run(feature, success, config, run_log_dir, dry_run=args.dry_run)
 
         if args.feature:
             break
