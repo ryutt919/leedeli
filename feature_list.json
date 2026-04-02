@@ -400,21 +400,22 @@
       "name": "Smoke E2E — 스케줄 생성/관리 + 리포트 생성",
       "name_ascii": "Smoke E2E - schedule flow + report",
       "description": "e2e/smoke/schedule-flow.spec.ts. 파라미터 입력 → 생성 → 저장 → 수정. harness/evaluators/report_generator.py 완성. gate-loop 최종 검증.",
-      "status": "pending",
+      "status": "passing",
       "test_command": "smoke_e2e",
       "test_spec": "e2e/smoke/",
       "acceptance_criteria": [
         "스케줄 생성/수정 시나리오 green",
         "harness/reports/ 에 리포트 생성",
         "전체 gate-loop 통과"
-      ]
+      ],
+      "last_tested": "2026-04-03T02:25:19.148435"
     }
   ],
   "progress": {
     "total": 22,
-    "completed": 21,
-    "passing": 21,
+    "completed": 22,
+    "passing": 22,
     "failing": 0,
-    "pending": 1
+    "pending": 0
   }
 }
