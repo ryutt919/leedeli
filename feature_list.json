@@ -382,14 +382,15 @@
       "name": "Smoke E2E — 관리자 권한 부여 + 데이터 접근",
       "name_ascii": "Smoke E2E - admin grant and data access",
       "description": "e2e/smoke/admin-grant.spec.ts + e2e/smoke/data-access.spec.ts. 관리자 → 비관리자에게 권한 부여 → 권한 부여된 계정 관리자 기능 접근. 재료/프렙 CRUD.",
-      "status": "pending",
+      "status": "passing",
       "test_command": "smoke_e2e",
       "test_spec": "e2e/smoke/",
       "acceptance_criteria": [
         "권한 부여 시나리오 green",
         "재료/프렙 CRUD Supabase 반영",
         "Playwright smoke green"
-      ]
+      ],
+      "last_tested": "2026-04-03T02:24:53.923118"
     },
     {
       "id": "S7T3",
@@ -411,9 +412,9 @@
   ],
   "progress": {
     "total": 22,
-    "completed": 20,
-    "passing": 20,
+    "completed": 21,
+    "passing": 21,
     "failing": 0,
-    "pending": 2
+    "pending": 1
   }
 }
