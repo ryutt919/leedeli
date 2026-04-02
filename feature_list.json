@@ -199,14 +199,15 @@
       "name": "Supabase ingredientsRepo",
       "name_ascii": "Supabase ingredientsRepo",
       "description": "src/storage/ingredientsRepo.ts 교체. loadIngredients, upsertIngredient, deleteIngredient → Supabase 기반. 함수 시그니처 async로 변경.",
-      "status": "pending",
+      "status": "passing",
       "test_command": "mock_e2e",
       "test_spec": "e2e/mock/storage.spec.ts",
       "acceptance_criteria": [
         "IngredientsPage 정상 렌더",
         "CRUD Supabase 반영",
         "tsc --noEmit 에러 0"
-      ]
+      ],
+      "last_tested": "2026-04-03T02:07:00.793545"
     },
     {
       "id": "S4T2",
@@ -401,9 +402,9 @@
   ],
   "progress": {
     "total": 22,
-    "completed": 10,
-    "passing": 10,
+    "completed": 11,
+    "passing": 11,
     "failing": 0,
-    "pending": 12
+    "pending": 11
   }
 }
