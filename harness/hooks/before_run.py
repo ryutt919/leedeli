@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -18,14 +19,19 @@ def before_run(config: dict, loop_mode: str, log_dir: Path, agent: str) -> None:
         print("[hook:before_run] node_modules missing -> running npm install")
         subprocess.run(["npm", "install"], cwd=str(root), shell=(sys.platform == "win32"), check=False)
 
+    agent_path = shutil.which(agent)
+    if not agent_path:
+        print(f"[hook:before_run][err] {agent} CLI is not available on PATH.")
+        sys.exit(1)
+
     result = subprocess.run(
-        [agent, "--version"],
+        [agent_path, "--version"],
         capture_output=True,
         text=True,
-        shell=(sys.platform == "win32"),
+        shell=False,
     )
     if result.returncode != 0:
-        print(f"[hook:before_run][err] {agent} CLI is not available on PATH.")
+        print(f"[hook:before_run][err] {agent} CLI exists but failed to start.")
         sys.exit(1)
 
     env_file = root / ".env"

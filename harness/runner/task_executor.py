@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import subprocess
 import sys
+import shutil
 from pathlib import Path
 
 
@@ -40,9 +41,13 @@ class TaskExecutor:
         return ""
 
     def _build_agent_command(self, prompt: str) -> list[str]:
+        executable = shutil.which(self.agent)
+        if not executable:
+            raise FileNotFoundError(self.agent)
+
         if self.agent == "codex":
             return [
-                "codex",
+                executable,
                 "exec",
                 "--dangerously-bypass-approvals-and-sandbox",
                 "--skip-git-repo-check",
@@ -51,7 +56,7 @@ class TaskExecutor:
                 prompt,
             ]
         if self.agent == "claude":
-            return ["claude", "--print", "--dangerously-skip-permissions", prompt]
+            return [executable, "--print", "--dangerously-skip-permissions", prompt]
         raise ValueError(f"Unsupported agent: {self.agent}")
 
     def run_coding_agent(self, feature: dict, log_path: Path) -> bool:
