@@ -181,14 +181,15 @@
       "name": "AdminPage (관리자 권한 부여 UI)",
       "name_ascii": "AdminPage (grant admin UI)",
       "description": "src/pages/AdminPage.tsx. 유저 목록 조회 → 선택 → admin_users INSERT. 부여 이력 표시. /admin 라우트 (RequireAdmin 보호).",
-      "status": "pending",
+      "status": "passing",
       "test_command": "mock_e2e",
       "test_spec": "e2e/mock/auth.spec.ts",
       "acceptance_criteria": [
         "관리자 권한 부여 UI 동작",
         "admin_users 테이블에 행 생성",
         "tsc --noEmit 에러 0"
-      ]
+      ],
+      "last_tested": "2026-04-03T02:06:31.598276"
     },
     {
       "id": "S4T1",
@@ -400,9 +401,9 @@
   ],
   "progress": {
     "total": 22,
-    "completed": 9,
-    "passing": 9,
+    "completed": 10,
+    "passing": 10,
     "failing": 0,
-    "pending": 13
+    "pending": 12
   }
 }
