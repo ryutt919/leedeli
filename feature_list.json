@@ -436,14 +436,15 @@
       "name": "preps 스키마 통일 (data jsonb 단일화)",
       "name_ascii": "Unify preps schema to data jsonb",
       "description": "prep_items 테이블 제거. data jsonb 방식으로 단일화. supabase/migrations/006_drop_prep_items.sql 생성.",
-      "status": "pending",
+      "status": "passing",
       "test_command": "npx playwright test e2e/mock/storage.spec.ts --project=mock",
       "test_spec": "e2e/mock/storage.spec.ts",
       "acceptance_criteria": [
         "supabase/migrations/006_drop_prep_items.sql 파일 존재 (IF EXISTS)",
         "prepsRepo.ts 모든 함수 정상 동작",
         "npm run typecheck 통과"
-      ]
+      ],
+      "last_tested": "2026-04-04T11:46:46.391287"
     },
     {
       "id": "S9T1",
@@ -485,9 +486,9 @@
   ],
   "progress": {
     "total": 26,
-    "completed": 23,
-    "passing": 23,
+    "completed": 24,
+    "passing": 24,
     "failing": 0,
-    "pending": 3
+    "pending": 2
   }
 }

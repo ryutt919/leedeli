@@ -1,6 +1,6 @@
-LAST_UPDATED: 2026-04-04T11:45:47.135398
-CURRENT_FEATURE: S8T1
+LAST_UPDATED: 2026-04-04T11:46:46.396956
+CURRENT_FEATURE: S8T2
 PHASE: passing
-CYCLE: 1
-NOTES: 사이클 1: Loading fix + login/logout button 완료
+CYCLE: 2
+NOTES: 사이클 2: Unify preps schema to data jsonb 완료
 BLOCKING: none
