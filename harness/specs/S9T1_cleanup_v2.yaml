@@ -1,0 +1,38 @@
+id: S9T1
+title: "src/v2/ 디렉토리 삭제 및 import 정리"
+category: scaffold
+status: pending
+
+description: |
+  Sprint 6 이후 유산인 src/v2/ 디렉토리를 삭제한다.
+  App.tsx가 v2 페이지를 import하고 있으므로, v2 파일들을 src/pages/로
+  이전하거나 alias를 제거한 후 v2 디렉토리를 완전히 삭제한다.
+
+implementation_targets:
+  - src/App.tsx
+  - src/pages/CreateSchedulePage.tsx    # v2에서 이전 또는 이미 존재하면 alias 제거
+  - src/pages/ManageSchedulesPage.tsx   # v2에서 이전 또는 이미 존재하면 alias 제거
+  - src/v2/                             # 삭제 대상 디렉토리
+
+acceptance_criteria:
+  - src/v2/ 디렉토리가 존재하지 않음
+  - App.tsx가 src/pages/v2/ 경로를 import하지 않음
+  - npm run typecheck 통과
+  - npm run build 통과
+  - npx playwright test e2e/mock/ --project=mock 전체 통과
+
+test_command: "npm run build && npm run typecheck"
+regression_command: "npx playwright test e2e/mock/ --project=mock"
+
+steps:
+  1: App.tsx에서 v2 import alias 확인
+  2: v2 페이지 파일을 src/pages/로 복사 또는 직접 참조
+  3: App.tsx import 경로 수정
+  4: src/v2/ 디렉토리 삭제
+  5: typecheck + build + mock E2E 확인
+
+notes: |
+  현재 App.tsx:
+    import { CreateSchedulePageV2 as CreateSchedulePage } from './pages/v2/CreateSchedulePage.v2'
+    import { ManageSchedulesPageV2 as ManageSchedulesPage } from './pages/v2/ManageSchedulesPage.v2'
+  v2 파일들이 src/pages/ 에 동일 기능으로 이미 있는지 먼저 확인 필요.

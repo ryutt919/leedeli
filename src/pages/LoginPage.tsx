@@ -1,17 +1,26 @@
 import { Button, Card, Form, Input, Typography, message, Flex } from 'antd'
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Navigate, useNavigate, useLocation } from 'react-router-dom'
+import type { Location } from 'react-router-dom'
 import { supabase } from '../utils/supabase'
+import { useAuth } from '../auth/AuthContext'
 
 /**
  * 로그인 / 회원가입 페이지
  * - 이메일 + 비밀번호 기반 인증
  * - 회원가입 시 확인 이메일 발송(Supabase 기본 설정에 따라)
+ * - 이미 로그인된 상태면 홈으로 redirect
  */
 export function LoginPage() {
+    const { session } = useAuth()
     const [loading, setLoading] = useState(false)
     const [isSignUp, setIsSignUp] = useState(false)
     const nav = useNavigate()
+    const location = useLocation()
+    const from = (location.state as { from?: Location } | null)?.from?.pathname ?? '/'
+
+    // 이미 로그인된 사용자는 홈으로
+    if (session) return <Navigate to="/" replace />
 
     const onFinish = async (values: { email: string; password: string; name?: string }) => {
         setLoading(true)
@@ -37,7 +46,7 @@ export function LoginPage() {
                 message.error(`로그인 실패: ${error.message}`)
             } else {
                 message.success('로그인 성공!')
-                nav('/', { replace: true })
+                nav(from, { replace: true })
             }
         }
 

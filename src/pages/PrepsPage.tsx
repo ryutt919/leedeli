@@ -167,27 +167,37 @@ export function PrepsPage() {
 
 
   const onSave = async () => {
-    const v = await form.validateFields()
-    const name = String(v.name ?? '').trim()
-    const items = (v.items ?? []) as PrepIngredientItem[]
-    const restockDatesISO = (v.restockDatesISO ?? []) as string[]
-    const now = new Date().toISOString()
+    try {
+      const v = await form.validateFields()
+      const name = String(v.name ?? '').trim()
+      const items = (v.items ?? []) as PrepIngredientItem[]
+      const restockDatesISO = (v.restockDatesISO ?? []) as string[]
+      const now = new Date().toISOString()
 
-    const normalizedItems = items
-      .filter((x) => x && x.ingredientId && x.amount > 0)
-      .map((x) => ({
-        ingredientId: x.ingredientId,
-        ingredientName: x.ingredientName || (ingredientById.get(x.ingredientId)?.name ?? ''),
-        amount: safeNumber(x.amount, 0),
-      }))
+      const normalizedItems = items
+        .filter((x) => x && x.ingredientId && x.amount > 0)
+        .map((x) => ({
+          ingredientId: x.ingredientId,
+          ingredientName: x.ingredientName || (ingredientById.get(x.ingredientId)?.name ?? ''),
+          amount: safeNumber(x.amount, 0),
+        }))
 
-    const next: Prep = editing
-      ? { ...editing, name, items: normalizedItems, restockDatesISO, updatedAtISO: now }
-      : { id: newId(), name, items: normalizedItems, restockDatesISO, updatedAtISO: now }
+      const next: Prep = editing
+        ? { ...editing, name, items: normalizedItems, restockDatesISO, updatedAtISO: now }
+        : { id: newId(), name, items: normalizedItems, restockDatesISO, updatedAtISO: now }
 
-    await upsertPrep(next)
-    setOpenEdit(false)
-    refresh()
+      await upsertPrep(next)
+      setOpenEdit(false)
+      refresh()
+      message.success(editing ? '수정되었습니다.' : '추가되었습니다.')
+    } catch (e) {
+      if (e instanceof Error) {
+        message.error(`저장 실패: ${e.message}`)
+      } else {
+        // antd form validation error might be thrown here
+        console.error('onSave error', e)
+      }
+    }
   }
 
   const onExportCsv = () => {

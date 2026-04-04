@@ -1,7 +1,7 @@
 import { Button, Card, Flex, Typography } from 'antd'
 import { useNavigate } from 'react-router-dom'
 
-export function UnauthorizedPage(): JSX.Element {
+export function UnauthorizedPage() {
   const navigate = useNavigate()
 
   return (
@@ -15,16 +15,21 @@ export function UnauthorizedPage(): JSX.Element {
       }}
     >
       <Card style={{ width: '100%', maxWidth: 420 }}>
-        <Flex vertical align="center" gap={8}>
+        <Flex vertical align="center" gap={12}>
           <Typography.Title level={3} style={{ marginBottom: 0 }}>
-            Unauthorized
+            권한 없음
           </Typography.Title>
           <Typography.Text type="secondary" style={{ textAlign: 'center' }}>
-            You do not have permission to access this page.
+            이 페이지에 접근할 권한이 없습니다.
           </Typography.Text>
-          <Button type="primary" onClick={() => navigate('/', { replace: true })}>
-            Go Home
-          </Button>
+          <Flex gap={8} wrap="wrap" justify="center">
+            <Button type="primary" onClick={() => navigate('/', { replace: true })}>
+              홈으로
+            </Button>
+            <Button onClick={() => navigate('/login', { replace: true })}>
+              로그인
+            </Button>
+          </Flex>
         </Flex>
       </Card>
     </div>

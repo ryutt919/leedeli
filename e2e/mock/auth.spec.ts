@@ -10,15 +10,21 @@ const BASE = 'http://localhost:5173'
 async function mockLoggedIn(page: import('@playwright/test').Page, isAdmin: boolean) {
   const fakeUserId = 'user-mock-001'
 
+  // exp=9999999999인 JWT → Supabase JS가 refresh 시도하지 않아 DOM detach 방지
+  const mockJwt =
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9' +
+    '.eyJzdWIiOiJ1c2VyLW1vY2stMDAxIiwiZW1haWwiOiJ0ZXN0QGV4YW1wbGUuY29tIiwicm9sZSI6ImF1dGhlbnRpY2F0ZWQiLCJhdWQiOiJhdXRoZW50aWNhdGVkIiwiZXhwIjo5OTk5OTk5OTk5fQ' +
+    '.fake-sig'
+
   // getSession → 로그인 세션 반환
   await page.route('**/auth/v1/token*', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({
-        access_token: 'mock-access-token',
+        access_token: mockJwt,
         token_type: 'bearer',
-        expires_in: 3600,
+        expires_in: 9999999999,
         refresh_token: 'mock-refresh-token',
         user: { id: fakeUserId, email: 'test@example.com' },
       }),
@@ -116,11 +122,16 @@ test.describe('S3T2 — RequireAdmin + UnauthorizedPage', () => {
     await mockLoggedIn(page, false)
     await signInWithMockUser(page)
 
-    await page.goto(`${BASE}/#/unauthorized`)
-    await expect(page.getByRole('heading', { name: /Unauthorized/i })).toBeVisible()
-    await expect(page.getByRole('button', { name: /Go Home/i })).toBeVisible()
+    // /create로 접근 → RequireAdmin(isAdmin=false)이 /unauthorized로 redirect
+    // hash-change 방식: full reload 없음 → AuthContext 재초기화 없음 → DOM stable
+    // isAdmin 확정 대기 포함 (10s): mock admin_users가 []를 반환하면 즉시 false로 설정됨
+    await page.getByText('스케줄 생성').click()
+    await expect(page).toHaveURL(/#\/unauthorized$/, { timeout: 10000 })
 
-    await page.getByRole('button', { name: /Go Home/i }).click()
+    await expect(page.getByRole('heading', { name: /권한 없음/ })).toBeVisible()
+    await expect(page.getByRole('button', { name: /홈으로/ })).toBeVisible()
+
+    await page.getByRole('button', { name: /홈으로/ }).click()
     await expect(page).toHaveURL(/#\/$/)
   })
 })

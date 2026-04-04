@@ -3,7 +3,7 @@ import { Navigate } from 'react-router-dom'
 import { Spin } from 'antd'
 import { useAuth } from './AuthContext'
 
-export function RequireAdmin({ children }: { children: ReactNode }): JSX.Element {
+export function RequireAdmin({ children }: { children: ReactNode }) {
   const { loading, isAdmin } = useAuth()
 
   if (loading || isAdmin === null) {

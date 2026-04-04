@@ -47,26 +47,35 @@ export function IngredientsPage() {
   }
 
   const onSave = async () => {
-    const v = await form.validateFields()
-    const name = String(v.name ?? '').trim()
-    const purchasePrice = safeNumber(v.purchasePrice, 0)
-    const purchaseUnit = safeNumber(v.purchaseUnit, 1)
-    const unitLabel = normalizeUnitLabel(v.unitLabel) || 'g'
-    if (!name) return
-    if (purchaseUnit <= 0) {
-      message.error('구매단위는 0보다 커야 합니다.')
-      return
+    try {
+      const v = await form.validateFields()
+      const name = String(v.name ?? '').trim()
+      const purchasePrice = safeNumber(v.purchasePrice, 0)
+      const purchaseUnit = safeNumber(v.purchaseUnit, 1)
+      const unitLabel = normalizeUnitLabel(v.unitLabel) || 'g'
+      if (!name) return
+      if (purchaseUnit <= 0) {
+        message.error('구매단위는 0보다 커야 합니다.')
+        return
+      }
+      const now = new Date().toISOString()
+      const unitPrice = round2(purchasePrice / purchaseUnit)
+
+      const next: Ingredient = editing
+        ? { ...editing, name, purchasePrice, purchaseUnit, unitPrice, unitLabel, updatedAtISO: now }
+        : { id: newId(), name, purchasePrice, purchaseUnit, unitPrice, unitLabel, updatedAtISO: now }
+
+      upsertIngredient(next)
+      setOpenEdit(false)
+      refresh()
+      message.success(editing ? '수정되었습니다.' : '추가되었습니다.')
+    } catch (e) {
+      if (e instanceof Error) {
+        message.error(`저장 실패: ${e.message}`)
+      } else {
+        console.error('onSave error', e)
+      }
     }
-    const now = new Date().toISOString()
-    const unitPrice = round2(purchasePrice / purchaseUnit)
-
-    const next: Ingredient = editing
-      ? { ...editing, name, purchasePrice, purchaseUnit, unitPrice, unitLabel, updatedAtISO: now }
-      : { id: newId(), name, purchasePrice, purchaseUnit, unitPrice, unitLabel, updatedAtISO: now }
-
-    upsertIngredient(next)
-    setOpenEdit(false)
-    refresh()
   }
 
   const onExportCsv = () => {

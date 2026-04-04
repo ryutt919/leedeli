@@ -409,13 +409,85 @@
         "전체 gate-loop 통과"
       ],
       "last_tested": "2026-04-03T02:25:19.148435"
+    },
+    {
+      "id": "S8T1",
+      "sprint": 8,
+      "category": "auth",
+      "priority": 23,
+      "name": "초기 로딩 최적화 + 로그인 버튼",
+      "name_ascii": "Loading fix + login/logout button",
+      "description": "RequireAuth spinner → null. MobileShell 드로어에 로그인/로그아웃 버튼 추가. vite.config.ts manualChunks 코드 스플리팅.",
+      "status": "passing",
+      "test_command": "npx playwright test e2e/mock/auth.spec.ts --project=mock",
+      "test_spec": "e2e/mock/auth.spec.ts",
+      "acceptance_criteria": [
+        "비로그인 상태에서 spinner 없이 즉시 /login으로 redirect됨",
+        "MobileShell 드로어에 로그인/로그아웃 버튼 표시됨",
+        "npm run build 통과"
+      ],
+      "last_tested": "2026-04-04T11:45:47.128678"
+    },
+    {
+      "id": "S8T2",
+      "sprint": 8,
+      "category": "db",
+      "priority": 24,
+      "name": "preps 스키마 통일 (data jsonb 단일화)",
+      "name_ascii": "Unify preps schema to data jsonb",
+      "description": "prep_items 테이블 제거. data jsonb 방식으로 단일화. supabase/migrations/006_drop_prep_items.sql 생성.",
+      "status": "pending",
+      "test_command": "npx playwright test e2e/mock/storage.spec.ts --project=mock",
+      "test_spec": "e2e/mock/storage.spec.ts",
+      "acceptance_criteria": [
+        "supabase/migrations/006_drop_prep_items.sql 파일 존재 (IF EXISTS)",
+        "prepsRepo.ts 모든 함수 정상 동작",
+        "npm run typecheck 통과"
+      ]
+    },
+    {
+      "id": "S9T1",
+      "sprint": 9,
+      "category": "scaffold",
+      "priority": 25,
+      "name": "src/v2/ 디렉토리 삭제 및 import 정리",
+      "name_ascii": "Delete src/v2/ and clean imports",
+      "description": "App.tsx v2 import alias 제거. src/v2/ 디렉토리 완전 삭제. typecheck + build + mock E2E 확인.",
+      "status": "pending",
+      "test_command": "npm run build && npm run typecheck",
+      "test_spec": null,
+      "acceptance_criteria": [
+        "src/v2/ 디렉토리 존재하지 않음",
+        "App.tsx가 src/pages/v2/ 경로를 import하지 않음",
+        "npm run typecheck 통과",
+        "npm run build 통과",
+        "npx playwright test e2e/mock/ --project=mock 전체 통과"
+      ]
+    },
+    {
+      "id": "S10T1",
+      "sprint": 10,
+      "category": "smoke",
+      "priority": 26,
+      "name": "smoke E2E 실 DB 전체 검증",
+      "name_ascii": "Full smoke E2E with real DB",
+      "description": "실제 Supabase DB에 연결하여 smoke E2E 전체 통과. 환경변수 없으면 자동 스킵. afterAll cleanup 포함.",
+      "status": "pending",
+      "test_command": "npx playwright test e2e/smoke/ --project=smoke",
+      "test_spec": "e2e/smoke/",
+      "acceptance_criteria": [
+        "npx playwright test e2e/smoke/ --project=smoke 전체 통과",
+        "테스트 종료 후 테스트 데이터 자동 정리",
+        "비관리자 접근 차단 확인",
+        "관리자 부여 시나리오 통과"
+      ]
     }
   ],
   "progress": {
-    "total": 22,
-    "completed": 22,
-    "passing": 22,
+    "total": 26,
+    "completed": 23,
+    "passing": 23,
     "failing": 0,
-    "pending": 0
+    "pending": 3
   }
 }

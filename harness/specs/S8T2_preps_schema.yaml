@@ -1,0 +1,31 @@
+id: S8T2
+title: "preps 스키마 통일 (data jsonb 단일화)"
+category: db
+status: pending
+
+description: |
+  preps 테이블에 정규화 스키마(prep_items)와 JSONB(data) 방식이 혼재한다.
+  현재 코드(prepsRepo.ts)는 data jsonb만 사용하므로, prep_items 테이블을
+  제거하고 data jsonb 방식으로 단일화한다.
+
+implementation_targets:
+  - supabase/migrations/006_drop_prep_items.sql
+  - src/domain/types.ts   # PrepIngredientItem 타입 존재 시 정리
+
+acceptance_criteria:
+  - supabase/migrations/006_drop_prep_items.sql 파일이 존재하고 멱등(IF EXISTS)임
+  - 마이그레이션 적용 후 prepsRepo.ts의 모든 함수가 정상 동작함
+  - npm run typecheck 통과
+  - npx playwright test e2e/mock/storage.spec.ts 전체 통과
+
+test_command: "npx playwright test e2e/mock/storage.spec.ts --project=mock"
+regression_command: "npm run typecheck && npm run build"
+
+migration_sql: |
+  -- migration 006: prep_items 테이블 제거
+  -- prepsRepo.ts는 data jsonb 방식만 사용하므로 prep_items는 미사용
+  DROP TABLE IF EXISTS public.prep_items;
+
+notes: |
+  Supabase MCP로 직접 적용 필요.
+  migration 파일은 저장소에 커밋해야 함.

@@ -15,17 +15,11 @@ create table if not exists public.admin_users (
 -- RLS 활성화
 alter table public.admin_users enable row level security;
 
--- policy 1: 관리자만 조회 가능 (admin_users에 본인 행이 있고 revoked_at IS NULL)
-create policy "admin_users_select"
+-- policy 1: 본인 행 조회 가능 (순환 참조 방지)
+create policy "admin_users_select_own"
   on public.admin_users
   for select
-  using (
-    exists (
-      select 1 from public.admin_users au
-      where au.user_id = auth.uid()
-        and au.revoked_at is null
-    )
-  );
+  using (user_id = auth.uid());
 
 -- policy 2: 관리자만 삽입 가능
 create policy "admin_users_insert"

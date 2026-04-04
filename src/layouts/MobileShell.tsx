@@ -1,8 +1,10 @@
-import { InfoCircleOutlined, ReloadOutlined } from '@ant-design/icons'
+import { InfoCircleOutlined, LoginOutlined, LogoutOutlined, ReloadOutlined } from '@ant-design/icons'
 import { Button, Drawer, Flex, Layout, Typography, theme } from 'antd'
 import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
+import { useAuth } from '../auth/AuthContext'
+import { supabase } from '../utils/supabase'
 import { BottomNav } from '../components/BottomNav'
 import { PageHeader } from '../components/PageHeader'
 
@@ -19,6 +21,7 @@ export function MobileShell({
   const loc = useLocation()
   const nav = useNavigate()
   const [open, setOpen] = useState(false)
+  const { session } = useAuth()
 
   const canBack = useMemo(() => loc.pathname !== '/', [loc.pathname])
 
@@ -94,11 +97,34 @@ export function MobileShell({
             >
               홈
             </Button>
+            {!session && (
+              <Button
+                icon={<LoginOutlined />}
+                type="primary"
+                onClick={() => {
+                  setOpen(false)
+                  nav('/login')
+                }}
+              >
+                로그인
+              </Button>
+            )}
+            {!!session && (
+              <Button
+                icon={<LogoutOutlined />}
+                onClick={async () => {
+                  setOpen(false)
+                  await supabase.auth.signOut()
+                  nav('/login', { replace: true })
+                }}
+              >
+                로그아웃
+              </Button>
+            )}
             <Button
               icon={<ReloadOutlined />}
               danger
               onClick={() => {
-                // 다음 단계에서 “전체 초기화”를 기능별로 정교하게 제공.
                 localStorage.clear()
                 window.location.reload()
               }}
@@ -111,5 +137,3 @@ export function MobileShell({
     </Layout>
   )
 }
-
-
