@@ -474,7 +474,7 @@
       "name": "smoke E2E 실 DB 전체 검증",
       "name_ascii": "Full smoke E2E with real DB",
       "description": "실제 Supabase DB에 연결하여 smoke E2E 전체 통과. 환경변수 없으면 자동 스킵. afterAll cleanup 포함.",
-      "status": "pending",
+      "status": "passing",
       "test_command": "npx playwright test e2e/smoke/ --project=smoke",
       "test_spec": "e2e/smoke/",
       "acceptance_criteria": [
@@ -482,14 +482,15 @@
         "테스트 종료 후 테스트 데이터 자동 정리",
         "비관리자 접근 차단 확인",
         "관리자 부여 시나리오 통과"
-      ]
+      ],
+      "last_tested": "2026-04-04T11:48:17.351403"
     }
   ],
   "progress": {
     "total": 26,
-    "completed": 25,
-    "passing": 25,
+    "completed": 26,
+    "passing": 26,
     "failing": 0,
-    "pending": 1
+    "pending": 0
   }
 }
