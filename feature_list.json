@@ -454,7 +454,7 @@
       "name": "src/v2/ 디렉토리 삭제 및 import 정리",
       "name_ascii": "Delete src/v2/ and clean imports",
       "description": "App.tsx v2 import alias 제거. src/v2/ 디렉토리 완전 삭제. typecheck + build + mock E2E 확인.",
-      "status": "pending",
+      "status": "passing",
       "test_command": "npm run build && npm run typecheck",
       "test_spec": null,
       "acceptance_criteria": [
@@ -463,7 +463,8 @@
         "npm run typecheck 통과",
         "npm run build 통과",
         "npx playwright test e2e/mock/ --project=mock 전체 통과"
-      ]
+      ],
+      "last_tested": "2026-04-04T11:47:51.825934"
     },
     {
       "id": "S10T1",
@@ -486,9 +487,9 @@
   ],
   "progress": {
     "total": 26,
-    "completed": 24,
-    "passing": 24,
+    "completed": 25,
+    "passing": 25,
     "failing": 0,
-    "pending": 2
+    "pending": 1
   }
 }
