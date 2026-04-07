@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "context7": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@upstash/context7-mcp"
+      ]
+    },
+    "": {
+      "command": "context7",
+      "args": [
+        "npx",
+        "-y",
+        "@upstash/context7-mcp"
+      ]
+    }
+  }
+}

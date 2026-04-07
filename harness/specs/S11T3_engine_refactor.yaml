@@ -1,0 +1,19 @@
+id: S11T3
+title: "스케줄 엔진 고도화"
+category: engine
+status: completed
+
+description: |
+  전체 직원 수와 기본 필요 인원 외에도 각 날짜별 needDelta를 반영하여 동적으로 
+  목표 인원(targetHeadcount)을 설정하도록 개선한다.
+
+implementation_targets:
+  - src/domain/scheduleEngine.ts
+
+acceptance_criteria:
+  - generateSchedule에서 targetHeadcount 계산 시 needDelta 반영.
+  - targetHeadcount < 3 일 때 미들 배정 필수 제약 해제.
+  - validateGeneratedSchedule이 생성 로직과 동일한 동적 인원 체크 수행.
+
+test_command: "npm run test:unit"
+regression_command: "npx playwright test e2e/mock/schedule.spec.ts --project=mock"

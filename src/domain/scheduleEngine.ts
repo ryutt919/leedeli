@@ -123,34 +123,30 @@ export function generateSchedule(input: ScheduleInputs): { assignments: Schedule
       needDelta: 0,
     } satisfies DayRequest
 
-    // 날짜별 delta(정수 단위) 계산 (현재는 사용되지 않음)
-    // Enforce integer headcounts: floor any fractional values to avoid 0.5 units
-    const minBase = Math.floor(input.workRules.DAILY_STAFF_BASE)
-    const maxBase = Math.floor(input.workRules.DAILY_STAFF_MAX)
+    // 날짜별 필요 인원 계산 (needDelta 반영)
+    const baseMin = input.workRules.DAILY_STAFF_BASE
+    const baseMax = input.workRules.DAILY_STAFF_MAX
+    
+    // 실제 필요 인원 = clamp(BASE + delta, 1, MAX + delta)
+    const dailyMin = Math.max(1, Math.floor(baseMin + (req.needDelta || 0)))
+    const dailyMax = Math.max(dailyMin, Math.floor(baseMax + (req.needDelta || 0)))
 
     // 가용 직원 (OFF 아님)
     const availableStaff = input.staff.filter(s => !req.offStaffIds.includes(s.id))
     const availableCount = availableStaff.length
 
     // 불가능 판정: 가용 인원 < 최소인원 => 에러
-    if (availableCount < minBase) {
-      throw new Error(`${dateISO}: 가용 인원(${availableCount}명) < 최소 필요 인원(${minBase}명)`)
+    if (availableCount < dailyMin) {
+      throw new Error(`${dateISO}: 가용 인원(${availableCount}명) < 최소 필요 인원(${dailyMin}명)`)
     }
 
-    // 목표 배정 인원: 가능한 최대인원에 가깝게(우선 최대를 시도)
-    const targetHeadcount = Math.min(maxBase, availableCount)
+    // 목표 배정 인원: 가용 인원 내에서 dailyMax에 맞춤
+    const targetHeadcount = Math.min(dailyMax, availableCount)
 
     const hasOpenCapable = availableStaff.some(s => s.availableShifts.includes('open'))
     const hasCloseCapable = availableStaff.some(s => s.availableShifts.includes('close'))
     if (!hasOpenCapable || !hasCloseCapable) {
       throw new Error(`${dateISO}: 오픈 또는 마감 가능 인원이 없습니다`)
-    }
-
-    if (targetHeadcount >= 3) {
-      const hasMiddleCapable = availableStaff.some(s => s.availableShifts.includes('middle'))
-      if (!hasMiddleCapable) {
-        throw new Error(`${dateISO}: 필요 인원 ${targetHeadcount}명이지만 미들 가능 인원이 없습니다`)
-      }
     }
 
     // allowed_shifts 계산 (개인별, 날짜별)
@@ -392,8 +388,11 @@ export function validateGeneratedSchedule(input: ScheduleInputs, assignments: Sc
   
   for (const a of assignments) {
     const req = reqByDate.get(a.dateISO)
-    const minBase = Math.round(input.workRules.DAILY_STAFF_BASE)
-    const maxBase = Math.round(input.workRules.DAILY_STAFF_MAX)
+    const baseMin = input.workRules.DAILY_STAFF_BASE
+    const baseMax = input.workRules.DAILY_STAFF_MAX
+    
+    const dailyMin = Math.max(1, Math.floor(baseMin + (req?.needDelta || 0)))
+    const dailyMax = Math.max(dailyMin, Math.floor(baseMax + (req?.needDelta || 0)))
 
     // 배정된 인원 수 확인
     const assignedCount = new Set([
@@ -402,11 +401,11 @@ export function validateGeneratedSchedule(input: ScheduleInputs, assignments: Sc
       ...a.byShift.close.map(x => x.staffId),
     ]).size
 
-    if (assignedCount < minBase) {
-      errs.push(`${a.dateISO}: 배정 인원(${assignedCount}명) < 최소 필요 인원(${minBase}명)`)
+    if (assignedCount < dailyMin) {
+      errs.push(`${a.dateISO}: 배정 인원(${assignedCount}명) < 최소 필요 인원(${dailyMin}명)`)
     }
-    if (assignedCount > maxBase) {
-      errs.push(`${a.dateISO}: 배정 인원(${assignedCount}명) > 최대 허용 인원(${maxBase}명)`)
+    if (assignedCount > dailyMax) {
+      errs.push(`${a.dateISO}: 배정 인원(${assignedCount}명) > 최대 허용 인원(${dailyMax}명)`)
     }
 
     // 오픈/마감 최소 1명 확인
@@ -419,13 +418,13 @@ export function validateGeneratedSchedule(input: ScheduleInputs, assignments: Sc
     // 날짜별 가용 인원과 목표치 계산(생성 로직과 동일한 방식)
     const reqObj = req ?? { dateISO: a.dateISO, offStaffIds: [], halfStaff: [], needDelta: 0 }
     const availableCount = input.staff.filter(s => !reqObj.offStaffIds.includes(s.id)).length
-    const targetHeadcount = Math.min(maxBase, availableCount)
+    const targetHeadcount = Math.min(dailyMax, availableCount)
 
-    // target>=3이면 O/M/C 각각 최소 1명 확인
+    // targetHeadcount >= 3 일 때만 O/M/C 각각 1명 필수
     if (targetHeadcount >= 3) {
       const hasMiddle = a.byShift.middle.length > 0
       if (!hasOpen || !hasMiddle || !hasClose) {
-        errs.push(`${a.dateISO}: 필요 인원(${targetHeadcount}) 기준으로 O/M/C 중 하나가 비어있습니다`)
+        errs.push(`${a.dateISO}: 목표 인원(${targetHeadcount}) 기준으로 O/M/C 중 하나가 비어있습니다`)
       }
     }
 

@@ -1,0 +1,19 @@
+id: S11T1
+title: "어드민 권한 체크 로직 보완"
+category: auth
+status: completed
+
+description: |
+  어드민 계정임에도 권한 없음 페이지가 나오는 현상을 수정한다.
+  AuthContext의 초기화 순서(race condition)를 바로잡고 진단 로그를 보강한다.
+
+implementation_targets:
+  - src/auth/AuthContext.tsx
+
+acceptance_criteria:
+  - init()에서 isAdmin 확인 완료 후 loading=false로 변경됨.
+  - onAuthStateChange에서 SIGNED_IN 시 loading=true 상태에서 권한 재조회 수행.
+  - fetchIsAdmin에 상세 로그 추가.
+
+test_command: "npm run build"
+regression_command: "npx playwright test e2e/mock/auth.spec.ts --project=mock"

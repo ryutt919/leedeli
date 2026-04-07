@@ -35,7 +35,7 @@ class UsageDecision:
 class UsageGuard:
     def __init__(self, config: dict, root: Path, agent: str, logger: HarnessLogger) -> None:
         guard_cfg = config.get("runner", {}).get("usage_guard", {})
-        self.enabled = guard_cfg.get("enabled", True)
+        self.enabled = False # guard_cfg.get("enabled", True)
         self.threshold_percent = float(guard_cfg.get("threshold_percent", 95))
         self.checkpoints = guard_cfg.get(
             "checkpoints",

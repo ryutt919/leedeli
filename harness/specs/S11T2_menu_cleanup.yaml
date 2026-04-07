@@ -1,0 +1,19 @@
+id: S11T2
+title: "메뉴 UI 정리"
+category: ui
+status: pending
+
+description: |
+  MobileShell의 메뉴 드로어에서 더 이상 사용되지 않는 '로컬 저장소' 안내 문구와 
+  위험한 '전체 초기화' 버튼을 제거하여 사용자 혼란을 방지한다.
+
+implementation_targets:
+  - src/layouts/MobileShell.tsx
+
+acceptance_criteria:
+  - 메뉴 드로어에서 '로컬 저장소(localStorage)에 데이터가 저장됩니다.' 문구가 제거됨.
+  - 메뉴 드로어에서 '전체 초기화' 버튼이 제거됨.
+  - UI 레이아웃에 부정적인 영향이 없음.
+
+test_command: "npm run build"
+regression_command: "npx playwright test e2e/mock/ --project=mock"

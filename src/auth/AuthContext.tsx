@@ -13,27 +13,29 @@ export type AuthContextValue = {
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 
 async function fetchIsAdmin(userId: string): Promise<boolean> {
-  // 5초 타임아웃 추가
+  const fetchTask = (async () => {
+    const { data, error } = await supabase
+      .from('admin_users')
+      .select('id, user_id')
+      .eq('user_id', userId)
+      .is('revoked_at', null)
+      .limit(1)
+
+    if (error) {
+      console.error('[AuthContext] admin_users 조회 오류:', error)
+      return false
+    }
+    const exists = Array.isArray(data) && data.length > 0
+    console.log(`[AuthContext] admin check for ${userId}: ${exists}`, data)
+    return exists
+  })()
+
+  // 5초 타임아웃
   const timeout = new Promise<boolean>((_, reject) =>
     setTimeout(() => reject(new Error('Admin check timeout')), 5000)
   )
 
   try {
-    const fetchTask = (async () => {
-      const { data, error } = await supabase
-        .from('admin_users')
-        .select('id')
-        .eq('user_id', userId)
-        .is('revoked_at', null)
-        .limit(1)
-
-      if (error) {
-        console.error('[AuthContext] admin_users 조회 오류:', error)
-        return false
-      }
-      return Array.isArray(data) && data.length > 0
-    })()
-
     return await Promise.race([fetchTask, timeout])
   } catch (e) {
     console.error('[AuthContext] admin_users 조회 실패 또는 타임아웃:', e)
@@ -69,14 +71,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (cancelled) return
         setSession(currentSession)
-        // session 여부가 확정된 즉시 loading 해제 → RequireAuth가 즉시 /login으로 redirect 가능
-        if (!cancelled) setLoading(false)
 
         if (currentSession?.user) {
           const admin = await fetchIsAdmin(currentSession.user.id)
-          if (!cancelled) setIsAdmin(admin)
+          if (!cancelled) {
+            setIsAdmin(admin)
+            setLoading(false)
+          }
         } else {
-          if (!cancelled) setIsAdmin(false)
+          if (!cancelled) {
+            setIsAdmin(false)
+            setLoading(false)
+          }
         }
       } catch (err) {
         console.error('[AuthContext] 초기화 실패:', err)
@@ -91,20 +97,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     init()
 
     const { data: listener } = supabase.auth.onAuthStateChange(async (event, newSession) => {
-      // INITIAL_SESSION은 init()과 중복 실행되므로 무시
+      console.log('[AuthContext] onAuthStateChange:', event, newSession?.user?.email)
+      
       if (event === 'INITIAL_SESSION') return
-      // TOKEN_REFRESHED / USER_UPDATED: 세션만 갱신, 동일 사용자이므로 admin 재조회 불필요
+      
+      if (event === 'SIGNED_OUT') {
+        if (!cancelled) {
+          setSession(null)
+          setIsAdmin(false)
+          setLoading(false)
+        }
+        return
+      }
+
       if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
         if (!cancelled) setSession(newSession)
         return
       }
+
       if (cancelled) return
       setSession(newSession)
+      
       if (newSession?.user) {
+        setLoading(true) // 재조회 중에는 다시 로딩 상태로
         const admin = await fetchIsAdmin(newSession.user.id)
-        if (!cancelled) setIsAdmin(admin)
+        if (!cancelled) {
+          setIsAdmin(admin)
+          setLoading(false)
+        }
       } else {
-        if (!cancelled) setIsAdmin(false)
+        if (!cancelled) {
+          setIsAdmin(false)
+          setLoading(false)
+        }
       }
     })
 

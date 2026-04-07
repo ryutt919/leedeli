@@ -1,5 +1,5 @@
-import { InfoCircleOutlined, LoginOutlined, LogoutOutlined, ReloadOutlined } from '@ant-design/icons'
-import { Button, Drawer, Flex, Layout, Typography, theme } from 'antd'
+import { InfoCircleOutlined, LoginOutlined, LogoutOutlined } from '@ant-design/icons'
+import { Button, Drawer, Flex, Layout, theme } from 'antd'
 import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
@@ -83,10 +83,6 @@ export function MobileShell({
         width={320}
       >
         <Flex vertical gap={12}>
-          <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
-            로컬 저장소(localStorage)에 데이터가 저장됩니다.
-          </Typography.Paragraph>
-
           <Flex gap={8} wrap>
             <Button
               icon={<InfoCircleOutlined />}
@@ -121,16 +117,6 @@ export function MobileShell({
                 로그아웃
               </Button>
             )}
-            <Button
-              icon={<ReloadOutlined />}
-              danger
-              onClick={() => {
-                localStorage.clear()
-                window.location.reload()
-              }}
-            >
-              전체 초기화
-            </Button>
           </Flex>
         </Flex>
       </Drawer>

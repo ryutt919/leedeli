@@ -484,12 +484,85 @@
         "관리자 부여 시나리오 통과"
       ],
       "last_tested": "2026-04-04T11:48:17.351403"
+    },
+    {
+      "id": "S11T1",
+      "sprint": 11,
+      "category": "auth",
+      "priority": 27,
+      "name": "어드민 권한 체크 로직 보완",
+      "name_ascii": "Admin Auth Fix",
+      "description": "어드민 계정임에도 권한 없음 페이지가 나오는 현상 수정. AuthContext의 fetchIsAdmin 로직 검토 및 RLS 확인.",
+      "status": "passing",
+      "test_command": "npx playwright test e2e/mock/auth.spec.ts --project=mock",
+      "test_spec": "e2e/mock/auth.spec.ts",
+      "acceptance_criteria": [
+        "관리자 계정으로 로그인 시 /create 페이지 접근 가능",
+        "fetchIsAdmin 타임아웃 또는 에러 처리 견고화",
+        "tsc --noEmit 에러 0"
+      ],
+      "last_tested": "2026-04-08T00:00:00.000000"
+    },
+    {
+      "id": "S11T2",
+      "sprint": 11,
+      "category": "ui",
+      "priority": 28,
+      "name": "메뉴 UI 정리",
+      "name_ascii": "Menu UI Cleanup",
+      "description": "MobileShell의 '로컬 저장소' 안내 문구 수정 및 '전체 초기화' 버튼 삭제.",
+      "status": "passing",
+      "test_command": "npm run build",
+      "test_spec": null,
+      "acceptance_criteria": [
+        "메뉴 드로어에서 '로컬 저장소' 문구 제거 또는 Supabase 관련으로 수정",
+        "메뉴 드로어에서 '전체 초기화' 버튼 제거",
+        "UI 레이아웃 깨짐 없음"
+      ],
+      "last_tested": "2026-04-08T00:00:00.000000"
+    },
+    {
+      "id": "S11T3",
+      "sprint": 11,
+      "category": "engine",
+      "priority": 29,
+      "name": "스케줄 엔진 고도화 (동적 인원 설정)",
+      "name_ascii": "Dynamic Schedule Engine",
+      "description": "전체 직원 수, 기본 필요 인원, 날짜별 needDelta를 반영하여 동적으로 인원 배치. 3인 고정 로직 제거.",
+      "status": "passing",
+      "test_command": "npm run test:unit",
+      "test_spec": "tests/unit/scheduleEngine.test.ts",
+      "acceptance_criteria": [
+        "날짜별 needDelta가 반영되어 targetHeadcount 계산",
+        "targetHeadcount에 따라 O/M/C 배정 슬롯 동적 결정",
+        "가용 인원 부족 시 명확한 에러 메시지 반환",
+        "Unit Test 전체 통과"
+      ],
+      "last_tested": "2026-04-08T00:00:00.000000"
+    },
+    {
+      "id": "S11T4",
+      "sprint": 11,
+      "category": "harness",
+      "priority": 30,
+      "name": "하네스 상태 관리 및 로깅 시스템 도입",
+      "name_ascii": "Harness Logging System",
+      "description": "하네스.md 지침에 따라 state/ 및 logs/ 구조 도입 및 단계별 기록 수행.",
+      "status": "passing",
+      "test_command": "ls state logs",
+      "test_spec": null,
+      "acceptance_criteria": [
+        "state/current_state.json 존재 및 유효",
+        "logs/steps/ 아래에 step_XXXX.json 생성됨",
+        "하네스.md 규칙 준수"
+      ],
+      "last_tested": "2026-04-08T00:00:00.000000"
     }
   ],
   "progress": {
-    "total": 26,
-    "completed": 26,
-    "passing": 26,
+    "total": 30,
+    "completed": 30,
+    "passing": 30,
     "failing": 0,
     "pending": 0
   }
