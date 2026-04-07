@@ -332,7 +332,12 @@ def main() -> None:
             if attempt_usage.should_stop:
                 safe_stop(feature_id, attempt_usage.reason or "usage threshold reached before attempt")
 
-            coding_result = executor.run_coding_agent(feature, coding_log, attempt=attempt)
+            if feature["status"] == "implemented":
+                print(f"[하네스]   이미 구현됨: 코딩 에이전트 실행을 스킵하고 평가를 진행합니다")
+                coding_result = type('obj', (object,), {'ok': True, 'stop_requested': False})()
+            else:
+                coding_result = executor.run_coding_agent(feature, coding_log, attempt=attempt)
+
             if coding_result.stop_requested:
                 safe_stop(feature_id, coding_result.stop_reason or "agent quota/limit signal detected")
             if not coding_result.ok:
