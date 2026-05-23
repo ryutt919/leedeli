@@ -42,8 +42,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let cancelled = false
-    // 강제 로그아웃 진행 중 플래그 — TOKEN_REFRESHED 등 끼어드는 이벤트 차단
     let forcingSignOut = false
+    let seenInitialSession = false
+
+    // 이벤트 발화 전에 미리 캡처 — SIGNED_IN이 먼저 와도 덮어쓰기 방지
+    const sessionWasAlive = !!sessionStorage.getItem(SESSION_ALIVE_KEY)
 
     const { data: listener } = supabase.auth.onAuthStateChange(
       async (event, newSession) => {
@@ -51,12 +54,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         console.log('[Auth]', event, newSession?.user?.id?.slice(0, 8) ?? 'null', forcingSignOut ? '(forcing logout)' : '')
 
-        // 강제 로그아웃 중 → SIGNED_OUT 외 모든 이벤트 무시
-        // (TOKEN_REFRESHED가 INITIAL_SESSION 직후 끼어들어 loading=true로 되돌리는 버그 방지)
         if (forcingSignOut && event !== 'SIGNED_OUT') return
 
         if (event === 'SIGNED_IN') {
           sessionStorage.setItem(SESSION_ALIVE_KEY, '1')
+          // INITIAL_SESSION 전에 오는 SIGNED_IN은 토큰 자동갱신 부산물일 수 있음
+          // INITIAL_SESSION이 stale 여부를 판단할 때까지 처리 보류
+          if (!seenInitialSession) return
         }
 
         if (event === 'SIGNED_OUT') {
@@ -69,19 +73,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         if (event === 'INITIAL_SESSION') {
-          const aliveThisSession = !!sessionStorage.getItem(SESSION_ALIVE_KEY)
-          console.log('[Auth] INITIAL_SESSION — alive:', aliveThisSession, '| token:', !!newSession)
+          seenInitialSession = true
+          console.log('[Auth] INITIAL_SESSION — wasAlive:', sessionWasAlive, '| token:', !!newSession)
 
-          if (newSession && !aliveThisSession) {
-            // 탭/브라우저를 닫고 다시 열었을 때: localStorage 토큰 잔존 but 이번 세션 미인증
-            // signOut({scope:'local'}) 내부에서 getSession()이 null 반환 시 SIGNED_OUT이
-            // 발생하지 않을 수 있으므로 — 상태를 직접 즉시 초기화하고 백그라운드로 정리
+          if (newSession && !sessionWasAlive) {
+            // 탭 닫고 재진입: localStorage 토큰 잔존 but 이번 탭에서 미인증
             console.log('[Auth] stale token → force clear state')
             forcingSignOut = true
+            sessionStorage.removeItem(SESSION_ALIVE_KEY)
             setSession(null)
             setIsAdmin(false)
             setLoading(false)
-            // localStorage 토큰 정리 (백그라운드, 실패해도 무방)
             supabase.auth.signOut({ scope: 'local' }).catch(() => {})
             return
           }
@@ -92,7 +94,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setLoading(false)
             return
           }
-          // 유효한 현재 세션 → 아래 공통 처리로 진행
+          // 유효한 현재 세션 → 공통 처리로 진행
         }
 
         setSession(newSession)
