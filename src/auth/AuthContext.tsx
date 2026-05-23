@@ -37,36 +37,16 @@ async function fetchIsAdmin(userId: string): Promise<boolean> {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
-  const [isAdmin, setIsAdmin] = useState<boolean | null>(() => {
-    // 초기 상태 설정 시 세션 스토리지를 즉시 참조하여 로딩 시간을 줄임
-    const lastUser = localStorage.getItem('sb-tmmkdqpiolyldhngysxh-auth-token');
-    if (lastUser) {
-      try {
-        const parsed = JSON.parse(lastUser);
-        const userId = parsed?.user?.id;
-        if (userId && sessionStorage.getItem(`is_admin_${userId}`) === 'true') {
-          return true;
-        }
-      } catch (e) { /* ignore */ }
-    }
-    return null;
-  })
-  const [loading, setLoading] = useState(isAdmin === null)
+  const [isAdmin, setIsAdmin] = useState<boolean | null>(null)
+  const [loading, setLoading] = useState(true)
 
-  const checkUserAdmin = useCallback(async (user: any, cancelled: { value: boolean }) => {
+  const checkUserAdmin = useCallback(async (user: { id: string } | null, cancelled: { value: boolean }) => {
     if (!user) {
-      if (!cancelled.value) {
-        setIsAdmin(false);
-        setLoading(false);
-      }
+      if (!cancelled.value) { setIsAdmin(false); setLoading(false); }
       return;
     }
-
     const result = await fetchIsAdmin(user.id);
-    if (!cancelled.value) {
-      setIsAdmin(result);
-      setLoading(false);
-    }
+    if (!cancelled.value) { setIsAdmin(result); setLoading(false); }
   }, []);
 
   async function refreshAdmin(): Promise<void> {
@@ -84,15 +64,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const cancelled = { value: false }
 
     async function init() {
-      const { data: sessionData } = await supabase.auth.getSession()
-      if (cancelled.value) return
-      const currentSession = sessionData?.session ?? null
-      setSession(currentSession)
-      if (currentSession?.user) {
-        await checkUserAdmin(currentSession.user, cancelled)
-      } else {
-        setIsAdmin(false)
-        setLoading(false)
+      try {
+        const { data: sessionData } = await supabase.auth.getSession()
+        if (cancelled.value) return
+        const currentSession = sessionData?.session ?? null
+        setSession(currentSession)
+        if (currentSession?.user) {
+          await checkUserAdmin(currentSession.user, cancelled)
+        } else {
+          if (!cancelled.value) { setIsAdmin(false); setLoading(false); }
+        }
+      } catch {
+        if (!cancelled.value) { setIsAdmin(false); setLoading(false); }
       }
     }
 
@@ -109,9 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       if (newSession?.user) {
-        if (sessionStorage.getItem(`is_admin_${newSession.user.id}`) !== 'true') {
-          setLoading(true)
-        }
+        setLoading(true)
         await checkUserAdmin(newSession.user, cancelled)
       } else {
         setIsAdmin(false)

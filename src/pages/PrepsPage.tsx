@@ -42,17 +42,35 @@ import { parseXlsxFileToAOA } from '../utils/xlsxImport'
 
 export function PrepsPage() {
   const [tick, setTick] = useState(0)
-  const ingredients = useMemo(
-    () => {
-      void tick
-      return loadIngredients().sort((a, b) => a.name.localeCompare(b.name))
-    },
-    [tick],
-  )
+  const [ingredients, setIngredients] = useState<Ingredient[]>([])
   const [preps, setPreps] = useState<Prep[]>([])
   useEffect(() => {
+    loadIngredients().then((items) => setIngredients(items.sort((a, b) => a.name.localeCompare(b.name))))
     loadPreps().then((items) => setPreps(items.sort((a, b) => a.name.localeCompare(b.name))))
   }, [tick])
+
+  const [search, setSearch] = useState('')
+  const [categoryFilter, setCategoryFilter] = useState<string | null>(null)
+
+  const allCategories = useMemo(() => {
+    const cats = new Set<string>()
+    preps.forEach((p) => { if (p.category) cats.add(p.category) })
+    return [...cats].sort()
+  }, [preps])
+
+  const filteredPreps = useMemo(() => {
+    let list = preps
+    if (search.trim()) {
+      const q = search.trim().toLowerCase()
+      list = list.filter((p) => p.name.toLowerCase().includes(q))
+    }
+    if (categoryFilter === '__none__') {
+      list = list.filter((p) => !p.category)
+    } else if (categoryFilter) {
+      list = list.filter((p) => p.category === categoryFilter)
+    }
+    return list
+  }, [preps, search, categoryFilter])
 
   const [openEdit, setOpenEdit] = useState(false)
   const [editing, setEditing] = useState<Prep | null>(null)
@@ -120,7 +138,7 @@ export function PrepsPage() {
 
   const openCreate = () => {
     setEditing(null)
-    form.setFieldsValue({ name: '', items: [], restockDatesISO: [] })
+    form.setFieldsValue({ name: '', category: undefined, items: [], restockDatesISO: [] })
     setOpenEdit(true)
   }
 
@@ -128,6 +146,7 @@ export function PrepsPage() {
     setEditing(p)
     form.setFieldsValue({
       name: p.name,
+      category: p.category ?? undefined,
       items: p.items.map((x) => ({ ...x })),
       restockDatesISO: p.restockDatesISO,
     })
@@ -170,6 +189,7 @@ export function PrepsPage() {
     try {
       const v = await form.validateFields()
       const name = String(v.name ?? '').trim()
+      const category = v.category ? String(v.category).trim() : undefined
       const items = (v.items ?? []) as PrepIngredientItem[]
       const restockDatesISO = (v.restockDatesISO ?? []) as string[]
       const now = new Date().toISOString()
@@ -183,8 +203,8 @@ export function PrepsPage() {
         }))
 
       const next: Prep = editing
-        ? { ...editing, name, items: normalizedItems, restockDatesISO, updatedAtISO: now }
-        : { id: newId(), name, items: normalizedItems, restockDatesISO, updatedAtISO: now }
+        ? { ...editing, name, category, items: normalizedItems, restockDatesISO, updatedAtISO: now }
+        : { id: newId(), name, category, items: normalizedItems, restockDatesISO, updatedAtISO: now }
 
       await upsertPrep(next)
       setOpenEdit(false)
@@ -388,7 +408,7 @@ export function PrepsPage() {
       }
     })
 
-    // “없는 재료명은 자동 생성(가격 0)”을 실제 apply 때 반영하기 위해 rows에 포함
+    // "없는 재료명은 자동 생성(가격 0)"을 실제 apply 때 반영하기 위해 rows에 포함
     setCsvRows(rows)
     setCsvOpen(true)
     if (changedIngredients.length) {
@@ -556,9 +576,30 @@ export function PrepsPage() {
       </Card>
 
       <Card size="small">
+        <Flex gap={8} wrap style={{ marginBottom: 12 }}>
+          <Input.Search
+            placeholder="프렙 이름 검색"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            onSearch={(v) => setSearch(v)}
+            allowClear
+            style={{ flex: 1, minWidth: 160 }}
+          />
+          <Select
+            placeholder="카테고리 필터"
+            value={categoryFilter}
+            onChange={(v) => setCategoryFilter(v ?? null)}
+            allowClear
+            style={{ width: 160 }}
+            options={[
+              { value: '__none__', label: '(미분류)' },
+              ...allCategories.map((c) => ({ value: c, label: c })),
+            ]}
+          />
+        </Flex>
         <List
-          dataSource={preps}
-          locale={{ emptyText: '프렙이 없습니다. “추가” 또는 엑셀 업로드를 사용하세요.' }}
+          dataSource={filteredPreps}
+          locale={{ emptyText: '프렙이 없습니다. "추가" 또는 엑셀 업로드를 사용하세요.' }}
           renderItem={(p) => {
             const next = nextRestockISO(p.restockDatesISO)
             const cost = Math.round(calcPrepCost(p))
@@ -580,7 +621,12 @@ export function PrepsPage() {
                 ]}
               >
                 <List.Item.Meta
-                  title={p.name}
+                  title={
+                    <Space size={6}>
+                      <span>{p.name}</span>
+                      {p.category && <Tag color="blue" style={{ fontSize: 11 }}>{p.category}</Tag>}
+                    </Space>
+                  }
                   description={
                     <Space direction="vertical" size={2} style={{ width: '100%' }}>
                       <Typography.Text type="secondary" ellipsis={{ tooltip: true }} style={{ display: 'block' }}>
@@ -649,6 +695,30 @@ export function PrepsPage() {
           </Form.Item>
           <Form.Item name="name" label="이름" rules={[{ required: true, message: '이름을 입력하세요' }]}>
             <Input placeholder="예) 토마토 소스" />
+          </Form.Item>
+
+          <Form.Item name="category" label="카테고리">
+            <Select
+              showSearch
+              allowClear
+              placeholder="카테고리 선택 또는 직접 입력"
+              options={allCategories.map((c) => ({ value: c, label: c }))}
+              dropdownRender={(menu) => (
+                <>
+                  {menu}
+                  <div style={{ padding: '8px 8px 4px' }}>
+                    <Input.Search
+                      placeholder="새 카테고리 입력 후 Enter"
+                      enterButton="추가"
+                      onSearch={(val) => {
+                        const trimmed = val.trim()
+                        if (trimmed) form.setFieldValue('category', trimmed)
+                      }}
+                    />
+                  </div>
+                </>
+              )}
+            />
           </Form.Item>
 
           <Form.List name="items">

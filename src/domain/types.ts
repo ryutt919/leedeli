@@ -96,6 +96,7 @@ export type Ingredient = {
   /** @deprecated (구버전) */
   unitType?: 'g' | 'ea'
   updatedAtISO: string
+  category?: string
 }
 
 export type PrepIngredientItem = {
@@ -110,6 +111,7 @@ export type Prep = {
   items: PrepIngredientItem[]
   restockDatesISO: string[]
   updatedAtISO: string
+  category?: string
 }
 
 // Supabase restock_history 테이블에 대응하는 보충 이력 레코드 타입
