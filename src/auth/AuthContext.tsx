@@ -47,7 +47,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       async (event, newSession) => {
         if (cancelled) return
 
-        console.debug('[Auth]', event, newSession?.user?.id?.slice(0, 8) ?? 'null')
+        // console.log 사용 (debug는 Chrome DevTools Default 필터에서 안 보임)
+        console.log('[Auth]', event, newSession?.user?.id?.slice(0, 8) ?? 'null')
 
         // 로그인 성공 → 이번 브라우저 세션 활성 표시
         if (event === 'SIGNED_IN') {
@@ -65,12 +66,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // INITIAL_SESSION: 브라우저 재시작 감지
         if (event === 'INITIAL_SESSION') {
           const aliveThisSession = !!sessionStorage.getItem(SESSION_ALIVE_KEY)
+          console.log('[Auth] INITIAL_SESSION — aliveThisSession:', aliveThisSession, '| hasToken:', !!newSession)
 
           if (newSession && !aliveThisSession) {
             // localStorage에 토큰 잔존하지만 이번 세션에서 로그인한 적 없음
-            // → 강제 로그아웃 (SIGNED_OUT 이벤트가 뒤따라 발생)
-            console.debug('[Auth] stale token detected — signing out')
-            await supabase.auth.signOut()
+            // → 즉시 로그인 화면으로 전환 (signOut은 백그라운드에서 처리 — await 않음)
+            console.log('[Auth] stale token — forcing re-login')
+            setSession(null)
+            setIsAdmin(false)
+            setLoading(false)
+            supabase.auth.signOut().catch(() => {}) // 네트워크 의존 없이 상태만 즉시 초기화
             return
           }
 
