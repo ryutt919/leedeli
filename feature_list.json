@@ -605,7 +605,7 @@
       "name": "유저 관리 Mock E2E 테스트",
       "name_ascii": "Admin User Management Mock E2E",
       "description": "Playwright mock으로 유저 관리 페이지 접근 제어, 관리자 목록 표시, 승격 성공/실패 시나리오 검증.",
-      "status": "pending",
+      "status": "passing",
       "test_command": "npx playwright test e2e/mock/admin-users.spec.ts --project=mock",
       "test_spec": "e2e/mock/admin-users.spec.ts",
       "acceptance_criteria": [
@@ -615,14 +615,14 @@
         "승격 성공 메시지 (TC4)",
         "존재하지 않는 이메일 에러 메시지 (TC5)"
       ],
-      "last_tested": null
+      "last_tested": "2026-05-23T20:11:02.446922"
     }
   ],
   "progress": {
     "total": 33,
-    "completed": 32,
-    "passing": 32,
+    "completed": 33,
+    "passing": 33,
     "failing": 0,
-    "pending": 1
+    "pending": 0
   }
 }
