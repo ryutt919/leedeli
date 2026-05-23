@@ -1,4 +1,4 @@
-import { AppstoreOutlined, CalendarOutlined, HomeOutlined, ShoppingOutlined, TeamOutlined, UnorderedListOutlined } from '@ant-design/icons'
+import { AppstoreOutlined, BookOutlined, CalendarOutlined, HomeOutlined, ShoppingOutlined, TeamOutlined, UnorderedListOutlined } from '@ant-design/icons'
 import { Button, Flex, theme } from 'antd'
 import { useLocation, useNavigate } from 'react-router-dom'
 import type { ReactNode } from 'react'
@@ -17,6 +17,7 @@ const NAV: NavItem[] = [
   { key: 'create', label: '생성', path: '/create', icon: <CalendarOutlined /> },
   { key: 'manage', label: '관리', path: '/manage', icon: <UnorderedListOutlined /> },
   { key: 'preps', label: '프렙', path: '/preps', icon: <AppstoreOutlined /> },
+  { key: 'menu', label: '메뉴', path: '/menu', icon: <BookOutlined /> },
   { key: 'ingredients', label: '재료', path: '/ingredients', icon: <ShoppingOutlined /> },
   { key: 'users', label: '유저', path: '/users', icon: <TeamOutlined />, adminOnly: true },
 ]

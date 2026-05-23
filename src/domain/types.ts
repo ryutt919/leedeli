@@ -112,6 +112,8 @@ export type Prep = {
   restockDatesISO: string[]
   updatedAtISO: string
   category?: string
+  yieldAmount?: number
+  yieldUnit?: string
 }
 
 // Supabase restock_history 테이블에 대응하는 보충 이력 레코드 타입
@@ -123,6 +125,28 @@ export type RestockRecord = {
   created_at: string
 }
 
+
+export type MenuIngredientItem = {
+  ingredientId: Id
+  ingredientName: string
+  amount: number
+}
+
+export type MenuPrepItem = {
+  prepId: Id
+  prepName: string
+  amount: number
+  unitLabel: string
+}
+
+export type MenuItem = {
+  id: Id
+  name: string
+  category?: string
+  ingredientItems: MenuIngredientItem[]
+  prepItems: MenuPrepItem[]
+  updatedAtISO: string
+}
 
 export type ExtraWork = {
   id: Id

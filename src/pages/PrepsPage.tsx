@@ -6,6 +6,7 @@ import {
   UploadOutlined,
 } from '@ant-design/icons'
 import {
+  AutoComplete,
   Button,
   Calendar,
   Card,
@@ -138,7 +139,7 @@ export function PrepsPage() {
 
   const openCreate = () => {
     setEditing(null)
-    form.setFieldsValue({ name: '', category: undefined, items: [], restockDatesISO: [] })
+    form.setFieldsValue({ name: '', category: undefined, yieldAmount: undefined, yieldUnit: undefined, items: [], restockDatesISO: [] })
     setOpenEdit(true)
   }
 
@@ -147,6 +148,8 @@ export function PrepsPage() {
     form.setFieldsValue({
       name: p.name,
       category: p.category ?? undefined,
+      yieldAmount: p.yieldAmount ?? undefined,
+      yieldUnit: p.yieldUnit ?? undefined,
       items: p.items.map((x) => ({ ...x })),
       restockDatesISO: p.restockDatesISO,
     })
@@ -190,6 +193,8 @@ export function PrepsPage() {
       const v = await form.validateFields()
       const name = String(v.name ?? '').trim()
       const category = v.category ? String(v.category).trim() : undefined
+      const yieldAmount = v.yieldAmount != null && Number.isFinite(Number(v.yieldAmount)) ? Number(v.yieldAmount) : undefined
+      const yieldUnit = v.yieldUnit ? String(v.yieldUnit).trim() : undefined
       const items = (v.items ?? []) as PrepIngredientItem[]
       const restockDatesISO = (v.restockDatesISO ?? []) as string[]
       const now = new Date().toISOString()
@@ -203,8 +208,8 @@ export function PrepsPage() {
         }))
 
       const next: Prep = editing
-        ? { ...editing, name, category, items: normalizedItems, restockDatesISO, updatedAtISO: now }
-        : { id: newId(), name, category, items: normalizedItems, restockDatesISO, updatedAtISO: now }
+        ? { ...editing, name, category, yieldAmount, yieldUnit, items: normalizedItems, restockDatesISO, updatedAtISO: now }
+        : { id: newId(), name, category, yieldAmount, yieldUnit, items: normalizedItems, restockDatesISO, updatedAtISO: now }
 
       await upsertPrep(next)
       setOpenEdit(false)
@@ -633,7 +638,10 @@ export function PrepsPage() {
                         재료: {p.items.map(it => `${it.ingredientName} ${it.amount}${unitLabelOf(it.ingredientId)}`).join(', ') || '없음'}
                       </Typography.Text>
                       <Typography.Text type="secondary">
-                        다음 예상 {next ?? '-'} · 총 비용 {cost}원
+                        다음 예상 {next ?? '-'} · 총원가 {cost}원
+                        {p.yieldAmount && p.yieldUnit
+                          ? ` · ${p.yieldUnit}당 ${Math.round(cost / p.yieldAmount)}원`
+                          : ''}
                       </Typography.Text>
                     </Space>
                   }
@@ -698,28 +706,30 @@ export function PrepsPage() {
           </Form.Item>
 
           <Form.Item name="category" label="카테고리">
-            <Select
-              showSearch
+            <AutoComplete
               allowClear
               placeholder="카테고리 선택 또는 직접 입력"
-              options={allCategories.map((c) => ({ value: c, label: c }))}
-              dropdownRender={(menu) => (
-                <>
-                  {menu}
-                  <div style={{ padding: '8px 8px 4px' }}>
-                    <Input.Search
-                      placeholder="새 카테고리 입력 후 Enter"
-                      enterButton="추가"
-                      onSearch={(val) => {
-                        const trimmed = val.trim()
-                        if (trimmed) form.setFieldValue('category', trimmed)
-                      }}
-                    />
-                  </div>
-                </>
-              )}
+              options={allCategories.map((c) => ({ value: c }))}
             />
           </Form.Item>
+
+          <Flex gap={12} style={{ marginBottom: 0 }}>
+            <Form.Item name="yieldAmount" label="총 생산량" style={{ flex: 1 }}>
+              <InputNumber min={0} placeholder="예) 500" style={{ width: '100%' }} />
+            </Form.Item>
+            <Form.Item name="yieldUnit" label="생산 단위" style={{ width: 120 }}>
+              <Select
+                allowClear
+                placeholder="단위"
+                options={[
+                  { value: 'g', label: 'g' },
+                  { value: '개', label: '개' },
+                  { value: '장', label: '장' },
+                  { value: 'ml', label: 'ml' },
+                ]}
+              />
+            </Form.Item>
+          </Flex>
 
           <Form.List name="items">
             {(fields, { add, remove }) => (

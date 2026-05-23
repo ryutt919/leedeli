@@ -1,5 +1,5 @@
 import { CheckSquareOutlined, DeleteOutlined, DownloadOutlined, PlusOutlined, ReloadOutlined, UploadOutlined } from '@ant-design/icons'
-import { Alert, Button, Card, Checkbox, Flex, Form, Input, InputNumber, List, Modal, Popconfirm, Select, Space, Tag, Typography, Upload, message } from 'antd'
+import { Alert, AutoComplete, Button, Card, Checkbox, Flex, Form, Input, InputNumber, List, Modal, Popconfirm, Select, Space, Tag, Typography, Upload, message } from 'antd'
 import { useEffect, useMemo, useState } from 'react'
 import { CsvPreviewModal } from '../components/CsvPreviewModal'
 import type { CsvPreviewRow } from '../components/CsvPreviewModal'
@@ -405,15 +405,10 @@ export function IngredientsPage() {
             />
           </Form.Item>
           <Form.Item name="category" label="카테고리 (선택)">
-            <Select
-              showSearch allowClear placeholder="카테고리 선택 또는 입력"
-              options={categorySelectOptions}
-              filterOption={(input, option) => String(option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
-              notFoundContent={
-                <Button type="link" size="small" onMouseDown={(e) => { e.preventDefault(); form.setFieldValue('category', form.getFieldValue('category') || ''); }}>
-                  새 카테고리로 추가
-                </Button>
-              }
+            <AutoComplete
+              allowClear
+              placeholder="카테고리 선택 또는 직접 입력"
+              options={allCategories.map((c) => ({ value: c }))}
             />
           </Form.Item>
         </Form>
@@ -430,20 +425,13 @@ export function IngredientsPage() {
       >
         <Form layout="vertical">
           <Form.Item label="카테고리" extra="비워두면 카테고리가 제거됩니다.">
-            <Select
-              showSearch allowClear
+            <AutoComplete
+              allowClear
               placeholder="카테고리 선택 또는 직접 입력"
               value={bulkCategory || undefined}
               onChange={(v) => setBulkCategory(v ?? '')}
-              options={categorySelectOptions}
+              options={allCategories.map((c) => ({ value: c }))}
               style={{ width: '100%' }}
-            />
-          </Form.Item>
-          <Form.Item label="새 카테고리 직접 입력">
-            <Input
-              placeholder="예) 유제품, 채소, 육류..."
-              value={bulkCategory}
-              onChange={(e) => setBulkCategory(e.target.value)}
             />
           </Form.Item>
         </Form>
