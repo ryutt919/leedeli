@@ -699,7 +699,7 @@
       "name": "인증 초기 로딩 블랭크 화면 수정",
       "name_ascii": "Auth Loading Blank Screen Fix",
       "description": "onAuthStateChange만 사용 시 INITIAL_SESSION 미발화로 loading 고착 버그. getSession() 명시적 init() 복원으로 수정.",
-      "status": "pending",
+      "status": "passing",
       "test_command": "npx playwright test e2e/mock/auth.spec.ts --project=mock",
       "test_spec": "e2e/mock/auth.spec.ts",
       "acceptance_criteria": [
@@ -708,14 +708,14 @@
         "새로고침 시 loading 정상 해소",
         "npm run build 통과"
       ],
-      "last_tested": null
+      "last_tested": "2026-05-23T21:17:52.000042"
     }
   ],
   "progress": {
     "total": 38,
-    "completed": 37,
-    "passing": 37,
+    "completed": 38,
+    "passing": 38,
     "failing": 0,
-    "pending": 1
+    "pending": 0
   }
 }

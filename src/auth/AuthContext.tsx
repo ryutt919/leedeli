@@ -83,8 +83,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const cancelled = { value: false }
 
+    async function init() {
+      const { data: sessionData } = await supabase.auth.getSession()
+      if (cancelled.value) return
+      const currentSession = sessionData?.session ?? null
+      setSession(currentSession)
+      if (currentSession?.user) {
+        await checkUserAdmin(currentSession.user, cancelled)
+      } else {
+        setIsAdmin(false)
+        setLoading(false)
+      }
+    }
+
     const { data: listener } = supabase.auth.onAuthStateChange(async (event, newSession) => {
-      if (cancelled.value) return;
+      if (cancelled.value) return
+      if (event === 'INITIAL_SESSION') return
+
       setSession(newSession)
 
       if (event === 'SIGNED_OUT') {
@@ -94,16 +109,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       if (newSession?.user) {
-        // 이미 관리자임을 알고 있다면(캐시) 로딩을 띄우지 않음
         if (sessionStorage.getItem(`is_admin_${newSession.user.id}`) !== 'true') {
-          setLoading(true);
+          setLoading(true)
         }
-        await checkUserAdmin(newSession.user, cancelled);
+        await checkUserAdmin(newSession.user, cancelled)
       } else {
-        setIsAdmin(false);
-        setLoading(false);
+        setIsAdmin(false)
+        setLoading(false)
       }
     })
+
+    init()
 
     return () => {
       cancelled.value = true
