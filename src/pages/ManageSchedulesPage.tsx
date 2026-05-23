@@ -1,359 +1,184 @@
-import { DeleteOutlined, DownloadOutlined, EditOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons'
-import { Button, Card, DatePicker, List, Modal, Popconfirm, Space, Typography, Form, Select, InputNumber, Input, message } from 'antd'
-import { Calendar } from 'antd'
-import dayjs, { Dayjs } from 'dayjs'
-import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import type { Shift, ExtraWork } from '../domain/types'
-import { calculateTotalWorkHours } from '../domain/scheduleEngine'
+import {
+  Button,
+  Drawer,
+  Flex,
+  Popconfirm,
+  Select,
+  Space,
+  Table,
+  Tag,
+  Typography,
+  message,
+} from 'antd'
+import { DeleteOutlined, EyeOutlined } from '@ant-design/icons'
+import { useEffect, useMemo, useState } from 'react'
 import { MobileShell } from '../layouts/MobileShell'
-import { deleteSchedule, loadSchedules } from '../storage/schedulesRepo'
-import { getExtraWorksBySchedule, upsertExtraWork } from '../storage/extraWorkRepo'
-import { exportScheduleXlsx } from '../utils/scheduleExport'
-import { downloadXlsx } from '../utils/xlsxExport'
-import { newId } from '../utils/id'
+import { useAuth } from '../auth/AuthContext'
+import type { ScheduleV3 } from '../domain/types'
+import { loadSchedulesV3, deleteScheduleV3 } from '../storage/schedulesRepo'
+import { calcEmployeeSummary } from '../domain/scheduleEngineV3'
+import { ScheduleCalendar } from './CreateSchedulePage'
+
+const { Text } = Typography
+
+const MONTH_OPTIONS = [
+  { value: 1, label: '1월' }, { value: 2, label: '2월' }, { value: 3, label: '3월' },
+  { value: 4, label: '4월' }, { value: 5, label: '5월' }, { value: 6, label: '6월' },
+  { value: 7, label: '7월' }, { value: 8, label: '8월' }, { value: 9, label: '9월' },
+  { value: 10, label: '10월' }, { value: 11, label: '11월' }, { value: 12, label: '12월' },
+]
 
 export function ManageSchedulesPage() {
-  const nav = useNavigate()
-  const [tick, setTick] = useState(0)
-  const [filterYm, setFilterYm] = useState<Dayjs | null>(null)
-  const [detail, setDetail] = useState<(ReturnType<typeof loadSchedules>[number]) | null>(null)
-  const [extraWorkModalOpen, setExtraWorkModalOpen] = useState(false)
-  const [extraWorkForm] = Form.useForm()
+  const { isAdmin } = useAuth()
+  const [msgApi, contextHolder] = message.useMessage()
 
-  const schedules = useMemo(() => {
-    void tick
-    return loadSchedules()
-  }, [tick])
-  const filtered = useMemo(() => {
-    return schedules
-      .filter((s) => {
-        if (!filterYm) return true
-        const monthStart = filterYm.startOf('month')
-        const monthEnd = filterYm.endOf('month')
-        const sStart = dayjs(s.startDateISO)
-        const sEnd = dayjs(s.endDateISO)
-        return !sEnd.isBefore(monthStart, 'day') && !sStart.isAfter(monthEnd, 'day')
-      })
-      .sort((a, b) => b.updatedAtISO.localeCompare(a.updatedAtISO))
-  }, [filterYm, schedules])
+  const [schedules, setSchedules] = useState<ScheduleV3[]>([])
+  const [loading, setLoading] = useState(true)
+  const [filterYear, setFilterYear] = useState<number>(new Date().getFullYear())
+  const [filterMonth, setFilterMonth] = useState<number | null>(null)
 
-  const handleOpenExtraWorkModal = () => {
-    if (!detail) return
-    extraWorkForm.resetFields()
-    extraWorkForm.setFieldsValue({
-      dateISO: dayjs(detail.startDateISO),
-      staffId: detail.staff[0]?.id,
-      hours: 0,
+  const [drawerOpen, setDrawerOpen] = useState(false)
+  const [viewingSchedule, setViewingSchedule] = useState<ScheduleV3 | null>(null)
+
+  useEffect(() => {
+    setLoading(true)
+    loadSchedulesV3()
+      .then(setSchedules)
+      .finally(() => setLoading(false))
+  }, [])
+
+  const filteredSchedules = useMemo(() => {
+    return schedules.filter((s) => {
+      const year = parseInt(s.startDateISO.slice(0, 4))
+      const month = parseInt(s.startDateISO.slice(5, 7))
+      if (year !== filterYear) return false
+      if (filterMonth !== null && month !== filterMonth) return false
+      return true
     })
-    setExtraWorkModalOpen(true)
+  }, [schedules, filterYear, filterMonth])
+
+  const yearOptions = useMemo(() => {
+    const cur = new Date().getFullYear()
+    return [cur - 1, cur, cur + 1].map((y) => ({ value: y, label: `${y}년` }))
+  }, [])
+
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteScheduleV3(id)
+      setSchedules((prev) => prev.filter((s) => s.id !== id))
+      msgApi.success('삭제되었습니다')
+    } catch {
+      msgApi.error('삭제 실패')
+    }
   }
 
-  const handleSaveExtraWork = () => {
-    if (!detail) return
-    extraWorkForm.validateFields().then(values => {
-      const work: ExtraWork = {
-        id: newId(),
-        scheduleId: detail.id,
-        dateISO: values.dateISO.format('YYYY-MM-DD'),
-        staffId: values.staffId,
-        hours: values.hours,
-        note: values.note,
-        createdAtISO: new Date().toISOString(),
-      }
-      upsertExtraWork(work)
-      message.success('추가근무를 저장했습니다')
-      setExtraWorkModalOpen(false)
-      setTick(x => x + 1)
-    })
+  const handleView = (schedule: ScheduleV3) => {
+    setViewingSchedule(schedule)
+    setDrawerOpen(true)
   }
+
+  const salaryData = useMemo(() => {
+    if (!viewingSchedule) return []
+    return viewingSchedule.employees.map((emp) => {
+      const summary = calcEmployeeSummary(viewingSchedule, emp.id, emp.hourlyWage)
+      return { key: emp.id, name: emp.name, role: emp.role, ...summary }
+    })
+  }, [viewingSchedule])
+
+  const salaryColumns = [
+    { title: '직원', dataIndex: 'name', key: 'name' },
+    { title: '역할', dataIndex: 'role', key: 'role', render: (v: string) => <Tag color={v === '정직원' ? 'blue' : 'orange'}>{v}</Tag> },
+    { title: '근무일', dataIndex: 'totalDays', key: 'totalDays', render: (v: number) => `${v}일` },
+    { title: '총시간', dataIndex: 'totalHours', key: 'totalHours', render: (v: number) => `${v}h` },
+    { title: '예상급여', dataIndex: 'totalWage', key: 'totalWage', render: (v: number) => `${v.toLocaleString()}원` },
+  ]
 
   return (
-    <MobileShell
-      title="스케줄 관리/조회"
-      right={
-        <Button
-          icon={<DownloadOutlined />}
-          onClick={() => {
-            const rows = filtered.map((s) => ({
-              시작일: s.startDateISO,
-              종료일: s.endDateISO,
-              인원수: s.staff.length,
-              직원: s.staff.map((m) => m.name).join(', '),
-              업데이트: dayjs(s.updatedAtISO).format('YYYY-MM-DD HH:mm'),
-            }))
-            downloadXlsx('schedules_filtered.xlsx', 'Schedules', rows)
-          }}
-          disabled={filtered.length === 0}
-        >
-          필터 엑셀
-        </Button>
-      }
-    >
-      <Card size="small" title="필터">
-        <Space direction="vertical" style={{ width: '100%' }}>
-          <DatePicker
-            picker="month"
-            value={filterYm}
-            onChange={(v) => setFilterYm(v)}
-            style={{ width: '100%' }}
-            placeholder="연/월 선택(전체면 비움)"
+    <MobileShell title="스케줄 관리">
+      {contextHolder}
+      <Flex vertical style={{ padding: '16px 8px', width: '100%', maxWidth: 600, margin: '0 auto' }} gap={12}>
+        {/* 필터 */}
+        <Flex gap={8}>
+          <Select value={filterYear} onChange={setFilterYear} options={yearOptions} style={{ width: 100 }} />
+          <Select
+            value={filterMonth}
+            onChange={setFilterMonth}
+            options={[{ value: null, label: '전체 월' }, ...MONTH_OPTIONS]}
+            style={{ width: 100 }}
           />
-        </Space>
-      </Card>
+        </Flex>
 
-      <Card size="small" style={{ marginTop: 12 }}>
-        <List
-          dataSource={filtered}
-          locale={{ emptyText: '저장된 스케줄이 없습니다.' }}
-          renderItem={(s) => (
-            <List.Item>
-               <List.Item.Meta
-                title={`${s.startDateISO} ~ ${s.endDateISO} (${s.staff.length}명)`}
-                description={
-                  <Space direction="vertical" size={2}>
-                    <Typography.Text type="secondary">
-                      업데이트: {dayjs(s.updatedAtISO).format('YYYY-MM-DD HH:mm')}
-                    </Typography.Text>
-                    <Typography.Text type="secondary">
-                      인원: {s.staff.map((m) => m.name).join(', ')}
-                    </Typography.Text>
-                  </Space>
-                }
-              />
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(2, 1fr)',
-                  gridTemplateRows: 'repeat(2, 1fr)',
-                  gap: 2,
-                  marginBottom: 2,
-                  width: 110,
-                  minHeight: 54,
-                }}
+        {/* 목록 */}
+        {loading ? (
+          <Text type="secondary">불러오는 중...</Text>
+        ) : filteredSchedules.length === 0 ? (
+          <Text type="secondary">저장된 스케줄이 없습니다.</Text>
+        ) : (
+          filteredSchedules.map((schedule) => {
+            const empCount = schedule.employees.length
+            const entryDays = Object.keys(schedule.entries).length
+            return (
+              <Flex
+                key={schedule.id}
+                justify="space-between"
+                align="center"
+                style={{ padding: '12px 14px', border: '1px solid #f0f0f0', borderRadius: 10, background: '#fafafa' }}
               >
-                <Button
-                  key="edit"
-                  type="link"
-                  icon={<EditOutlined />}
-                  style={{ padding: 0, height: 24, fontSize: 12, minWidth: 0 }}
-                  onClick={() => nav(`/create?editId=${encodeURIComponent(s.id)}`)}
-                >
-                  수정
-                </Button>
-                <Button
-                  key="view"
-                  type="link"
-                  icon={<EyeOutlined />}
-                  style={{ padding: 0, height: 24, fontSize: 12, minWidth: 0 }}
-                  onClick={() => setDetail(s)}
-                >
-                  보기
-                </Button>
-                <Button
-                  key="exp"
-                  type="link"
-                  icon={<DownloadOutlined />}
-                  style={{ padding: 0, height: 24, fontSize: 12, minWidth: 0 }}
-                  onClick={() => exportScheduleXlsx(s)}
-                >
-                  다운
-                </Button>
-                <Popconfirm
-                  key="del"
-                  title="삭제할까요?"
-                  okText="삭제"
-                  cancelText="취소"
-                  onConfirm={() => {
-                    deleteSchedule(s.id)
-                    setTick((x) => x + 1)
-                  }}
-                >
-                  <Button danger type="link" icon={<DeleteOutlined />} style={{ padding: 0, height: 24, fontSize: 12, minWidth: 0 }}>
-                    삭제
+                <Flex vertical gap={2}>
+                  <Text strong style={{ fontSize: 14 }}>{schedule.name}</Text>
+                  <Text type="secondary" style={{ fontSize: 12 }}>
+                    {schedule.startDateISO} ~ {schedule.endDateISO}
+                  </Text>
+                  <Text type="secondary" style={{ fontSize: 12 }}>
+                    직원 {empCount}명 / 근무일 {entryDays}일
+                  </Text>
+                </Flex>
+                <Space>
+                  <Button type="text" size="small" icon={<EyeOutlined />} onClick={() => handleView(schedule)}>
+                    상세
                   </Button>
-                </Popconfirm>
-              </div>
-             
-            </List.Item>
-          )}
-        />
-      </Card>
+                  {isAdmin && (
+                    <Popconfirm
+                      title="삭제하시겠습니까?"
+                      onConfirm={() => handleDelete(schedule.id)}
+                      okText="삭제"
+                      cancelText="취소"
+                    >
+                      <Button danger type="text" size="small" icon={<DeleteOutlined />} />
+                    </Popconfirm>
+                  )}
+                </Space>
+              </Flex>
+            )
+          })
+        )}
+      </Flex>
 
-
-
-      <Modal
-        open={!!detail}
-        title={detail ? `${detail.startDateISO} ~ ${detail.endDateISO} 스케줄` : '스케줄'}
-        onCancel={() => setDetail(null)}
-        footer={null}
-        width={720}
+      {/* 상세 드로어 */}
+      <Drawer
+        title={viewingSchedule?.name ?? '스케줄 상세'}
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        placement="bottom"
+        height="90%"
+        styles={{ body: { padding: '12px 8px', overflowY: 'auto' } }}
       >
-        {detail ? (
-          <Space direction="vertical" style={{ width: '100%' }} size={12}>
-            <Card 
-              size="small" 
-              title="인원별 통계" 
-              extra={
-                <Button 
-                  type="primary" 
-                  size="small" 
-                  icon={<PlusOutlined />}
-                  onClick={handleOpenExtraWorkModal}
-                >
-                  추가근무
-                </Button>
-              }
-            >
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                  <thead>
-                    <tr style={{ background: '#fafafa' }}>
-                      <th style={{ padding: '4px 8px', fontWeight: 700, textAlign: 'left' }}>이름</th>
-                      <th style={{ padding: '4px 8px', fontWeight: 700 }}>근무일</th>
-                      <th style={{ padding: '4px 8px', fontWeight: 700 }}>풀</th>
-                      <th style={{ padding: '4px 8px', fontWeight: 700 }}>하프</th>
-                      <th style={{ padding: '4px 8px', fontWeight: 700 }}>휴무</th>
-                      <th style={{ padding: '4px 8px', fontWeight: 700 }}>총 시간(h)</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(() => {
-                      const extraWorks = getExtraWorksBySchedule(detail.id)
-                      const extraHoursMap = new Map<string, number>()
-                      for (const work of extraWorks) {
-                        extraHoursMap.set(work.staffId, (extraHoursMap.get(work.staffId) ?? 0) + work.hours)
-                      }
-                      const totalHours = calculateTotalWorkHours(detail, extraHoursMap)
-                      
-                      return detail.stats
-                        .slice()
-                        .sort((a, b) => (totalHours.get(b.staffId) ?? 0) - (totalHours.get(a.staffId) ?? 0))
-                        .map((st) => (
-                          <tr key={st.staffId}>
-                            <td style={{ padding: '4px 8px', fontWeight: 700 }}>{st.name}</td>
-                            <td style={{ padding: '4px 8px', textAlign: 'center' }}>{st.workUnits}</td>
-                            <td style={{ padding: '4px 8px', textAlign: 'center' }}>{st.fullDays}</td>
-                            <td style={{ padding: '4px 8px', textAlign: 'center' }}>{st.halfDays}</td>
-                            <td style={{ padding: '4px 8px', textAlign: 'center' }}>{st.offDays}</td>
-                            <td style={{ padding: '4px 8px', textAlign: 'center', fontWeight: 700 }}>
-                              {totalHours.get(st.staffId) ?? 0}
-                            </td>
-                          </tr>
-                        ))
-                    })()}
-                  </tbody>
-                </table>
+        {viewingSchedule && (
+          <Flex vertical gap={16}>
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              {viewingSchedule.startDateISO} ~ {viewingSchedule.endDateISO}
+            </Text>
+            <ScheduleCalendar schedule={viewingSchedule} />
+
+            {isAdmin && salaryData.length > 0 && (
+              <div>
+                <Text strong style={{ display: 'block', marginBottom: 8 }}>급여 요약</Text>
+                <Table dataSource={salaryData} columns={salaryColumns} pagination={false} size="small" scroll={{ x: true }} />
               </div>
-            </Card>
-
-            <Card size="small" title="월간 전체 달력(일자별)">
-              <Calendar
-                fullscreen={false}
-                  className="leedeli-modal-calendar"
-                  value={dayjs(detail.startDateISO)}
-                validRange={[dayjs(detail.startDateISO), dayjs(detail.endDateISO)]}
-                cellRender={(d: dayjs.Dayjs) => {
-                  const iso = d.format('YYYY-MM-DD')
-                  const assignment = detail.assignments.find((a) => a.dateISO === iso)
-                  if (!assignment) return null
-                    // 시프트 텍스트는 유지하되 색/배경은 제거. 저장된 요청(Requests)에 의한 하프(halfStaff)만 주황색 pill로 표시
-                    const shiftLabels = { open: '오', middle: '미', close: '마' }
-
-                    return (
-                      <div style={{ fontSize: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                          {(['open', 'middle', 'close'] as Shift[]).map((shift) => {
-                            const names = assignment.byShift[shift]
-                              .map((x) => detail.staff.find((s) => s.id === x.staffId)?.name || '?')
-                              .join(',')
-                            if (!names) return null
-                            const req = (detail.requests ?? []).find((r) => r.dateISO === iso)
-                            const isHalfRequestedForShift = (req?.halfStaff ?? []).some(h => h.shift === shift && assignment.byShift[shift].some(a => a.staffId === h.staffId))
-                            return (
-                              <span
-                                key={shift}
-                                style={{
-                                  borderRadius: 4,
-                                  padding: '0 4px',
-                                  display: 'inline-block',
-                                  minWidth: 0,
-                                  ...(isHalfRequestedForShift ? { background: '#fff2e6', color: '#d46b08' } : {}),
-                                }}
-                              >
-                                {shiftLabels[shift]}: {names}
-                              </span>
-                            )
-                          })}
-                        </div>
-
-
-                      </div>
-                    )
-                }}
-              />
-            </Card>
-          </Space>
-        ) : null}
-      </Modal>
-
-      <Modal
-        open={extraWorkModalOpen}
-        title="추가근무 입력"
-        onCancel={() => setExtraWorkModalOpen(false)}
-        onOk={handleSaveExtraWork}
-        okText="저장"
-        cancelText="취소"
-      >
-        <Form form={extraWorkForm} layout="vertical">
-          <Form.Item
-            label="날짜"
-            name="dateISO"
-            rules={[{ required: true, message: '날짜를 선택하세요' }]}
-          >
-            <DatePicker
-              style={{ width: '100%' }}
-              format="YYYY-MM-DD"
-              minDate={detail ? dayjs(detail.startDateISO) : undefined}
-              maxDate={detail ? dayjs(detail.endDateISO) : undefined}
-            />
-          </Form.Item>
-          <Form.Item
-            label="직원"
-            name="staffId"
-            rules={[{ required: true, message: '직원을 선택하세요' }]}
-          >
-            <Select placeholder="직원 선택">
-              {detail?.staff.map(s => (
-                <Select.Option key={s.id} value={s.id}>
-                  {s.name}
-                </Select.Option>
-              ))}
-            </Select>
-          </Form.Item>
-          <Form.Item
-            label="추가 근무시간 (시간)"
-            name="hours"
-            rules={[
-              { required: true, message: '시간을 입력하세요' },
-              { type: 'number', min: 0, max: 24, message: '0~24 범위로 입력하세요' },
-            ]}
-          >
-            <InputNumber
-              style={{ width: '100%' }}
-              min={0}
-              max={24}
-              step={0.5}
-              placeholder="예:2"
-            />
-          </Form.Item>
-          <Form.Item label="메모" name="note">
-            <Input style={{ width: '100%' }} placeholder="메모 (선택)" />
-          </Form.Item>
-        </Form>
-      </Modal>
+            )}
+          </Flex>
+        )}
+      </Drawer>
     </MobileShell>
   )
 }
-
-

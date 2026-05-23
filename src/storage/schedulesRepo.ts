@@ -1,8 +1,9 @@
-import type { SavedSchedule } from '../domain/types'
+import type { SavedSchedule, ScheduleV3 } from '../domain/types'
 import dayjs from 'dayjs'
 import { readJson, writeJson } from './jsonStore'
 import { LS_KEYS } from './keys'
 import { daysInMonthISO } from '../utils/date'
+import { supabase } from '../utils/supabase'
 
 type Store = {
   items: SavedSchedule[]
@@ -46,4 +47,43 @@ export function getSchedule(id: string) {
   return loadSchedules().find((x) => x.id === id)
 }
 
+// ─── V3: Supabase 기반 ────────────────────────────────────────────
 
+type DbRow = { id: string; data: ScheduleV3 }
+
+export async function loadSchedulesV3(): Promise<ScheduleV3[]> {
+  const { data, error } = await supabase
+    .from('schedules')
+    .select('id, data')
+    .order('created_at', { ascending: false })
+  if (error) {
+    console.error('[schedulesRepo] loadSchedulesV3', error)
+    return []
+  }
+  return (data ?? [])
+    .map((row: DbRow) => {
+      const s = { ...(row.data as ScheduleV3), id: row.id }
+      // V3 식별: entries 필드 존재 여부
+      if (!s.entries || !s.startDateISO) return null
+      return s
+    })
+    .filter((s): s is ScheduleV3 => s !== null)
+}
+
+export async function upsertScheduleV3(next: ScheduleV3): Promise<void> {
+  const { error } = await supabase
+    .from('schedules')
+    .upsert({ id: next.id, data: next }, { onConflict: 'id' })
+  if (error) {
+    console.error('[schedulesRepo] upsertScheduleV3', error)
+    throw error
+  }
+}
+
+export async function deleteScheduleV3(id: string): Promise<void> {
+  const { error } = await supabase.from('schedules').delete().eq('id', id)
+  if (error) {
+    console.error('[schedulesRepo] deleteScheduleV3', error)
+    throw error
+  }
+}

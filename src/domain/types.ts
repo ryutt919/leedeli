@@ -158,4 +158,60 @@ export type ExtraWork = {
   createdAtISO: string
 }
 
+// ─── 스케줄 V3 (신규 시스템) ─────────────────────────────────────
 
+export type EmployeeRole = '정직원' | '알바'
+
+export type WorkPattern = {
+  weekdays: number[]   // 0=일, 1=월, 2=화, 3=수, 4=목, 5=금, 6=토
+  startTime: string    // HH:MM
+  endTime: string      // HH:MM
+  breakMinutes: number
+}
+
+export type Employee = {
+  id: Id
+  name: string
+  role: EmployeeRole
+  hourlyWage: number
+  defaultBreakMinutes: number
+  availableShiftIds: Id[]     // 정직원: 가능한 ShiftType id 목록
+  regularDaysOff: number[]    // 개인 주간 정기휴무 요일 (0-6)
+  workPatterns: WorkPattern[] // 알바: 요일별 고정 근무패턴
+  updatedAtISO: string
+}
+
+export type ShiftType = {
+  id: Id
+  name: string
+  startTime: string    // HH:MM
+  endTime: string      // HH:MM
+  breakMinutes: number
+  staffCount: number   // 하루 필요 인원 수
+  updatedAtISO: string
+}
+
+export type ScheduleEntry = {
+  id: Id
+  employeeId: Id
+  employeeName: string
+  shiftTypeId?: Id
+  shiftTypeName?: string
+  startTime: string    // HH:MM
+  endTime: string      // HH:MM
+  breakMinutes: number
+  note?: string
+}
+
+export type ScheduleV3 = {
+  id: Id
+  name: string
+  startDateISO: string
+  endDateISO: string
+  regularDaysOff: number[]                   // 스케줄 전체 정기휴무 요일
+  entries: Record<string, ScheduleEntry[]>   // dateISO → 해당일 배정 목록
+  employees: Employee[]                      // 생성 시점 직원 스냅샷
+  shiftTypes: ShiftType[]                    // 생성 시점 근무유형 스냅샷
+  createdAtISO: string
+  updatedAtISO: string
+}
