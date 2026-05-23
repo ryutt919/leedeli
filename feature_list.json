@@ -652,13 +652,70 @@
         "auto_confirm_email trigger 정의 포함"
       ],
       "last_tested": "2026-05-23T20:24:37.235879"
+    },
+    {
+      "id": "S12T6",
+      "sprint": 12,
+      "category": "auth",
+      "priority": 36,
+      "name": "관리자 전용 로그인 + 이메일 인증 알림 제거",
+      "name_ascii": "Admin-only Login Enforcement",
+      "description": "비관리자 로그인 시 즉시 signOut 후 에러 메시지 표시. 회원가입 성공 메시지에서 이메일 인증 문구 제거.",
+      "status": "passing",
+      "test_command": "npx playwright test e2e/mock/auth.spec.ts --project=mock",
+      "test_spec": "e2e/mock/auth.spec.ts",
+      "acceptance_criteria": [
+        "비관리자 로그인 시 signOut + 에러 메시지",
+        "관리자 로그인 시 정상 이동",
+        "회원가입 메시지에 이메일 인증 문구 없음",
+        "npm run build 통과"
+      ],
+      "last_tested": "2026-05-23T20:49:51.229872"
+    },
+    {
+      "id": "S12T7",
+      "sprint": 12,
+      "category": "ui",
+      "priority": 37,
+      "name": "유저 관리 - 전체 유저 목록 추가",
+      "name_ascii": "User Management Full List",
+      "description": "get_all_users_for_admin RPC 추가. UserManagementPage에 전체 유저 테이블 표시 및 승격/취소 버튼 제공.",
+      "status": "pending",
+      "test_command": "npm run build",
+      "test_spec": null,
+      "acceptance_criteria": [
+        "008_all_users_rpc.sql 존재",
+        "getAllUsers() export",
+        "전체 유저 테이블 렌더링",
+        "승격/취소 후 목록 자동 갱신"
+      ],
+      "last_tested": null
+    },
+    {
+      "id": "S12T8",
+      "sprint": 12,
+      "category": "auth",
+      "priority": 38,
+      "name": "인증 초기 로딩 블랭크 화면 수정",
+      "name_ascii": "Auth Loading Blank Screen Fix",
+      "description": "onAuthStateChange만 사용 시 INITIAL_SESSION 미발화로 loading 고착 버그. getSession() 명시적 init() 복원으로 수정.",
+      "status": "pending",
+      "test_command": "npx playwright test e2e/mock/auth.spec.ts --project=mock",
+      "test_spec": "e2e/mock/auth.spec.ts",
+      "acceptance_criteria": [
+        "init()에서 getSession() 호출",
+        "INITIAL_SESSION 이벤트 즉시 return",
+        "새로고침 시 loading 정상 해소",
+        "npm run build 통과"
+      ],
+      "last_tested": null
     }
   ],
   "progress": {
-    "total": 35,
-    "completed": 35,
-    "passing": 35,
+    "total": 38,
+    "completed": 36,
+    "passing": 36,
     "failing": 0,
-    "pending": 0
+    "pending": 2
   }
 }

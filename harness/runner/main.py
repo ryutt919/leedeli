@@ -3,10 +3,10 @@
 LeeDeli harness runner.
 
 Examples:
-  python harness/runner/main.py --status
-  python harness/runner/main.py --dry-run --agent codex
-  python harness/runner/main.py --agent claude
-  python harness/runner/main.py --gate --agent codex
+  python3 harness/runner/main.py --status
+  python3 harness/runner/main.py --dry-run --agent codex
+  python3 harness/runner/main.py --agent claude
+  python3 harness/runner/main.py --gate --agent codex
 """
 
 from __future__ import annotations
@@ -264,7 +264,7 @@ def main() -> None:
                 target,
                 "paused",
                 cycle,
-                f"안전중단: {reason}. 재개: python harness/runner/main.py --agent {args.agent}",
+                f"안전중단: {reason}. 재개: python3 harness/runner/main.py --agent {args.agent}",
                 blocking=reason,
             )
         logger.event("safe_stop", feature_id=target, reason=reason, cycle=cycle)

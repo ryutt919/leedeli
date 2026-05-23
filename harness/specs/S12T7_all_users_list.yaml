@@ -1,0 +1,41 @@
+id: S12T7
+title: "유저 관리 - 전체 유저 목록 추가"
+category: ui
+status: pending
+
+description: |
+  유저 관리 페이지에서 현재 관리자 목록 외에 전체 유저 목록을 표시하고,
+  각 유저에 대해 관리자 승격/취소를 직접 수행할 수 있도록 한다.
+
+  1. supabase/migrations/008_all_users_rpc.sql 생성
+     - SECURITY DEFINER 함수 `get_all_users_for_admin()`:
+       - 호출자가 admin_users에 있는지 확인, 아니면 EXCEPTION.
+       - auth.users 전체를 조회하고 각 유저의 is_admin 여부도 함께 반환.
+       - 반환 타입: TABLE(user_id uuid, email text, created_at timestamptz, is_admin boolean)
+       - ORDER BY created_at DESC.
+
+  2. src/storage/adminUsersRepo.ts 수정
+     - getAllUsers(): RPC 'get_all_users_for_admin' 호출, 반환 타입 명시.
+
+  3. src/pages/UserManagementPage.tsx 수정
+     - 기존 "관리자 목록" 섹션 유지.
+     - "전체 유저" 섹션 추가: getAllUsers() 결과를 Ant Design Table로 표시.
+       컬럼: 이메일 | 가입일 | 관리자 여부 | 액션
+       - is_admin=false: "관리자 승격" 버튼 → grantAdmin 호출
+       - is_admin=true: "관리자 취소" 버튼 → revokeAdmin 호출
+     - 두 섹션 모두 로딩 후 자동 갱신 (승격/취소 후 목록 reload).
+
+implementation_targets:
+  - supabase/migrations/008_all_users_rpc.sql
+  - src/storage/adminUsersRepo.ts
+  - src/pages/UserManagementPage.tsx
+
+acceptance_criteria:
+  - 008_all_users_rpc.sql 존재 및 get_all_users_for_admin 함수 정의 포함.
+  - adminUsersRepo.ts에 getAllUsers() 함수 export.
+  - UserManagementPage에 전체 유저 테이블 렌더링.
+  - 승격/취소 버튼 클릭 후 목록 자동 갱신.
+  - npm run build 통과.
+
+test_command: "npm run build"
+regression_command: "npx playwright test e2e/mock/admin-users.spec.ts --project=mock"

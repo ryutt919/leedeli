@@ -36,17 +36,29 @@ export function LoginPage() {
             if (error) {
                 message.error(`회원가입 실패: ${error.message}`)
             } else {
-                message.success('회원가입 성공! 이메일 인증 후 로그인해 주세요.')
+                message.success('회원가입 성공! 로그인해 주세요.')
                 setIsSignUp(false)
             }
         } else {
             // 로그인
-            const { error } = await supabase.auth.signInWithPassword({ email, password })
+            const { data: signInData, error } = await supabase.auth.signInWithPassword({ email, password })
             if (error) {
                 message.error(`로그인 실패: ${error.message}`)
             } else {
-                message.success('로그인 성공!')
-                nav(from, { replace: true })
+                const userId = signInData.user?.id
+                const { data: adminRow } = await supabase
+                    .from('admin_users')
+                    .select('id')
+                    .eq('user_id', userId)
+                    .is('revoked_at', null)
+                    .maybeSingle()
+                if (!adminRow) {
+                    await supabase.auth.signOut()
+                    message.error('관리자 권한이 없습니다. 접근이 거부되었습니다.')
+                } else {
+                    message.success('로그인 성공!')
+                    nav(from, { replace: true })
+                }
             }
         }
 

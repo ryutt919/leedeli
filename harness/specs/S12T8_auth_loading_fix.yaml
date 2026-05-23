@@ -1,0 +1,54 @@
+id: S12T8
+title: "인증 초기 로딩 블랭크 화면 수정"
+category: auth
+status: pending
+
+description: |
+  사이트 진입 시 화면이 나오지 않고 캐시/쿠키를 지워야 정상 동작하는 버그 수정.
+
+  근본 원인:
+    현재 AuthContext는 onAuthStateChange의 INITIAL_SESSION 이벤트에만 의존한다.
+    React 리마운트(StrictMode, HMR 등) 또는 컴포넌트 빠른 언마운트 시
+    두 번째 구독에서 INITIAL_SESSION이 재발화하지 않으면
+    loading이 true로 고착되어 RequireAdmin이 영구 스피너 또는 빈 화면을 표시한다.
+    캐시를 지우면 localStorage 토큰이 없어져 INITIAL_SESSION이 null 세션으로 발화,
+    loading=false로 해소되어 정상으로 보이는 것.
+
+  수정 방법 (src/auth/AuthContext.tsx):
+    useEffect 내부에 명시적 init() 함수를 복원한다.
+
+    async function init(): Promise<void> {
+      const { data: sessionData } = await supabase.auth.getSession()
+      if (cancelled.value) return
+      const currentSession = sessionData?.session ?? null
+      setSession(currentSession)
+      if (currentSession?.user) {
+        await checkUserAdmin(currentSession.user, cancelled)
+      } else {
+        setIsAdmin(false)
+        setLoading(false)
+      }
+    }
+    init()
+
+    onAuthStateChange에서는 INITIAL_SESSION을 조기 반환(return)으로 건너뜀:
+      if (event === 'INITIAL_SESSION') return
+    (init()이 초기 상태를 처리하므로 중복 처리 방지)
+
+    나머지 이벤트(SIGNED_IN, SIGNED_OUT, TOKEN_REFRESHED, USER_UPDATED) 처리는 유지.
+    sessionStorage 캐시 최적화(is_admin_${userId})도 그대로 유지.
+
+  변경 대상 파일: src/auth/AuthContext.tsx 만 수정.
+
+implementation_targets:
+  - src/auth/AuthContext.tsx
+
+acceptance_criteria:
+  - useEffect 안에 supabase.auth.getSession() 호출하는 init() 존재.
+  - onAuthStateChange에서 INITIAL_SESSION 이벤트는 즉시 return.
+  - 로그인 상태에서 새로고침 시 loading이 정상적으로 false로 전환됨.
+  - 비로그인 상태에서 새로고침 시 /login 리다이렉트 정상 동작.
+  - npm run build 통과.
+
+test_command: "npx playwright test e2e/mock/auth.spec.ts --project=mock"
+regression_command: "npx playwright test e2e/mock/ --project=mock"

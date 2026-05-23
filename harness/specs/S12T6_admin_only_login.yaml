@@ -1,0 +1,35 @@
+id: S12T6
+title: "관리자 전용 로그인 + 이메일 인증 알림 제거"
+category: auth
+status: pending
+
+description: |
+  1. 비관리자 로그인 차단
+     - signInWithPassword 성공 후 admin_users 테이블에서 해당 user_id 조회.
+     - 관리자가 아니면:
+       a) supabase.auth.signOut() 즉시 호출
+       b) message.error('관리자 권한이 없습니다. 접근이 거부되었습니다.') 표시
+       c) 로그인 페이지에서 이동하지 않음
+     - 관리자면: 기존 nav(from) 그대로 진행.
+
+  2. 이메일 인증 알림 문구 제거
+     - 회원가입 성공 메시지에서 '이메일 인증 후 로그인해 주세요.' 문구 제거.
+     - 변경 전: '회원가입 성공! 이메일 인증 후 로그인해 주세요.'
+     - 변경 후: '회원가입 성공! 로그인해 주세요.'
+
+  구현 참고:
+  - 관리자 확인은 AuthContext의 fetchIsAdmin 패턴 참조 (supabase.from('admin_users').select('id').eq('user_id', ...).is('revoked_at', null))
+  - signInWithPassword 성공 직후 session의 user.id를 사용해 직접 쿼리.
+  - loading 상태를 유지하다가 관리자 확인 완료 후 setLoading(false).
+
+implementation_targets:
+  - src/pages/LoginPage.tsx
+
+acceptance_criteria:
+  - 로그인 성공 후 비관리자면 signOut 호출 및 에러 메시지 표시.
+  - 로그인 성공 후 관리자면 정상 이동.
+  - 회원가입 성공 메시지에 '이메일 인증' 문구 없음.
+  - npm run build 통과.
+
+test_command: "npx playwright test e2e/mock/auth.spec.ts --project=mock"
+regression_command: "npx playwright test e2e/mock/ --project=mock"
