@@ -680,7 +680,7 @@
       "name": "유저 관리 - 전체 유저 목록 추가",
       "name_ascii": "User Management Full List",
       "description": "get_all_users_for_admin RPC 추가. UserManagementPage에 전체 유저 테이블 표시 및 승격/취소 버튼 제공.",
-      "status": "pending",
+      "status": "failing",
       "test_command": "npm run build",
       "test_spec": null,
       "acceptance_criteria": [
@@ -689,7 +689,17 @@
         "전체 유저 테이블 렌더링",
         "승격/취소 후 목록 자동 갱신"
       ],
-      "last_tested": null
+      "last_tested": "2026-05-23T20:52:37.213379",
+      "failure_reason": "[mock_eval] FAIL: 통과 24, 실패 2\n[mock_eval]   ✘   3 [mock] › e2e/mock/admin-users.spec.ts:85:3 › S12T2 TC3 — 관리자 목록 렌더링 › 관리자 목록이 페이지에 표시된다 (10.7s)\n[mock_eval]   ✘   4 [mock] › e2e/mock/admin-users.spec.ts:85:3 › S12T2 TC3 — 관리자 목록 렌더링 › 관리자 목록이 페이지에 표시된다 (retry #1) (10.8s)\n[mock_eval]   ✘  22 [mock] › e2e/mock/auth.spec.ts:121:3 › S3T2 — RequireAdmin + UnauthorizedPage › /unauthorized 페이지가 렌더되고 홈 이동 버튼이 동작한다 (10.7s)\n[mock_eval]   ✘  23 [mock] › e2e/mock/auth.spec.ts:121:3 › S3T2 — RequireAdmin + UnauthorizedPage › /unauthorized 페이지가 렌더되고 홈 이동 버튼이 동작한다 (retry #1) (10.8s)",
+      "failure_summary": [
+        "[mock_eval] FAIL: 통과 24, 실패 2",
+        "[mock_eval]   ✘   3 [mock] › e2e/mock/admin-users.spec.ts:85:3 › S12T2 TC3 — 관리자 목록 렌더링 › 관리자 목록이 페이지에 표시된다 (10.7s)",
+        "[mock_eval]   ✘   4 [mock] › e2e/mock/admin-users.spec.ts:85:3 › S12T2 TC3 — 관리자 목록 렌더링 › 관리자 목록이 페이지에 표시된다 (retry #1) (10.8s)",
+        "[mock_eval]   ✘  22 [mock] › e2e/mock/auth.spec.ts:121:3 › S3T2 — RequireAdmin + UnauthorizedPage › /unauthorized 페이지가 렌더되고 홈 이동 버튼이 동작한다 (10.7s)",
+        "[mock_eval]   ✘  23 [mock] › e2e/mock/auth.spec.ts:121:3 › S3T2 — RequireAdmin + UnauthorizedPage › /unauthorized 페이지가 렌더되고 홈 이동 버튼이 동작한다 (retry #1) (10.8s)"
+      ],
+      "last_eval_log": "harness/logs/run_20260523_203851_fast_claude/S12T7_cycle2_attempt1_eval.log",
+      "last_attempt": 1
     },
     {
       "id": "S12T8",
@@ -715,7 +725,7 @@
     "total": 38,
     "completed": 36,
     "passing": 36,
-    "failing": 0,
-    "pending": 2
+    "failing": 1,
+    "pending": 1
   }
 }

@@ -26,7 +26,7 @@ export default function App() {
         <Route path="/manage" element={<RequireAuth><ManageSchedulesPage /></RequireAuth>} />
         <Route path="/ingredients" element={<RequireAuth><IngredientsPage /></RequireAuth>} />
         <Route path="/preps" element={<RequireAuth><PrepsPage /></RequireAuth>} />
-        <Route path="/unauthorized" element={<RequireAuth><UnauthorizedPage /></RequireAuth>} />
+        <Route path="/unauthorized" element={<UnauthorizedPage />} />
         <Route
           path="/users"
           element={<RequireAuth><RequireAdmin><UserManagementPage /></RequireAdmin></RequireAuth>}
