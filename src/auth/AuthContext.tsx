@@ -73,12 +73,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.log('[Auth] INITIAL_SESSION — alive:', aliveThisSession, '| token:', !!newSession)
 
           if (newSession && !aliveThisSession) {
-            // 브라우저 재시작 감지: localStorage 토큰 잔존 but 이번 세션 미인증
-            // scope:'local' = 네트워크 요청 없이 localStorage만 즉시 삭제 → hang 없음
-            console.log('[Auth] stale token → local sign out')
+            // 탭/브라우저를 닫고 다시 열었을 때: localStorage 토큰 잔존 but 이번 세션 미인증
+            // signOut({scope:'local'}) 내부에서 getSession()이 null 반환 시 SIGNED_OUT이
+            // 발생하지 않을 수 있으므로 — 상태를 직접 즉시 초기화하고 백그라운드로 정리
+            console.log('[Auth] stale token → force clear state')
             forcingSignOut = true
-            await supabase.auth.signOut({ scope: 'local' })
-            // await 완료 후 SIGNED_OUT 이벤트가 큐에서 처리됨
+            setSession(null)
+            setIsAdmin(false)
+            setLoading(false)
+            // localStorage 토큰 정리 (백그라운드, 실패해도 무방)
+            supabase.auth.signOut({ scope: 'local' }).catch(() => {})
             return
           }
 
