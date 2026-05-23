@@ -12,32 +12,18 @@ export type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 
-async function fetchIsAdmin(userId: string): Promise<boolean> {
-  const cached = sessionStorage.getItem(`is_admin_${userId}`)
-  if (cached === 'true') {
-    console.debug('[Auth] isAdmin: sessionStorage hit')
-    return true
-  }
+// sessionStorage 키: 탭/창 닫으면 자동 소멸 (localStorage와 달리 브라우저 재시작 시 초기화)
+const SESSION_ALIVE_KEY = 'leedeli_session_alive'
 
+async function fetchIsAdmin(userId: string): Promise<boolean> {
   try {
-    console.debug('[Auth] fetchIsAdmin: querying DB for', userId.slice(0, 8))
     const { data, error } = await supabase
       .from('admin_users')
       .select('id, revoked_at')
       .eq('user_id', userId)
-
-    if (error) {
-      console.error('[Auth] fetchIsAdmin error:', error.message)
-      return false
-    }
-    if (!data || data.length === 0) return false
-
-    const isActive = data.some((row) => !row.revoked_at)
-    if (isActive) sessionStorage.setItem(`is_admin_${userId}`, 'true')
-    console.debug('[Auth] fetchIsAdmin result:', isActive)
-    return isActive
-  } catch (e) {
-    console.error('[Auth] fetchIsAdmin exception:', e)
+    if (error || !data || data.length === 0) return false
+    return data.some((row) => !row.revoked_at)
+  } catch {
     return false
   }
 }
@@ -48,59 +34,72 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   const refreshAdmin = useCallback(async (): Promise<void> => {
-    const { data: sessionData } = await supabase.auth.getSession()
-    const user = sessionData?.session?.user
+    const { data } = await supabase.auth.getSession()
+    const user = data.session?.user
     if (!user) { setIsAdmin(false); return }
-    const admin = await fetchIsAdmin(user.id)
-    setIsAdmin(admin)
+    setIsAdmin(await fetchIsAdmin(user.id))
   }, [])
 
   useEffect(() => {
     let cancelled = false
 
-    // 단일 경로: onAuthStateChange만 사용 (INITIAL_SESSION 포함 처리)
-    // 이전 코드는 init()+onAuthStateChange 두 경로가 동시에 실행되어
-    // loading 상태가 경쟁 조건으로 true에 멈추는 버그 발생
     const { data: listener } = supabase.auth.onAuthStateChange(
       async (event, newSession) => {
         if (cancelled) return
 
-        console.debug('[Auth] event:', event, '| user:', newSession?.user?.id?.slice(0, 8) ?? 'null')
+        console.debug('[Auth]', event, newSession?.user?.id?.slice(0, 8) ?? 'null')
 
-        setSession(newSession)
-
-        if (!newSession?.user || event === 'SIGNED_OUT') {
+        // 로그인 성공 → 이번 브라우저 세션 활성 표시
+        if (event === 'SIGNED_IN') {
+          sessionStorage.setItem(SESSION_ALIVE_KEY, '1')
+        }
+        // 로그아웃 → 표시 제거
+        if (event === 'SIGNED_OUT') {
+          sessionStorage.removeItem(SESSION_ALIVE_KEY)
+          setSession(null)
           setIsAdmin(false)
           setLoading(false)
           return
         }
 
-        // TOKEN_REFRESHED는 동일 유저의 토큰 갱신 — 관리자 재확인 불필요
-        if (event === 'TOKEN_REFRESHED') {
-          // sessionStorage 캐시가 있으면 즉시 반환, 없으면 DB 조회
-          const result = await fetchIsAdmin(newSession.user.id)
-          if (!cancelled) { setIsAdmin(result); setLoading(false) }
+        // INITIAL_SESSION: 브라우저 재시작 감지
+        if (event === 'INITIAL_SESSION') {
+          const aliveThisSession = !!sessionStorage.getItem(SESSION_ALIVE_KEY)
+
+          if (newSession && !aliveThisSession) {
+            // localStorage에 토큰 잔존하지만 이번 세션에서 로그인한 적 없음
+            // → 강제 로그아웃 (SIGNED_OUT 이벤트가 뒤따라 발생)
+            console.debug('[Auth] stale token detected — signing out')
+            await supabase.auth.signOut()
+            return
+          }
+
+          if (!newSession) {
+            // 세션 없음 → 로그인 화면으로
+            setSession(null)
+            setIsAdmin(false)
+            setLoading(false)
+            return
+          }
+
+          // 유효한 현재 세션 → 그대로 진행
+        }
+
+        setSession(newSession)
+
+        if (!newSession?.user) {
+          setIsAdmin(false)
+          setLoading(false)
           return
         }
 
-        // INITIAL_SESSION, SIGNED_IN, USER_UPDATED
-        setLoading(true)
         const result = await fetchIsAdmin(newSession.user.id)
         if (!cancelled) { setIsAdmin(result); setLoading(false) }
       }
     )
 
-    // 안전망: 10초 후에도 loading이 true면 강제 해제
-    const safetyTimer = setTimeout(() => {
-      if (!cancelled) {
-        console.warn('[Auth] safety timeout — forcing loading=false')
-        setLoading(false)
-      }
-    }, 10_000)
-
     return () => {
       cancelled = true
-      clearTimeout(safetyTimer)
       listener.subscription.unsubscribe()
     }
   }, [])
