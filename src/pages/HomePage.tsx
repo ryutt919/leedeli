@@ -21,14 +21,9 @@ export function HomePage() {
           boxSizing: 'border-box',
         }}
       >
-        <Link to="/create" style={{ width: '100%', maxWidth: 180, textDecoration: 'none' }}>
+        <Link to="/menu" style={{ width: '100%', maxWidth: 180, textDecoration: 'none' }}>
           <Card hoverable className="leedeli-card">
-            스케줄 생성
-          </Card>
-        </Link>
-        <Link to="/manage" style={{ width: '100%', maxWidth: 180, textDecoration: 'none' }}>
-          <Card hoverable className="leedeli-card">
-            스케줄 관리
+            메뉴
           </Card>
         </Link>
         <Link to="/preps" style={{ width: '100%', maxWidth: 180, textDecoration: 'none' }}>
@@ -39,6 +34,16 @@ export function HomePage() {
         <Link to="/ingredients" style={{ width: '100%', maxWidth: 180, textDecoration: 'none' }}>
           <Card hoverable className="leedeli-card">
             재료
+          </Card>
+        </Link>
+        <Link to="/create" style={{ width: '100%', maxWidth: 180, textDecoration: 'none' }}>
+          <Card hoverable className="leedeli-card">
+            스케줄 생성
+          </Card>
+        </Link>
+        <Link to="/manage" style={{ width: '100%', maxWidth: 180, textDecoration: 'none' }}>
+          <Card hoverable className="leedeli-card">
+            스케줄 관리
           </Card>
         </Link>
       </div>
