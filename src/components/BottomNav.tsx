@@ -1,13 +1,15 @@
-import { AppstoreOutlined, CalendarOutlined, HomeOutlined, ShoppingOutlined, UnorderedListOutlined } from '@ant-design/icons'
+import { AppstoreOutlined, CalendarOutlined, HomeOutlined, ShoppingOutlined, TeamOutlined, UnorderedListOutlined } from '@ant-design/icons'
 import { Button, Flex, theme } from 'antd'
 import { useLocation, useNavigate } from 'react-router-dom'
 import type { ReactNode } from 'react'
+import { useAuth } from '../auth/AuthContext'
 
 type NavItem = {
   key: string
   label: string
   path: string
   icon: ReactNode
+  adminOnly?: boolean
 }
 
 const NAV: NavItem[] = [
@@ -16,6 +18,7 @@ const NAV: NavItem[] = [
   { key: 'manage', label: '관리', path: '/manage', icon: <UnorderedListOutlined /> },
   { key: 'preps', label: '프렙', path: '/preps', icon: <AppstoreOutlined /> },
   { key: 'ingredients', label: '재료', path: '/ingredients', icon: <ShoppingOutlined /> },
+  { key: 'users', label: '유저', path: '/users', icon: <TeamOutlined />, adminOnly: true },
 ]
 
 function isActive(currentPath: string, itemPath: string) {
@@ -27,6 +30,9 @@ export function BottomNav() {
   const { token } = theme.useToken()
   const nav = useNavigate()
   const loc = useLocation()
+  const { isAdmin } = useAuth()
+
+  const visibleNav = NAV.filter((it) => !it.adminOnly || isAdmin)
 
   return (
     <div
@@ -38,7 +44,7 @@ export function BottomNav() {
       }}
     >
       <Flex justify="space-around" align="center">
-        {NAV.map((it) => {
+        {visibleNav.map((it) => {
           const active = isActive(loc.pathname, it.path)
           return (
             <Button

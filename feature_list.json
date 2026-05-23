@@ -585,7 +585,7 @@
       "name": "유저 관리 페이지 + 네비게이션 추가",
       "name_ascii": "User Management Page and Navigation",
       "description": "관리자 전용 유저 관리 페이지(UserManagementPage.tsx) 구현. BottomNav에 관리자 전용 탭 추가, MobileShell 드로어에 유저 관리 버튼 추가.",
-      "status": "pending",
+      "status": "passing",
       "test_command": "npx playwright test e2e/mock/admin-users.spec.ts --project=mock",
       "test_spec": "e2e/mock/admin-users.spec.ts",
       "acceptance_criteria": [
@@ -595,7 +595,7 @@
         "MobileShell 드로어 유저 관리 버튼 조건부 표시",
         "이메일 입력 → 승격 → 성공/실패 메시지"
       ],
-      "last_tested": null
+      "last_tested": "2026-05-23T20:09:57.194537"
     },
     {
       "id": "S12T3",
@@ -620,9 +620,9 @@
   ],
   "progress": {
     "total": 33,
-    "completed": 31,
-    "passing": 31,
+    "completed": 32,
+    "passing": 32,
     "failing": 0,
-    "pending": 2
+    "pending": 1
   }
 }

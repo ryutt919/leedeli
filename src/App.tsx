@@ -6,6 +6,7 @@ import { ManageSchedulesPageV2 as ManageSchedulesPage } from './pages/v2/ManageS
 import { IngredientsPage } from './pages/IngredientsPage'
 import { PrepsPage } from './pages/PrepsPage'
 import { UnauthorizedPage } from './pages/UnauthorizedPage'
+import { UserManagementPage } from './pages/UserManagementPage'
 import { RequireAuth } from './components/RequireAuth'
 import { RequireAdmin } from './auth/RequireAdmin'
 import { AuthProvider } from './auth/AuthContext'
@@ -26,6 +27,10 @@ export default function App() {
         <Route path="/ingredients" element={<RequireAuth><IngredientsPage /></RequireAuth>} />
         <Route path="/preps" element={<RequireAuth><PrepsPage /></RequireAuth>} />
         <Route path="/unauthorized" element={<RequireAuth><UnauthorizedPage /></RequireAuth>} />
+        <Route
+          path="/users"
+          element={<RequireAuth><RequireAdmin><UserManagementPage /></RequireAdmin></RequireAuth>}
+        />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AuthProvider>

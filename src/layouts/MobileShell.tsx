@@ -1,4 +1,4 @@
-import { InfoCircleOutlined, LoginOutlined, LogoutOutlined } from '@ant-design/icons'
+import { InfoCircleOutlined, LoginOutlined, LogoutOutlined, TeamOutlined } from '@ant-design/icons'
 import { Button, Drawer, Flex, Layout, theme } from 'antd'
 import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
@@ -21,7 +21,7 @@ export function MobileShell({
   const loc = useLocation()
   const nav = useNavigate()
   const [open, setOpen] = useState(false)
-  const { session } = useAuth()
+  const { session, isAdmin } = useAuth()
 
   const canBack = useMemo(() => loc.pathname !== '/', [loc.pathname])
 
@@ -93,6 +93,17 @@ export function MobileShell({
             >
               홈
             </Button>
+            {isAdmin && (
+              <Button
+                icon={<TeamOutlined />}
+                onClick={() => {
+                  setOpen(false)
+                  nav('/users')
+                }}
+              >
+                유저 관리
+              </Button>
+            )}
             {!session && (
               <Button
                 icon={<LoginOutlined />}
