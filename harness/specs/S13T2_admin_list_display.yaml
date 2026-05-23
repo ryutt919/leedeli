@@ -1,0 +1,49 @@
+id: S13T2
+title: "관리자 목록 이메일·이름 표시 + ActiveAdmin 제거"
+category: db
+status: pending
+
+description: |
+  현재 관리자 목록이 UUID(user_id)로 표시되는 버그를 수정한다.
+  이름(name)도 함께 표시하도록 확장한다.
+
+  근본 원인:
+    - UserManagementPage가 getActiveAdmins()를 사용하는데,
+      이 함수는 admin_users 테이블을 직접 조회하므로 email·name 없음.
+    - listAdmins() (get_admin_users_with_email RPC)는 email을 포함하지만
+      name 필드가 없었음.
+
+  수정 방법:
+
+  1. supabase/migrations/009_admin_list_with_name.sql 생성
+     - get_admin_users_with_email 함수에 name 컬럼 추가
+       (auth.users.raw_user_meta_data->>'name').
+     - CREATE OR REPLACE로 하위 호환 유지.
+
+  2. src/storage/adminUsersRepo.ts 수정
+     - AdminUser 타입에 `name: string | null` 추가.
+     - 이제 불필요한 ActiveAdmin 타입 및 getActiveAdmins() 함수 삭제.
+
+  3. src/pages/UserManagementPage.tsx 수정
+     - getActiveAdmins → listAdmins() 교체.
+     - admins 상태 타입을 AdminUser[]로 변경.
+     - 관리자 목록 렌더링: user_id UUID 대신 email(bold) + name(secondary) 표시.
+     - 관리자 목록 import에서 ActiveAdmin 제거, AdminUser 추가.
+
+  ⚠️ 009_admin_list_with_name.sql은 실제 Supabase 프로젝트에 적용 필요.
+
+implementation_targets:
+  - supabase/migrations/009_admin_list_with_name.sql
+  - src/storage/adminUsersRepo.ts
+  - src/pages/UserManagementPage.tsx
+
+acceptance_criteria:
+  - 009_admin_list_with_name.sql 파일 존재.
+  - AdminUser 타입에 name 필드 포함.
+  - ActiveAdmin 타입 및 getActiveAdmins 함수 삭제됨.
+  - UserManagementPage 관리자 목록에 email과 name 렌더링.
+  - UUID가 관리자 목록에 직접 노출되지 않음.
+  - npm run build 통과.
+
+test_command: "npm run build"
+regression_command: "npx playwright test e2e/mock/admin-users.spec.ts --project=mock"

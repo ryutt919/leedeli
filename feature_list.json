@@ -709,11 +709,69 @@
         "npm run build 통과"
       ],
       "last_tested": "2026-05-23T21:17:52.000042"
+    },
+    {
+      "id": "S13T1",
+      "sprint": 13,
+      "category": "auth",
+      "priority": 39,
+      "name": "회원가입 비밀번호 확인 + 비관리자 자동 로그인 차단",
+      "name_ascii": "Signup Password Confirm + Auto-login Block",
+      "description": "회원가입 후 signOut() 즉시 호출로 비관리자 메인 페이지 진입 차단. 비밀번호 확인 필드 추가.",
+      "status": "implemented",
+      "test_command": "npx playwright test e2e/mock/auth.spec.ts --project=mock",
+      "test_spec": "e2e/mock/auth.spec.ts",
+      "acceptance_criteria": [
+        "회원가입 성공 후 signOut() 호출로 세션 초기화",
+        "회원가입 후 LoginPage에 머무름",
+        "비밀번호 확인 필드 존재 (회원가입 모드)",
+        "비밀번호 불일치 시 오류 메시지",
+        "npm run build 통과"
+      ],
+      "last_tested": null
+    },
+    {
+      "id": "S13T2",
+      "sprint": 13,
+      "category": "db",
+      "priority": 40,
+      "name": "관리자 목록 이메일·이름 표시",
+      "name_ascii": "Admin List Email and Name Display",
+      "description": "get_admin_users_with_email에 name 컬럼 추가(마이그레이션 009). UserManagementPage 관리자 목록에 이메일·이름 표시. ActiveAdmin/getActiveAdmins 제거.",
+      "status": "implemented",
+      "test_command": "npm run build",
+      "test_spec": null,
+      "acceptance_criteria": [
+        "009_admin_list_with_name.sql 존재",
+        "AdminUser 타입에 name 필드 포함",
+        "ActiveAdmin/getActiveAdmins 삭제",
+        "관리자 목록에 UUID 대신 이메일·이름 표시",
+        "npm run build 통과"
+      ],
+      "last_tested": null
+    },
+    {
+      "id": "S13T3",
+      "sprint": 13,
+      "category": "ui",
+      "priority": 41,
+      "name": "전체 유저 목록 새로고침 + 에러 표시",
+      "name_ascii": "User List Refresh Button and Error Display",
+      "description": "UserManagementPage 전체 유저 목록에 새로고침 버튼 및 에러 Alert 추가.",
+      "status": "implemented",
+      "test_command": "npm run build",
+      "test_spec": null,
+      "acceptance_criteria": [
+        "전체 유저 목록 카드에 새로고침 버튼 존재",
+        "getAllUsers() 실패 시 에러 Alert 표시",
+        "npm run build 통과"
+      ],
+      "last_tested": null
     }
   ],
   "progress": {
-    "total": 38,
-    "completed": 38,
+    "total": 41,
+    "completed": 41,
     "passing": 38,
     "failing": 0,
     "pending": 0

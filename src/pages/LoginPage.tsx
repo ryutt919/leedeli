@@ -5,29 +5,32 @@ import type { Location } from 'react-router-dom'
 import { supabase } from '../utils/supabase'
 import { useAuth } from '../auth/AuthContext'
 
-/**
- * 로그인 / 회원가입 페이지
- * - 이메일 + 비밀번호 기반 인증
- * - 회원가입 시 확인 이메일 발송(Supabase 기본 설정에 따라)
- * - 이미 로그인된 상태면 홈으로 redirect
- */
 export function LoginPage() {
     const { session } = useAuth()
     const [loading, setLoading] = useState(false)
     const [isSignUp, setIsSignUp] = useState(false)
+    const [form] = Form.useForm()
     const nav = useNavigate()
     const location = useLocation()
     const from = (location.state as { from?: Location } | null)?.from?.pathname ?? '/'
 
-    // 이미 로그인된 사용자는 홈으로
     if (session) return <Navigate to="/" replace />
 
-    const onFinish = async (values: { email: string; password: string; name?: string }) => {
+    const handleToggle = () => {
+        form.resetFields()
+        setIsSignUp((prev) => !prev)
+    }
+
+    const onFinish = async (values: {
+        email: string
+        password: string
+        name?: string
+        confirmPassword?: string
+    }) => {
         setLoading(true)
         const { email, password, name } = values
 
         if (isSignUp) {
-            // 회원가입 (이름을 user_metadata에 저장)
             const { error } = await supabase.auth.signUp({
                 email,
                 password,
@@ -36,11 +39,13 @@ export function LoginPage() {
             if (error) {
                 message.error(`회원가입 실패: ${error.message}`)
             } else {
-                message.success('회원가입 성공! 로그인해 주세요.')
+                // 자동 로그인 방지: 비관리자는 로그인 불가이므로 즉시 로그아웃
+                await supabase.auth.signOut()
+                message.success('회원가입 성공! 관리자에게 접근 권한을 요청하세요.')
+                form.resetFields()
                 setIsSignUp(false)
             }
         } else {
-            // 로그인
             const { data: signInData, error } = await supabase.auth.signInWithPassword({ email, password })
             if (error) {
                 message.error(`로그인 실패: ${error.message}`)
@@ -104,7 +109,7 @@ export function LoginPage() {
                     </Typography.Text>
                 </Flex>
 
-                <Form layout="vertical" onFinish={onFinish}>
+                <Form layout="vertical" form={form} onFinish={onFinish}>
                     {isSignUp && (
                         <Form.Item
                             name="name"
@@ -164,6 +169,36 @@ export function LoginPage() {
                         />
                     </Form.Item>
 
+                    {isSignUp && (
+                        <Form.Item
+                            name="confirmPassword"
+                            label={<span style={{ color: 'rgba(255,255,255,0.7)' }}>비밀번호 확인</span>}
+                            dependencies={['password']}
+                            rules={[
+                                { required: true, message: '비밀번호 확인을 입력해주세요' },
+                                ({ getFieldValue }) => ({
+                                    validator(_, value: string) {
+                                        if (!value || getFieldValue('password') === value) {
+                                            return Promise.resolve()
+                                        }
+                                        return Promise.reject(new Error('비밀번호가 일치하지 않습니다'))
+                                    },
+                                }),
+                            ]}
+                        >
+                            <Input.Password
+                                placeholder="비밀번호 확인"
+                                size="large"
+                                autoComplete="new-password"
+                                style={{
+                                    background: 'rgba(255,255,255,0.05)',
+                                    borderColor: 'rgba(255,255,255,0.15)',
+                                    color: '#fff',
+                                }}
+                            />
+                        </Form.Item>
+                    )}
+
                     <Form.Item style={{ marginBottom: 12 }}>
                         <Button
                             type="primary"
@@ -189,7 +224,7 @@ export function LoginPage() {
                 <Flex justify="center">
                     <Button
                         type="link"
-                        onClick={() => setIsSignUp(!isSignUp)}
+                        onClick={handleToggle}
                         style={{ color: 'rgba(66, 243, 66, 0.7)', fontSize: 13 }}
                     >
                         {isSignUp ? '이미 계정이 있나요? 로그인' : '계정이 없나요? 회원가입'}

@@ -1,16 +1,16 @@
-import { UserAddOutlined, UserDeleteOutlined } from '@ant-design/icons'
+import { ReloadOutlined, UserAddOutlined, UserDeleteOutlined } from '@ant-design/icons'
 import { Alert, Button, Card, Flex, Input, List, Table, Tag, Typography } from 'antd'
 import type { ColumnType } from 'antd/es/table'
 import { useEffect, useState } from 'react'
 import { useAuth } from '../auth/AuthContext'
 import { MobileShell } from '../layouts/MobileShell'
-import type { ActiveAdmin, AllUser } from '../storage/adminUsersRepo'
-import { getActiveAdmins, getAllUsers, getUserIdByEmail, grantAdmin, revokeAdmin } from '../storage/adminUsersRepo'
+import type { AdminUser, AllUser } from '../storage/adminUsersRepo'
+import { getAllUsers, getUserIdByEmail, grantAdmin, listAdmins, revokeAdmin } from '../storage/adminUsersRepo'
 
 export function UserManagementPage() {
   const { session } = useAuth()
   const [users, setUsers] = useState<AllUser[]>([])
-  const [admins, setAdmins] = useState<ActiveAdmin[]>([])
+  const [admins, setAdmins] = useState<AdminUser[]>([])
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [tableLoading, setTableLoading] = useState(false)
@@ -18,14 +18,18 @@ export function UserManagementPage() {
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null)
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  const [usersError, setUsersError] = useState<string | null>(null)
 
   async function refreshUsers(): Promise<void> {
     setTableLoading(true)
+    setUsersError(null)
     try {
       const data = await getAllUsers()
       setUsers(data)
     } catch (e: unknown) {
       console.error('getAllUsers error:', e)
+      const msg = e instanceof Error ? e.message : '유저 목록을 불러오지 못했습니다.'
+      setUsersError(msg)
     } finally {
       setTableLoading(false)
     }
@@ -34,10 +38,10 @@ export function UserManagementPage() {
   async function refreshAdmins(): Promise<void> {
     setAdminsLoading(true)
     try {
-      const data = await getActiveAdmins()
+      const data = await listAdmins()
       setAdmins(data)
     } catch (e: unknown) {
-      console.error('getActiveAdmins error:', e)
+      console.error('listAdmins error:', e)
     } finally {
       setAdminsLoading(false)
     }
@@ -199,14 +203,21 @@ export function UserManagementPage() {
         </Card>
 
         <Card title="현재 관리자 목록">
-          <List<ActiveAdmin>
+          <List<AdminUser>
             loading={adminsLoading}
             dataSource={admins}
             locale={{ emptyText: '관리자가 없습니다.' }}
             renderItem={(admin) => (
               <List.Item key={admin.id}>
-                <Typography.Text code>{admin.user_id}</Typography.Text>
-                <Typography.Text type="secondary" style={{ marginLeft: 8 }}>
+                <Flex vertical gap={2}>
+                  <Typography.Text strong>{admin.email ?? '(이메일 없음)'}</Typography.Text>
+                  {admin.name && (
+                    <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                      {admin.name}
+                    </Typography.Text>
+                  )}
+                </Flex>
+                <Typography.Text type="secondary">
                   {new Date(admin.granted_at).toLocaleDateString('ko-KR')} 부여
                 </Typography.Text>
               </List.Item>
@@ -214,7 +225,27 @@ export function UserManagementPage() {
           />
         </Card>
 
-        <Card title="전체 유저 목록">
+        <Card
+          title="전체 유저 목록"
+          extra={
+            <Button
+              size="small"
+              icon={<ReloadOutlined />}
+              onClick={() => void refreshUsers()}
+              loading={tableLoading}
+            >
+              새로고침
+            </Button>
+          }
+        >
+          {usersError && (
+            <Alert
+              type="error"
+              message={usersError}
+              showIcon
+              style={{ marginBottom: 12 }}
+            />
+          )}
           <Table<AllUser>
             dataSource={users}
             columns={columns}
