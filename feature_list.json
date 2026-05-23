@@ -557,13 +557,72 @@
         "하네스.md 규칙 준수"
       ],
       "last_tested": "2026-04-08T00:00:00.000000"
+    },
+    {
+      "id": "S12T1",
+      "sprint": 12,
+      "category": "db",
+      "priority": 31,
+      "name": "어드민 유저 관리 Storage + DB 마이그레이션",
+      "name_ascii": "Admin Users Storage and DB Migration",
+      "description": "admin_users RLS 정책 보완 및 get_user_id_by_email RPC 함수 추가. adminUsersRepo.ts로 listAdmins/grantAdmin/revokeAdmin/getUserIdByEmail 구현.",
+      "status": "passing",
+      "test_command": "npm run build",
+      "test_spec": null,
+      "acceptance_criteria": [
+        "supabase/migrations/006_admin_management.sql 존재",
+        "adminUsersRepo.ts에 4개 함수 export",
+        "any 타입 사용 금지",
+        "npm run build 통과"
+      ],
+      "last_tested": "2026-05-23T19:58:44.328887"
+    },
+    {
+      "id": "S12T2",
+      "sprint": 12,
+      "category": "ui",
+      "priority": 32,
+      "name": "유저 관리 페이지 + 네비게이션 추가",
+      "name_ascii": "User Management Page and Navigation",
+      "description": "관리자 전용 유저 관리 페이지(UserManagementPage.tsx) 구현. BottomNav에 관리자 전용 탭 추가, MobileShell 드로어에 유저 관리 버튼 추가.",
+      "status": "pending",
+      "test_command": "npx playwright test e2e/mock/admin-users.spec.ts --project=mock",
+      "test_spec": "e2e/mock/admin-users.spec.ts",
+      "acceptance_criteria": [
+        "/users 접근 시 유저 관리 페이지 렌더링",
+        "비관리자 /users 접근 시 /unauthorized 이동",
+        "BottomNav 관리자 전용 탭 조건부 표시",
+        "MobileShell 드로어 유저 관리 버튼 조건부 표시",
+        "이메일 입력 → 승격 → 성공/실패 메시지"
+      ],
+      "last_tested": null
+    },
+    {
+      "id": "S12T3",
+      "sprint": 12,
+      "category": "auth",
+      "priority": 33,
+      "name": "유저 관리 Mock E2E 테스트",
+      "name_ascii": "Admin User Management Mock E2E",
+      "description": "Playwright mock으로 유저 관리 페이지 접근 제어, 관리자 목록 표시, 승격 성공/실패 시나리오 검증.",
+      "status": "pending",
+      "test_command": "npx playwright test e2e/mock/admin-users.spec.ts --project=mock",
+      "test_spec": "e2e/mock/admin-users.spec.ts",
+      "acceptance_criteria": [
+        "비관리자 /users 접근 차단 (TC1)",
+        "관리자 /users 접근 허용 (TC2)",
+        "관리자 목록 렌더링 (TC3)",
+        "승격 성공 메시지 (TC4)",
+        "존재하지 않는 이메일 에러 메시지 (TC5)"
+      ],
+      "last_tested": null
     }
   ],
   "progress": {
-    "total": 30,
-    "completed": 30,
-    "passing": 30,
+    "total": 33,
+    "completed": 31,
+    "passing": 31,
     "failing": 0,
-    "pending": 0
+    "pending": 2
   }
 }

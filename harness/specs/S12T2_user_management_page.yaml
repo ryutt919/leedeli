@@ -1,0 +1,46 @@
+id: S12T2
+title: "유저 관리 페이지 + 네비게이션 추가"
+category: ui
+status: pending
+
+description: |
+  관리자가 다른 유저를 admin으로 승격/취소할 수 있는 유저 관리 페이지를 구현하고,
+  BottomNav 및 MobileShell 드로어에 관리자 전용 네비게이션 항목을 추가한다.
+
+  1. src/pages/UserManagementPage.tsx 생성
+     - RequireAuth + RequireAdmin으로 보호된 admin 전용 페이지.
+     - 현재 활성 admin 목록 표시 (listAdmins() 사용).
+       각 항목에 "취소" 버튼 → revokeAdmin() 호출 후 목록 갱신.
+     - 이메일 입력 폼 + "승격" 버튼:
+       getUserIdByEmail(email) → grantAdmin(userId, currentUserId) 호출.
+       성공/실패 메시지 표시 (Ant Design message 사용).
+     - MobileShell로 감싸고 title="유저 관리".
+
+  2. src/App.tsx 수정
+     - `/users` 라우트 추가 (RequireAuth + RequireAdmin 보호).
+
+  3. src/components/BottomNav.tsx 수정
+     - useAuth()로 isAdmin 확인.
+     - isAdmin === true일 때만 "유저" 탭 표시 (TeamOutlined 아이콘, path="/users").
+     - 기존 5개 탭 배열에서 isAdmin 여부로 동적 필터링.
+
+  4. src/layouts/MobileShell.tsx 수정
+     - 드로어 내부에 "유저 관리" 버튼 추가 (isAdmin일 때만 표시).
+     - useAuth()에서 isAdmin 가져와 조건부 렌더링.
+
+implementation_targets:
+  - src/pages/UserManagementPage.tsx
+  - src/App.tsx
+  - src/components/BottomNav.tsx
+  - src/layouts/MobileShell.tsx
+
+acceptance_criteria:
+  - /users 경로로 접근 시 유저 관리 페이지 렌더링.
+  - 비관리자는 /users 접근 시 /unauthorized로 이동.
+  - BottomNav에서 isAdmin일 때만 "유저" 탭 노출.
+  - MobileShell 드로어에 "유저 관리" 버튼 isAdmin 조건부 표시.
+  - 이메일 입력 → 승격 버튼 → 성공 메시지 or 에러 메시지 표시.
+  - npm run build 통과.
+
+test_command: "npx playwright test e2e/mock/admin-users.spec.ts --project=mock"
+regression_command: "npx playwright test e2e/mock/auth.spec.ts --project=mock"

@@ -1,0 +1,31 @@
+id: S12T1
+title: "어드민 유저 관리 Storage + DB 마이그레이션"
+category: db
+status: pending
+
+description: |
+  관리자가 다른 유저를 admin으로 승격/취소할 수 있도록 DB와 Storage 레이어를 구축한다.
+
+  1. DB 마이그레이션 006: admin_users RLS 정책 보완
+     - 기존 policy는 본인 행만 조회 가능. 관리자는 전체 admin_users 행 조회 가능하도록 policy 추가.
+     - Supabase RPC 함수 `get_user_id_by_email(p_email text) RETURNS uuid`
+       SECURITY DEFINER로 auth.users에서 email로 user_id 반환.
+
+  2. src/storage/adminUsersRepo.ts 생성
+     - listAdmins(): 현재 활성 admin 목록 반환 (revoked_at IS NULL)
+     - grantAdmin(userId: string, grantedBy: string): admin_users에 행 삽입
+     - revokeAdmin(userId: string): revoked_at = now() 업데이트
+     - getUserIdByEmail(email: string): RPC 호출로 uuid 반환
+
+implementation_targets:
+  - supabase/migrations/006_admin_management.sql
+  - src/storage/adminUsersRepo.ts
+
+acceptance_criteria:
+  - 006_admin_management.sql 파일 존재 및 문법 오류 없음.
+  - adminUsersRepo.ts에 listAdmins, grantAdmin, revokeAdmin, getUserIdByEmail 함수 export.
+  - 각 함수 반환 타입 명시 (any 금지).
+  - npm run build 통과.
+
+test_command: "npm run build"
+regression_command: "npm run build"
