@@ -42,20 +42,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let cancelled = false
+    // 강제 로그아웃 진행 중 플래그 — TOKEN_REFRESHED 등 끼어드는 이벤트 차단
+    let forcingSignOut = false
 
     const { data: listener } = supabase.auth.onAuthStateChange(
       async (event, newSession) => {
         if (cancelled) return
 
-        // console.log 사용 (debug는 Chrome DevTools Default 필터에서 안 보임)
-        console.log('[Auth]', event, newSession?.user?.id?.slice(0, 8) ?? 'null')
+        console.log('[Auth]', event, newSession?.user?.id?.slice(0, 8) ?? 'null', forcingSignOut ? '(forcing logout)' : '')
 
-        // 로그인 성공 → 이번 브라우저 세션 활성 표시
+        // 강제 로그아웃 중 → SIGNED_OUT 외 모든 이벤트 무시
+        // (TOKEN_REFRESHED가 INITIAL_SESSION 직후 끼어들어 loading=true로 되돌리는 버그 방지)
+        if (forcingSignOut && event !== 'SIGNED_OUT') return
+
         if (event === 'SIGNED_IN') {
           sessionStorage.setItem(SESSION_ALIVE_KEY, '1')
         }
-        // 로그아웃 → 표시 제거
+
         if (event === 'SIGNED_OUT') {
+          forcingSignOut = false
           sessionStorage.removeItem(SESSION_ALIVE_KEY)
           setSession(null)
           setIsAdmin(false)
@@ -63,31 +68,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return
         }
 
-        // INITIAL_SESSION: 브라우저 재시작 감지
         if (event === 'INITIAL_SESSION') {
           const aliveThisSession = !!sessionStorage.getItem(SESSION_ALIVE_KEY)
-          console.log('[Auth] INITIAL_SESSION — aliveThisSession:', aliveThisSession, '| hasToken:', !!newSession)
+          console.log('[Auth] INITIAL_SESSION — alive:', aliveThisSession, '| token:', !!newSession)
 
           if (newSession && !aliveThisSession) {
-            // localStorage에 토큰 잔존하지만 이번 세션에서 로그인한 적 없음
-            // → 즉시 로그인 화면으로 전환 (signOut은 백그라운드에서 처리 — await 않음)
-            console.log('[Auth] stale token — forcing re-login')
-            setSession(null)
-            setIsAdmin(false)
-            setLoading(false)
-            supabase.auth.signOut().catch(() => {}) // 네트워크 의존 없이 상태만 즉시 초기화
+            // 브라우저 재시작 감지: localStorage 토큰 잔존 but 이번 세션 미인증
+            // scope:'local' = 네트워크 요청 없이 localStorage만 즉시 삭제 → hang 없음
+            console.log('[Auth] stale token → local sign out')
+            forcingSignOut = true
+            await supabase.auth.signOut({ scope: 'local' })
+            // await 완료 후 SIGNED_OUT 이벤트가 큐에서 처리됨
             return
           }
 
           if (!newSession) {
-            // 세션 없음 → 로그인 화면으로
             setSession(null)
             setIsAdmin(false)
             setLoading(false)
             return
           }
-
-          // 유효한 현재 세션 → 그대로 진행
+          // 유효한 현재 세션 → 아래 공통 처리로 진행
         }
 
         setSession(newSession)
@@ -103,8 +104,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     )
 
+    // 안전망: 8초 후에도 loading=true이면 강제 해제 (네트워크 장애 등 극단적 상황)
+    const safetyTimer = setTimeout(() => {
+      if (!cancelled) {
+        console.warn('[Auth] safety timeout — forcing loading=false')
+        setLoading(false)
+      }
+    }, 8_000)
+
     return () => {
       cancelled = true
+      clearTimeout(safetyTimer)
       listener.subscription.unsubscribe()
     }
   }, [])
