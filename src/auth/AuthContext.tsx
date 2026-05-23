@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useState, useCallback } from 'react'
 import type { ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from '../utils/supabase'
@@ -13,40 +13,61 @@ export type AuthContextValue = {
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 
 async function fetchIsAdmin(userId: string): Promise<boolean> {
-  const fetchTask = (async () => {
-    const { data, error } = await supabase
-      .from('admin_users')
-      .select('id, user_id')
-      .eq('user_id', userId)
-      .is('revoked_at', null)
-      .limit(1)
-
-    if (error) {
-      console.error('[AuthContext] admin_users 조회 오류:', error)
-      return false
-    }
-    const exists = Array.isArray(data) && data.length > 0
-    console.log(`[AuthContext] admin check for ${userId}: ${exists}`, data)
-    return exists
-  })()
-
-  // 5초 타임아웃
-  const timeout = new Promise<boolean>((_, reject) =>
-    setTimeout(() => reject(new Error('Admin check timeout')), 5000)
-  )
+  // 캐시 확인: 이번 세션에서 이미 확인된 적이 있는지 (보안은 DB RLS가 담당하므로 UI 캐시는 안전)
+  const cached = sessionStorage.getItem(`is_admin_${userId}`);
+  if (cached === 'true') return true;
 
   try {
-    return await Promise.race([fetchTask, timeout])
+    const { data, error } = await supabase
+      .from('admin_users')
+      .select('id, revoked_at')
+      .eq('user_id', userId);
+
+    if (error || !data || data.length === 0) return false;
+
+    const isActive = data.some(row => !row.revoked_at);
+    if (isActive) {
+      sessionStorage.setItem(`is_admin_${userId}`, 'true');
+    }
+    return isActive;
   } catch (e) {
-    console.error('[AuthContext] admin_users 조회 실패 또는 타임아웃:', e)
-    return false
+    return false;
   }
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
-  const [isAdmin, setIsAdmin] = useState<boolean | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [isAdmin, setIsAdmin] = useState<boolean | null>(() => {
+    // 초기 상태 설정 시 세션 스토리지를 즉시 참조하여 로딩 시간을 줄임
+    const lastUser = localStorage.getItem('sb-tmmkdqpiolyldhngysxh-auth-token');
+    if (lastUser) {
+      try {
+        const parsed = JSON.parse(lastUser);
+        const userId = parsed?.user?.id;
+        if (userId && sessionStorage.getItem(`is_admin_${userId}`) === 'true') {
+          return true;
+        }
+      } catch (e) { /* ignore */ }
+    }
+    return null;
+  })
+  const [loading, setLoading] = useState(isAdmin === null)
+
+  const checkUserAdmin = useCallback(async (user: any, cancelled: { value: boolean }) => {
+    if (!user) {
+      if (!cancelled.value) {
+        setIsAdmin(false);
+        setLoading(false);
+      }
+      return;
+    }
+
+    const result = await fetchIsAdmin(user.id);
+    if (!cancelled.value) {
+      setIsAdmin(result);
+      setLoading(false);
+    }
+  }, []);
 
   async function refreshAdmin(): Promise<void> {
     const { data: sessionData } = await supabase.auth.getSession()
@@ -60,84 +81,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   useEffect(() => {
-    let cancelled = false
-
-    async function init(): Promise<void> {
-      try {
-        const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
-        if (sessionError) throw sessionError
-
-        const currentSession = sessionData?.session ?? null
-
-        if (cancelled) return
-        setSession(currentSession)
-
-        if (currentSession?.user) {
-          const admin = await fetchIsAdmin(currentSession.user.id)
-          if (!cancelled) {
-            setIsAdmin(admin)
-            setLoading(false)
-          }
-        } else {
-          if (!cancelled) {
-            setIsAdmin(false)
-            setLoading(false)
-          }
-        }
-      } catch (err) {
-        console.error('[AuthContext] 초기화 실패:', err)
-        if (!cancelled) {
-          setSession(null)
-          setIsAdmin(false)
-          setLoading(false)
-        }
-      }
-    }
-
-    init()
+    const cancelled = { value: false }
 
     const { data: listener } = supabase.auth.onAuthStateChange(async (event, newSession) => {
-      console.log('[AuthContext] onAuthStateChange:', event, newSession?.user?.email)
-      
-      if (event === 'INITIAL_SESSION') return
-      
-      if (event === 'SIGNED_OUT') {
-        if (!cancelled) {
-          setSession(null)
-          setIsAdmin(false)
-          setLoading(false)
-        }
-        return
-      }
-
-      if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
-        if (!cancelled) setSession(newSession)
-        return
-      }
-
-      if (cancelled) return
+      if (cancelled.value) return;
       setSession(newSession)
-      
+
+      if (event === 'SIGNED_OUT') {
+        setIsAdmin(false)
+        setLoading(false)
+        return
+      }
+
       if (newSession?.user) {
-        setLoading(true) // 재조회 중에는 다시 로딩 상태로
-        const admin = await fetchIsAdmin(newSession.user.id)
-        if (!cancelled) {
-          setIsAdmin(admin)
-          setLoading(false)
+        // 이미 관리자임을 알고 있다면(캐시) 로딩을 띄우지 않음
+        if (sessionStorage.getItem(`is_admin_${newSession.user.id}`) !== 'true') {
+          setLoading(true);
         }
+        await checkUserAdmin(newSession.user, cancelled);
       } else {
-        if (!cancelled) {
-          setIsAdmin(false)
-          setLoading(false)
-        }
+        setIsAdmin(false);
+        setLoading(false);
       }
     })
 
     return () => {
-      cancelled = true
+      cancelled.value = true
       listener.subscription.unsubscribe()
     }
-  }, [])
+  }, [checkUserAdmin])
 
   return (
     <AuthContext.Provider value={{ session, isAdmin, loading, refreshAdmin }}>
