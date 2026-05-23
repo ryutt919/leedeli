@@ -3,16 +3,14 @@ import { supabase } from '../utils/supabase'
 export type AdminUser = {
   id: string
   user_id: string
+  email: string | null
   granted_by: string | null
   granted_at: string
   revoked_at: string | null
 }
 
 export async function listAdmins(): Promise<AdminUser[]> {
-  const { data, error } = await supabase
-    .from('admin_users')
-    .select('*')
-    .is('revoked_at', null)
+  const { data, error } = await supabase.rpc('get_admin_users_with_email')
   if (error) {
     console.error('listAdmins error:', error)
     throw error

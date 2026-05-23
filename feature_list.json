@@ -616,12 +616,48 @@
         "존재하지 않는 이메일 에러 메시지 (TC5)"
       ],
       "last_tested": "2026-05-23T20:11:02.446922"
+    },
+    {
+      "id": "S12T4",
+      "sprint": 12,
+      "category": "db",
+      "priority": 34,
+      "name": "관리자 목록 이메일 표시",
+      "name_ascii": "Admin List Email Display",
+      "description": "get_admin_users_with_email RPC 추가, adminUsersRepo.ts 및 UserManagementPage에서 UUID 대신 이메일 표시.",
+      "status": "passing",
+      "test_command": "npm run build",
+      "test_spec": null,
+      "acceptance_criteria": [
+        "006_admin_email_rpc.sql 존재",
+        "listAdmins() 반환에 email 필드 포함",
+        "UserManagementPage에 이메일 렌더링"
+      ],
+      "last_tested": "2026-05-23T20:28:04.237567"
+    },
+    {
+      "id": "S12T5",
+      "sprint": 12,
+      "category": "db",
+      "priority": 35,
+      "name": "이메일 인증 비활성화",
+      "name_ascii": "Disable Email Confirmation",
+      "description": "DB trigger로 신규 가입 시 이메일 자동 인증 처리. 기존 미인증 계정 일괄 처리 포함.",
+      "status": "passing",
+      "test_command": "npm run build",
+      "test_spec": null,
+      "acceptance_criteria": [
+        "007_auto_confirm_email.sql 존재",
+        "기존 미인증 사용자 UPDATE 포함",
+        "auto_confirm_email trigger 정의 포함"
+      ],
+      "last_tested": "2026-05-23T20:24:37.235879"
     }
   ],
   "progress": {
-    "total": 33,
-    "completed": 33,
-    "passing": 33,
+    "total": 35,
+    "completed": 35,
+    "passing": 35,
     "failing": 0,
     "pending": 0
   }

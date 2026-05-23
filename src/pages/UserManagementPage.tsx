@@ -94,7 +94,7 @@ export function UserManagementPage() {
             locale={{ emptyText: '관리자가 없습니다.' }}
             renderItem={(item) => (
               <List.Item>
-                <Typography.Text code>{item.user_id}</Typography.Text>
+                <Typography.Text code>{item.email ?? item.user_id}</Typography.Text>
                 <Typography.Text type="secondary" style={{ marginLeft: 8, fontSize: 12 }}>
                   {new Date(item.granted_at).toLocaleDateString('ko-KR')}
                 </Typography.Text>
