@@ -12,8 +12,9 @@ export type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 
-// sessionStorage 키: 탭/창 닫으면 자동 소멸 (localStorage와 달리 브라우저 재시작 시 초기화)
-const SESSION_ALIVE_KEY = 'leedeli_session_alive'
+// 페이지 로드마다 초기화되는 모듈 변수 (F5 포함)
+// 이번 로드에서 직접 로그인한 경우에만 true
+let _loggedInThisLoad = false
 
 async function fetchIsAdmin(userId: string): Promise<boolean> {
   try {
@@ -45,9 +46,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let forcingSignOut = false
     let seenInitialSession = false
 
-    // 이벤트 발화 전에 미리 캡처 — SIGNED_IN이 먼저 와도 덮어쓰기 방지
-    const sessionWasAlive = !!sessionStorage.getItem(SESSION_ALIVE_KEY)
-
     const { data: listener } = supabase.auth.onAuthStateChange(
       async (event, newSession) => {
         if (cancelled) return
@@ -57,15 +55,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (forcingSignOut && event !== 'SIGNED_OUT') return
 
         if (event === 'SIGNED_IN') {
-          sessionStorage.setItem(SESSION_ALIVE_KEY, '1')
-          // INITIAL_SESSION 전에 오는 SIGNED_IN은 토큰 자동갱신 부산물일 수 있음
-          // INITIAL_SESSION이 stale 여부를 판단할 때까지 처리 보류
+          _loggedInThisLoad = true
+          // INITIAL_SESSION보다 먼저 오는 경우: INITIAL_SESSION에서 처리
           if (!seenInitialSession) return
         }
 
         if (event === 'SIGNED_OUT') {
           forcingSignOut = false
-          sessionStorage.removeItem(SESSION_ALIVE_KEY)
+          _loggedInThisLoad = false
           setSession(null)
           setIsAdmin(false)
           setLoading(false)
@@ -74,13 +71,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (event === 'INITIAL_SESSION') {
           seenInitialSession = true
-          console.log('[Auth] INITIAL_SESSION — wasAlive:', sessionWasAlive, '| token:', !!newSession)
+          console.log('[Auth] INITIAL_SESSION — loggedInThisLoad:', _loggedInThisLoad, '| token:', !!newSession)
 
-          if (newSession && !sessionWasAlive) {
-            // 탭 닫고 재진입: localStorage 토큰 잔존 but 이번 탭에서 미인증
-            console.log('[Auth] stale token → force clear state')
+          if (newSession && !_loggedInThisLoad) {
+            // 이전 로드의 잔류 토큰 → 강제 로그아웃
+            console.log('[Auth] stale token → force sign out')
             forcingSignOut = true
-            sessionStorage.removeItem(SESSION_ALIVE_KEY)
             setSession(null)
             setIsAdmin(false)
             setLoading(false)
@@ -94,7 +90,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setLoading(false)
             return
           }
-          // 유효한 현재 세션 → 공통 처리로 진행
         }
 
         setSession(newSession)
@@ -110,7 +105,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     )
 
-    // 안전망: 8초 후에도 loading=true이면 강제 해제 (네트워크 장애 등 극단적 상황)
     const safetyTimer = setTimeout(() => {
       if (!cancelled) {
         console.warn('[Auth] safety timeout — forcing loading=false')

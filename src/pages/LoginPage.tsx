@@ -1,18 +1,34 @@
-import { Button, Card, Form, Input, Typography, message, Flex } from 'antd'
-import { useState } from 'react'
+import { Button, Card, Checkbox, Form, Input, Typography, message, Flex } from 'antd'
+import { useEffect, useState } from 'react'
 import { Navigate, useNavigate, useLocation } from 'react-router-dom'
 import type { Location } from 'react-router-dom'
 import { supabase } from '../utils/supabase'
 import { useAuth } from '../auth/AuthContext'
 
+const SAVED_CREDS_KEY = 'leedeli_saved_creds'
+
 export function LoginPage() {
     const { session } = useAuth()
     const [loading, setLoading] = useState(false)
     const [isSignUp, setIsSignUp] = useState(false)
+    const [remember, setRemember] = useState(false)
     const [form] = Form.useForm()
     const nav = useNavigate()
     const location = useLocation()
     const from = (location.state as { from?: Location } | null)?.from?.pathname ?? '/'
+
+    useEffect(() => {
+        try {
+            const saved = localStorage.getItem(SAVED_CREDS_KEY)
+            if (saved) {
+                const { email, password } = JSON.parse(saved) as { email: string; password: string }
+                form.setFieldsValue({ email, password })
+                setRemember(true)
+            }
+        } catch {
+            // 저장 데이터 파싱 실패 시 무시
+        }
+    }, [form])
 
     if (session) return <Navigate to="/" replace />
 
@@ -39,7 +55,6 @@ export function LoginPage() {
             if (error) {
                 message.error(`회원가입 실패: ${error.message}`)
             } else {
-                // 자동 로그인 방지: 비관리자는 로그인 불가이므로 즉시 로그아웃
                 await supabase.auth.signOut()
                 message.success('회원가입 성공! 관리자에게 접근 권한을 요청하세요.')
                 form.resetFields()
@@ -61,6 +76,11 @@ export function LoginPage() {
                     await supabase.auth.signOut()
                     message.error('관리자 권한이 없습니다. 접근이 거부되었습니다.')
                 } else {
+                    if (remember) {
+                        localStorage.setItem(SAVED_CREDS_KEY, JSON.stringify({ email, password }))
+                    } else {
+                        localStorage.removeItem(SAVED_CREDS_KEY)
+                    }
                     message.success('로그인 성공!')
                     nav(from, { replace: true })
                 }
@@ -196,6 +216,18 @@ export function LoginPage() {
                                     color: '#fff',
                                 }}
                             />
+                        </Form.Item>
+                    )}
+
+                    {!isSignUp && (
+                        <Form.Item style={{ marginBottom: 16 }}>
+                            <Checkbox
+                                checked={remember}
+                                onChange={(e) => setRemember(e.target.checked)}
+                                style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13 }}
+                            >
+                                로그인 정보 저장
+                            </Checkbox>
                         </Form.Item>
                     )}
 
