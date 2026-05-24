@@ -172,7 +172,6 @@ function EmployeeModal({
           : {
               name: '',
               role: '정직원',
-              hourlyWage: 10030,
               defaultBreakMinutes: 60,
               availableShiftIds: [],
               regularDaysOff: [],
@@ -189,6 +188,7 @@ function EmployeeModal({
       onOk({
         id: initial?.id ?? newId(),
         updatedAtISO: new Date().toISOString(),
+        hourlyWage: initial?.hourlyWage ?? 0,
         availableShiftIds: values.availableShiftIds ?? [],
         regularDaysOff: values.regularDaysOff ?? [],
         workPatterns: values.workPatterns ?? [],
@@ -223,14 +223,9 @@ function EmployeeModal({
         </Flex>
 
         {isAdmin && (
-          <Flex gap={8}>
-            <Form.Item name="hourlyWage" label="시급(원)" style={{ flex: 1 }}>
-              <InputNumber min={0} style={{ width: '100%' }} />
-            </Form.Item>
-            <Form.Item name="defaultBreakMinutes" label="기본휴식(분)" style={{ flex: 1 }}>
-              <InputNumber min={0} style={{ width: '100%' }} />
-            </Form.Item>
-          </Flex>
+          <Form.Item name="defaultBreakMinutes" label="기본휴식(분)" style={{ width: 160 }}>
+            <InputNumber min={0} style={{ width: '100%' }} />
+          </Form.Item>
         )}
 
         {role === '정직원' && (
@@ -1242,7 +1237,6 @@ export function CreateSchedulePage() {
                   <Flex gap={8} align="center">
                     <Text strong style={{ fontSize: 13 }}>{emp.name}</Text>
                     <Tag color={emp.role === '정직원' ? 'blue' : 'orange'} style={{ fontSize: 11 }}>{emp.role}</Tag>
-                    {isAdmin && <Text type="secondary" style={{ fontSize: 11 }}>시급 {emp.hourlyWage.toLocaleString()}원</Text>}
                   </Flex>
                   <Text type="secondary" style={{ fontSize: 11 }}>
                     {availableNames
