@@ -38,12 +38,7 @@ export function HomePage() {
         </Link>
         <Link to="/create" style={{ width: '100%', maxWidth: 180, textDecoration: 'none' }}>
           <Card hoverable className="leedeli-card">
-            스케줄 생성
-          </Card>
-        </Link>
-        <Link to="/manage" style={{ width: '100%', maxWidth: 180, textDecoration: 'none' }}>
-          <Card hoverable className="leedeli-card">
-            스케줄 관리
+            스케줄
           </Card>
         </Link>
       </div>

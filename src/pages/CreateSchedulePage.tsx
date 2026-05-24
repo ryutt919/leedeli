@@ -3,11 +3,13 @@ import {
   Button,
   Checkbox,
   DatePicker,
+  Drawer,
   Flex,
   Form,
   Input,
   InputNumber,
   Modal,
+  Popconfirm,
   Radio,
   Select,
   Space,
@@ -18,9 +20,8 @@ import {
   message,
   theme,
 } from 'antd'
-import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons'
+import { DeleteOutlined, EditOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons'
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import type { Dayjs } from 'dayjs'
 import { MobileShell } from '../layouts/MobileShell'
 import { useAuth } from '../auth/AuthContext'
@@ -30,11 +31,10 @@ import type {
   ScheduleV3,
   ShiftType,
   WeekPreset,
-  WorkPattern,
 } from '../domain/types'
 import { loadEmployees, upsertEmployee, deleteEmployee } from '../storage/employeesRepo'
 import { loadShiftTypes, upsertShiftType, deleteShiftType } from '../storage/shiftTypesRepo'
-import { upsertScheduleV3 } from '../storage/schedulesRepo'
+import { upsertScheduleV3, loadSchedulesV3, deleteScheduleV3 } from '../storage/schedulesRepo'
 import { generateScheduleV3, calcEmployeeSummary } from '../domain/scheduleEngineV3'
 import {
   loadWeekPresets,
@@ -78,7 +78,7 @@ function ShiftTypeModal({
       form.setFieldsValue(
         initial
           ? { ...initial }
-          : { name: '', startTime: '09:00', endTime: '18:00', breakMinutes: 60, staffCount: 1 }
+          : { name: '', startTime: '09:00', endTime: '18:00', breakMinutes: 60, staffCount: 1, targetRole: '전체' }
       )
     }
   }, [open, initial, form])
@@ -129,6 +129,15 @@ function ShiftTypeModal({
             <InputNumber min={1} style={{ width: '100%' }} />
           </Form.Item>
         </Flex>
+        <Form.Item name="targetRole" label="적용 대상">
+          <Select
+            options={[
+              { value: '전체', label: '전체 (정직원+알바)' },
+              { value: '정직원', label: '정직원 전용' },
+              { value: '알바', label: '알바 전용' },
+            ]}
+          />
+        </Form.Item>
       </Form>
     </Modal>
   )
@@ -228,7 +237,9 @@ function EmployeeModal({
           <>
             <Form.Item name="availableShiftIds" label="가능 근무유형">
               <Checkbox.Group
-                options={shiftTypes.map((st) => ({ label: st.name, value: st.id }))}
+                options={shiftTypes
+                  .filter((st) => !st.targetRole || st.targetRole === '전체' || st.targetRole === '정직원')
+                  .map((st) => ({ label: `${st.name} (${st.startTime}-${st.endTime})`, value: st.id }))}
               />
             </Form.Item>
             <Form.Item name="regularDaysOff" label="정기휴무 요일">
@@ -240,55 +251,20 @@ function EmployeeModal({
         )}
 
         {role === '알바' && (
-          <Form.List name="workPatterns">
-            {(fields, { add, remove }) => (
-              <>
-                <Text type="secondary" style={{ fontSize: 12 }}>
-                  근무 패턴 (요일별 고정 시간)
-                </Text>
-                {fields.map(({ key, name }) => (
-                  <Flex key={key} gap={8} align="flex-start" style={{ marginTop: 8 }}>
-                    <Form.Item name={[name, 'weekdays']} label="요일" style={{ flex: 2 }}>
-                      <Checkbox.Group
-                        options={WEEKDAY_LABELS.map((label, idx) => ({ label, value: idx }))}
-                      />
-                    </Form.Item>
-                    <Form.Item name={[name, 'startTime']} label="시작" style={{ flex: 1 }}>
-                      <Input placeholder="09:00" maxLength={5} />
-                    </Form.Item>
-                    <Form.Item name={[name, 'endTime']} label="종료" style={{ flex: 1 }}>
-                      <Input placeholder="14:00" maxLength={5} />
-                    </Form.Item>
-                    <Form.Item name={[name, 'breakMinutes']} label="휴식" style={{ width: 60 }}>
-                      <InputNumber min={0} style={{ width: '100%' }} />
-                    </Form.Item>
-                    <Button
-                      danger
-                      type="text"
-                      icon={<DeleteOutlined />}
-                      onClick={() => remove(name)}
-                      style={{ marginTop: 30 }}
-                    />
-                  </Flex>
-                ))}
-                <Button
-                  type="dashed"
-                  icon={<PlusOutlined />}
-                  onClick={() =>
-                    add({
-                      weekdays: [],
-                      startTime: '09:00',
-                      endTime: '14:00',
-                      breakMinutes: 0,
-                    } as WorkPattern)
-                  }
-                  style={{ marginTop: 8, width: '100%' }}
-                >
-                  패턴 추가
-                </Button>
-              </>
-            )}
-          </Form.List>
+          <>
+            <Form.Item name="availableShiftIds" label="가능 근무유형">
+              <Checkbox.Group
+                options={shiftTypes
+                  .filter((st) => !st.targetRole || st.targetRole === '전체' || st.targetRole === '알바')
+                  .map((st) => ({ label: `${st.name} (${st.startTime}-${st.endTime})`, value: st.id }))}
+              />
+            </Form.Item>
+            <Form.Item name="regularDaysOff" label="정기휴무 요일">
+              <Checkbox.Group
+                options={WEEKDAY_LABELS.map((label, idx) => ({ label, value: idx }))}
+              />
+            </Form.Item>
+          </>
         )}
       </Form>
     </Modal>
@@ -857,10 +833,16 @@ export function ScheduleCalendar({
   )
 }
 
+const MONTH_OPTIONS = [
+  { value: 1, label: '1월' }, { value: 2, label: '2월' }, { value: 3, label: '3월' },
+  { value: 4, label: '4월' }, { value: 5, label: '5월' }, { value: 6, label: '6월' },
+  { value: 7, label: '7월' }, { value: 8, label: '8월' }, { value: 9, label: '9월' },
+  { value: 10, label: '10월' }, { value: 11, label: '11월' }, { value: 12, label: '12월' },
+]
+
 // ─── 메인 페이지 ─────────────────────────────────────────────────
 export function CreateSchedulePage() {
   const { isAdmin } = useAuth()
-  const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState('settings')
   const [msgApi, contextHolder] = message.useMessage()
 
@@ -887,11 +869,34 @@ export function CreateSchedulePage() {
   const [editingDate, setEditingDate] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
+  // 관리 탭 상태
+  const [mgSchedules, setMgSchedules] = useState<ScheduleV3[]>([])
+  const [mgLoading, setMgLoading] = useState(false)
+  const [mgFilterYear, setMgFilterYear] = useState(new Date().getFullYear())
+  const [mgFilterMonth, setMgFilterMonth] = useState<number | null>(null)
+  const [mgViewingSchedule, setMgViewingSchedule] = useState<ScheduleV3 | null>(null)
+  const [mgDrawerOpen, setMgDrawerOpen] = useState(false)
+  const [mgEditingDate, setMgEditingDate] = useState<string | null>(null)
+  const [mgSaving, setMgSaving] = useState(false)
+
   useEffect(() => {
     loadShiftTypes().then(setShiftTypes)
     loadEmployees().then(setEmployees)
     setWeekPresets(loadWeekPresets())
   }, [])
+
+  // 비관리자는 관리 탭으로 자동 이동
+  useEffect(() => {
+    if (isAdmin === false) setActiveTab('manage')
+  }, [isAdmin])
+
+  // 관리 탭 진입 시 스케줄 로드
+  useEffect(() => {
+    if (activeTab === 'manage') {
+      setMgLoading(true)
+      loadSchedulesV3().then(setMgSchedules).finally(() => setMgLoading(false))
+    }
+  }, [activeTab])
 
   const handleStSave = async (st: ShiftType) => {
     try {
@@ -949,6 +954,47 @@ export function CreateSchedulePage() {
     })
   }
 
+  // ─── 관리 탭 함수 ────────────────────────────────────────────
+  const handleMgView = (schedule: ScheduleV3) => {
+    setMgViewingSchedule(schedule)
+    setMgEditingDate(null)
+    setMgDrawerOpen(true)
+  }
+
+  const handleMgDelete = async (id: string) => {
+    try {
+      await deleteScheduleV3(id)
+      setMgSchedules((prev) => prev.filter((s) => s.id !== id))
+      msgApi.success('삭제되었습니다')
+    } catch {
+      msgApi.error('삭제 실패')
+    }
+  }
+
+  const handleMgDayEditOk = (dateISO: string, updated: ScheduleEntry[]) => {
+    if (!mgViewingSchedule) return
+    const newEntries = { ...mgViewingSchedule.entries }
+    if (updated.length === 0) delete newEntries[dateISO]
+    else newEntries[dateISO] = updated
+    setMgViewingSchedule({ ...mgViewingSchedule, entries: newEntries })
+    setMgEditingDate(null)
+  }
+
+  const handleMgSave = async () => {
+    if (!mgViewingSchedule) return
+    setMgSaving(true)
+    try {
+      const updated = { ...mgViewingSchedule, updatedAtISO: new Date().toISOString() }
+      await upsertScheduleV3(updated)
+      setMgSchedules((prev) => prev.map((s) => (s.id === updated.id ? updated : s)))
+      msgApi.success('저장되었습니다')
+    } catch {
+      msgApi.error('저장 실패')
+    } finally {
+      setMgSaving(false)
+    }
+  }
+
   const weeks = useMemo(() => {
     if (!dateRange) return []
     const start = dateRange[0]
@@ -1001,7 +1047,9 @@ export function CreateSchedulePage() {
     try {
       await upsertScheduleV3({ ...generatedSchedule, updatedAtISO: new Date().toISOString() })
       msgApi.success('저장되었습니다')
-      setTimeout(() => navigate('/manage'), 800)
+      setMgLoading(true)
+      loadSchedulesV3().then(setMgSchedules).finally(() => setMgLoading(false))
+      setActiveTab('manage')
     } catch { msgApi.error('저장 실패') }
     finally { setSaving(false) }
   }
@@ -1020,6 +1068,138 @@ export function CreateSchedulePage() {
     { title: '총시간', dataIndex: 'totalHours', key: 'totalHours', render: (v: number) => `${v}h` },
   ]
 
+  const mgFilteredSchedules = useMemo(() => {
+    return mgSchedules.filter((s) => {
+      const year = parseInt(s.startDateISO.slice(0, 4))
+      const month = parseInt(s.startDateISO.slice(5, 7))
+      if (year !== mgFilterYear) return false
+      if (mgFilterMonth !== null && month !== mgFilterMonth) return false
+      return true
+    })
+  }, [mgSchedules, mgFilterYear, mgFilterMonth])
+
+  const yearOptions = useMemo(() => {
+    const cur = new Date().getFullYear()
+    return [cur - 1, cur, cur + 1].map((y) => ({ value: y, label: `${y}년` }))
+  }, [])
+
+  const mgWorkSummaryData = useMemo(() => {
+    if (!mgViewingSchedule) return []
+    return mgViewingSchedule.employees.map((emp) => {
+      const { totalDays, totalHours } = calcEmployeeSummary(mgViewingSchedule, emp.id, emp.hourlyWage)
+      return { key: emp.id, name: emp.name, role: emp.role, totalDays, totalHours }
+    })
+  }, [mgViewingSchedule])
+
+  const mgWorkSummaryColumns = [
+    { title: '직원', dataIndex: 'name', key: 'name' },
+    { title: '역할', dataIndex: 'role', key: 'role', render: (v: string) => <Tag color={v === '정직원' ? 'blue' : 'orange'}>{v}</Tag> },
+    { title: '근무일', dataIndex: 'totalDays', key: 'totalDays', render: (v: number) => `${v}일` },
+    { title: '총시간', dataIndex: 'totalHours', key: 'totalHours', render: (v: number) => `${v}h` },
+  ]
+
+  const mgEditingEntries = mgEditingDate
+    ? (mgViewingSchedule?.entries[mgEditingDate] ?? [])
+    : []
+
+  const manageTab = (
+    <Flex vertical gap={12}>
+      <Flex gap={8}>
+        <Select value={mgFilterYear} onChange={setMgFilterYear} options={yearOptions} style={{ width: 100 }} />
+        <Select
+          value={mgFilterMonth}
+          onChange={setMgFilterMonth}
+          options={[{ value: null, label: '전체 월' }, ...MONTH_OPTIONS]}
+          style={{ width: 100 }}
+        />
+      </Flex>
+
+      {mgLoading ? (
+        <Text type="secondary">불러오는 중...</Text>
+      ) : mgFilteredSchedules.length === 0 ? (
+        <Text type="secondary">저장된 스케줄이 없습니다.</Text>
+      ) : (
+        mgFilteredSchedules.map((schedule) => {
+          const empCount = schedule.employees.length
+          const entryDays = Object.keys(schedule.entries).length
+          return (
+            <Flex
+              key={schedule.id}
+              justify="space-between"
+              align="center"
+              style={{ padding: '12px 14px', border: '1px solid #f0f0f0', borderRadius: 10, background: '#fafafa' }}
+            >
+              <Flex vertical gap={2}>
+                <Text strong style={{ fontSize: 14 }}>{schedule.name}</Text>
+                <Text type="secondary" style={{ fontSize: 12 }}>
+                  {schedule.startDateISO} ~ {schedule.endDateISO}
+                </Text>
+                <Text type="secondary" style={{ fontSize: 12 }}>
+                  직원 {empCount}명 / 근무일 {entryDays}일
+                </Text>
+              </Flex>
+              <Space>
+                <Button type="text" size="small" icon={<EyeOutlined />} onClick={() => handleMgView(schedule)}>
+                  상세
+                </Button>
+                {isAdmin && (
+                  <Popconfirm
+                    title="삭제하시겠습니까?"
+                    onConfirm={() => handleMgDelete(schedule.id)}
+                    okText="삭제"
+                    cancelText="취소"
+                  >
+                    <Button danger type="text" size="small" icon={<DeleteOutlined />} />
+                  </Popconfirm>
+                )}
+              </Space>
+            </Flex>
+          )
+        })
+      )}
+
+      <Drawer
+        title={mgViewingSchedule?.name ?? '스케줄 상세'}
+        open={mgDrawerOpen}
+        onClose={() => { setMgDrawerOpen(false); setMgEditingDate(null) }}
+        placement="bottom"
+        height="90%"
+        styles={{ body: { padding: '12px 8px', overflowY: 'auto' } }}
+        footer={
+          mgViewingSchedule ? (
+            <Flex gap={8} justify="flex-end">
+              <Button onClick={() => setMgDrawerOpen(false)}>닫기</Button>
+              {isAdmin && (
+                <Button type="primary" onClick={handleMgSave} loading={mgSaving}>
+                  저장
+                </Button>
+              )}
+            </Flex>
+          ) : null
+        }
+      >
+        {mgViewingSchedule && (
+          <Flex vertical gap={16}>
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              {mgViewingSchedule.startDateISO} ~ {mgViewingSchedule.endDateISO}
+              {isAdmin && <Text type="secondary" style={{ fontSize: 12 }}> · 날짜 셀을 클릭하여 편집</Text>}
+            </Text>
+            <ScheduleCalendar
+              schedule={mgViewingSchedule}
+              onCellClick={isAdmin ? setMgEditingDate : undefined}
+            />
+            {mgWorkSummaryData.length > 0 && (
+              <div>
+                <Text strong style={{ display: 'block', marginBottom: 8 }}>근무 요약</Text>
+                <Table dataSource={mgWorkSummaryData} columns={mgWorkSummaryColumns} pagination={false} size="small" scroll={{ x: true }} />
+              </div>
+            )}
+          </Flex>
+        )}
+      </Drawer>
+    </Flex>
+  )
+
   const settingsTab = (
     <Flex vertical gap={16}>
       <div>
@@ -1033,7 +1213,10 @@ export function CreateSchedulePage() {
             <Flex key={st.id} justify="space-between" align="center" style={{ padding: '8px 12px', border: '1px solid #f0f0f0', borderRadius: 8, background: '#fafafa' }}>
               <Flex vertical>
                 <Text strong style={{ fontSize: 13 }}>{st.name}</Text>
-                <Text type="secondary" style={{ fontSize: 11 }}>{st.startTime}–{st.endTime} 휴식{st.breakMinutes}분 / 필요인원 {st.staffCount}명</Text>
+                <Text type="secondary" style={{ fontSize: 11 }}>
+                  {st.startTime}–{st.endTime} 휴식{st.breakMinutes}분 / 필요인원 {st.staffCount}명
+                  {st.targetRole && st.targetRole !== '전체' && ` / ${st.targetRole}전용`}
+                </Text>
               </Flex>
               <Space>
                 <Button type="text" size="small" icon={<EditOutlined />} onClick={() => { setEditingSt(st); setStModalOpen(true) }} />
@@ -1053,7 +1236,6 @@ export function CreateSchedulePage() {
           {employees.length === 0 && <Text type="secondary" style={{ fontSize: 12 }}>직원을 추가해주세요</Text>}
           {employees.map((emp) => {
             const availableNames = emp.availableShiftIds.map((id) => shiftTypes.find((s) => s.id === id)?.name).filter(Boolean).join(', ')
-            const patternDesc = emp.workPatterns.map((p) => `${p.weekdays.map((d) => WEEKDAY_LABELS[d]).join('')} ${p.startTime}-${p.endTime}`).join(' / ')
             return (
               <Flex key={emp.id} justify="space-between" align="center" style={{ padding: '8px 12px', border: '1px solid #f0f0f0', borderRadius: 8, background: '#fafafa' }}>
                 <Flex vertical>
@@ -1063,9 +1245,9 @@ export function CreateSchedulePage() {
                     {isAdmin && <Text type="secondary" style={{ fontSize: 11 }}>시급 {emp.hourlyWage.toLocaleString()}원</Text>}
                   </Flex>
                   <Text type="secondary" style={{ fontSize: 11 }}>
-                    {emp.role === '정직원'
-                      ? availableNames ? `가능: ${availableNames}${emp.regularDaysOff.length > 0 ? ` / 휴무: ${emp.regularDaysOff.map((d) => WEEKDAY_LABELS[d]).join('')}` : ''}` : '가능 근무유형 없음'
-                      : patternDesc || '패턴 없음'}
+                    {availableNames
+                      ? `가능: ${availableNames}${emp.regularDaysOff.length > 0 ? ` / 휴무: ${emp.regularDaysOff.map((d) => WEEKDAY_LABELS[d]).join('')}` : ''}`
+                      : '가능 근무유형 없음'}
                   </Text>
                 </Flex>
                 <Space>
@@ -1196,18 +1378,25 @@ export function CreateSchedulePage() {
 
   const editingDayEntries = editingDate ? (generatedSchedule?.entries[editingDate] ?? []) : []
 
+  const tabItems = [
+    ...(isAdmin
+      ? [
+          { key: 'settings', label: '설정', children: settingsTab },
+          { key: 'generate', label: '생성', children: generateTab },
+          { key: 'result', label: '결과', children: resultTab },
+        ]
+      : []),
+    { key: 'manage', label: '관리', children: manageTab },
+  ]
+
   return (
-    <MobileShell title="스케줄 생성">
+    <MobileShell title="스케줄">
       {contextHolder}
       <Flex vertical style={{ padding: '16px 8px', width: '100%', maxWidth: 600, margin: '0 auto' }}>
         <Tabs
           activeKey={activeTab}
           onChange={setActiveTab}
-          items={[
-            { key: 'settings', label: '설정', children: settingsTab },
-            { key: 'generate', label: '생성', children: generateTab },
-            { key: 'result', label: '결과', children: resultTab },
-          ]}
+          items={tabItems}
         />
       </Flex>
 
@@ -1224,6 +1413,18 @@ export function CreateSchedulePage() {
           shiftTypes={generatedSchedule.shiftTypes}
           onOk={handleDayEditOk}
           onCancel={() => setEditingDate(null)}
+        />
+      )}
+
+      {mgEditingDate && mgViewingSchedule && (
+        <DayEditModal
+          open={!!mgEditingDate}
+          dateISO={mgEditingDate}
+          entries={mgEditingEntries}
+          employees={mgViewingSchedule.employees}
+          shiftTypes={mgViewingSchedule.shiftTypes}
+          onOk={handleMgDayEditOk}
+          onCancel={() => setMgEditingDate(null)}
         />
       )}
     </MobileShell>

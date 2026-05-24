@@ -1,4 +1,4 @@
-import { AppstoreOutlined, BookOutlined, HomeOutlined, ShoppingOutlined } from '@ant-design/icons'
+import { AppstoreOutlined, BookOutlined, CalendarOutlined, HomeOutlined, ShoppingOutlined } from '@ant-design/icons'
 import { Button, Flex, theme } from 'antd'
 import { useLocation, useNavigate } from 'react-router-dom'
 import type { ReactNode } from 'react'
@@ -17,6 +17,7 @@ const NAV: NavItem[] = [
   { key: 'menu', label: '메뉴', path: '/menu', icon: <BookOutlined /> },
   { key: 'preps', label: '프렙', path: '/preps', icon: <AppstoreOutlined /> },
   { key: 'ingredients', label: '재료', path: '/ingredients', icon: <ShoppingOutlined /> },
+  { key: 'schedule', label: '스케줄', path: '/create', icon: <CalendarOutlined /> },
 ]
 
 function isActive(currentPath: string, itemPath: string) {

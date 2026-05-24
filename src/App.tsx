@@ -2,7 +2,6 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import { HomePage } from './pages/HomePage'
 import { LoginPage } from './pages/LoginPage'
 import { CreateSchedulePage } from './pages/CreateSchedulePage'
-import { ManageSchedulesPage } from './pages/ManageSchedulesPage'
 import { IngredientsPage } from './pages/IngredientsPage'
 import { MenuPage } from './pages/MenuPage'
 import { PrepsPage } from './pages/PrepsPage'
@@ -20,11 +19,8 @@ export default function App() {
         <Route path="/login" element={<LoginPage />} />
 
         <Route path="/" element={<RequireAuth><HomePage /></RequireAuth>} />
-        <Route
-          path="/create"
-          element={<RequireAuth><RequireAdmin><CreateSchedulePage /></RequireAdmin></RequireAuth>}
-        />
-        <Route path="/manage" element={<RequireAuth><ManageSchedulesPage /></RequireAuth>} />
+        <Route path="/create" element={<RequireAuth><CreateSchedulePage /></RequireAuth>} />
+        <Route path="/manage" element={<Navigate to="/create" replace />} />
         <Route path="/ingredients" element={<RequireAuth><IngredientsPage /></RequireAuth>} />
         <Route path="/preps" element={<RequireAuth><PrepsPage /></RequireAuth>} />
         <Route path="/menu" element={<RequireAuth><MenuPage /></RequireAuth>} />

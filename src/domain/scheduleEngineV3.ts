@@ -88,14 +88,15 @@ export function generateScheduleV3(config: {
     }
 
     const dayEntries: ScheduleEntry[] = []
+    // 하루에 같은 직원이 두 번 배정되지 않도록 추적
+    const assignedTodayIds = new Set<string>()
 
-    // 정직원: 근무유형별 배정
     for (const st of activeShiftTypes) {
       const eligible = employees.filter(
         (emp) =>
-          emp.role === '정직원' &&
           emp.availableShiftIds.includes(st.id) &&
-          !emp.regularDaysOff.includes(dOW)
+          !emp.regularDaysOff.includes(dOW) &&
+          !assignedTodayIds.has(emp.id)
       )
       // least-recently-assigned 우선 정렬
       const sorted = [...eligible].sort(
@@ -114,23 +115,7 @@ export function generateScheduleV3(config: {
           breakMinutes: st.breakMinutes,
         })
         assignCount[st.id][emp.id] = (assignCount[st.id][emp.id] ?? 0) + 1
-      }
-    }
-
-    // 알바: workPatterns에서 해당 요일 매칭
-    for (const emp of employees.filter((e) => e.role === '알바')) {
-      for (const pattern of emp.workPatterns) {
-        if (pattern.weekdays.includes(dOW)) {
-          dayEntries.push({
-            id: generateId(),
-            employeeId: emp.id,
-            employeeName: emp.name,
-            startTime: pattern.startTime,
-            endTime: pattern.endTime,
-            breakMinutes: pattern.breakMinutes,
-          })
-          break
-        }
+        assignedTodayIds.add(emp.id)
       }
     }
 

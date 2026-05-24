@@ -188,6 +188,7 @@ export type ShiftType = {
   endTime: string      // HH:MM
   breakMinutes: number
   staffCount: number   // 하루 필요 인원 수
+  targetRole?: '전체' | '정직원' | '알바'  // 적용 대상 직원 유형
   updatedAtISO: string
 }
 
