@@ -215,3 +215,11 @@ export type ScheduleV3 = {
   createdAtISO: string
   updatedAtISO: string
 }
+
+export type WeekPreset = {
+  id: Id
+  name: string
+  // weekday 0-6 → shiftType IDs; undefined = use all; [] = day off
+  dayConfig: Partial<Record<number, string[]>>
+  updatedAtISO: string
+}

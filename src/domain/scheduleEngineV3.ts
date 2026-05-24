@@ -1,4 +1,4 @@
-import type { Employee, ScheduleEntry, ScheduleV3, ShiftType } from './types'
+import type { Employee, ScheduleEntry, ScheduleV3, ShiftType, WeekPreset } from './types'
 
 function generateId(): string {
   return crypto.randomUUID()
@@ -51,8 +51,9 @@ export function generateScheduleV3(config: {
   endDateISO: string
   regularDaysOff: number[]
   scheduleName?: string
+  weekPreset?: WeekPreset
 }): ScheduleV3 {
-  const { employees, shiftTypes, startDateISO, endDateISO, regularDaysOff } = config
+  const { employees, shiftTypes, startDateISO, endDateISO, regularDaysOff, weekPreset } = config
 
   // shiftTypeId → employeeId → count (배정 균등화용)
   const assignCount: Record<string, Record<string, number>> = {}
@@ -69,10 +70,20 @@ export function generateScheduleV3(config: {
     const dOW = new Date(dateISO + 'T00:00:00').getDay()
     if (regularDaysOff.includes(dOW)) continue
 
+    // Apply week preset: filter active shift types for this day
+    let activeShiftTypes = shiftTypes
+    if (weekPreset) {
+      const presetConfig = weekPreset.dayConfig[dOW]
+      if (presetConfig !== undefined) {
+        if (presetConfig.length === 0) continue
+        activeShiftTypes = shiftTypes.filter((st) => presetConfig.includes(st.id))
+      }
+    }
+
     const dayEntries: ScheduleEntry[] = []
 
     // 정직원: 근무유형별 배정
-    for (const st of shiftTypes) {
+    for (const st of activeShiftTypes) {
       const eligible = employees.filter(
         (emp) =>
           emp.role === '정직원' &&

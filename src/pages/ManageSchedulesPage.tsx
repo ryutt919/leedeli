@@ -77,20 +77,19 @@ export function ManageSchedulesPage() {
     setDrawerOpen(true)
   }
 
-  const salaryData = useMemo(() => {
+  const workSummaryData = useMemo(() => {
     if (!viewingSchedule) return []
     return viewingSchedule.employees.map((emp) => {
-      const summary = calcEmployeeSummary(viewingSchedule, emp.id, emp.hourlyWage)
-      return { key: emp.id, name: emp.name, role: emp.role, ...summary }
+      const { totalDays, totalHours } = calcEmployeeSummary(viewingSchedule, emp.id, emp.hourlyWage)
+      return { key: emp.id, name: emp.name, role: emp.role, totalDays, totalHours }
     })
   }, [viewingSchedule])
 
-  const salaryColumns = [
+  const workSummaryColumns = [
     { title: '직원', dataIndex: 'name', key: 'name' },
     { title: '역할', dataIndex: 'role', key: 'role', render: (v: string) => <Tag color={v === '정직원' ? 'blue' : 'orange'}>{v}</Tag> },
     { title: '근무일', dataIndex: 'totalDays', key: 'totalDays', render: (v: number) => `${v}일` },
     { title: '총시간', dataIndex: 'totalHours', key: 'totalHours', render: (v: number) => `${v}h` },
-    { title: '예상급여', dataIndex: 'totalWage', key: 'totalWage', render: (v: number) => `${v.toLocaleString()}원` },
   ]
 
   return (
@@ -170,10 +169,10 @@ export function ManageSchedulesPage() {
             </Text>
             <ScheduleCalendar schedule={viewingSchedule} />
 
-            {isAdmin && salaryData.length > 0 && (
+            {workSummaryData.length > 0 && (
               <div>
-                <Text strong style={{ display: 'block', marginBottom: 8 }}>급여 요약</Text>
-                <Table dataSource={salaryData} columns={salaryColumns} pagination={false} size="small" scroll={{ x: true }} />
+                <Text strong style={{ display: 'block', marginBottom: 8 }}>근무 요약</Text>
+                <Table dataSource={workSummaryData} columns={workSummaryColumns} pagination={false} size="small" scroll={{ x: true }} />
               </div>
             )}
           </Flex>

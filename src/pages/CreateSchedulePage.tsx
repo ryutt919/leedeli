@@ -1,4 +1,5 @@
 import {
+  Alert,
   Button,
   Checkbox,
   DatePicker,
@@ -7,6 +8,7 @@ import {
   Input,
   InputNumber,
   Modal,
+  Radio,
   Select,
   Space,
   Table,
@@ -22,11 +24,23 @@ import { useNavigate } from 'react-router-dom'
 import type { Dayjs } from 'dayjs'
 import { MobileShell } from '../layouts/MobileShell'
 import { useAuth } from '../auth/AuthContext'
-import type { Employee, ScheduleEntry, ScheduleV3, ShiftType, WorkPattern } from '../domain/types'
+import type {
+  Employee,
+  ScheduleEntry,
+  ScheduleV3,
+  ShiftType,
+  WeekPreset,
+  WorkPattern,
+} from '../domain/types'
 import { loadEmployees, upsertEmployee, deleteEmployee } from '../storage/employeesRepo'
 import { loadShiftTypes, upsertShiftType, deleteShiftType } from '../storage/shiftTypesRepo'
 import { upsertScheduleV3 } from '../storage/schedulesRepo'
 import { generateScheduleV3, calcEmployeeSummary } from '../domain/scheduleEngineV3'
+import {
+  loadWeekPresets,
+  upsertWeekPreset,
+  deleteWeekPreset,
+} from '../storage/weekPresetsRepo'
 
 const { Text } = Typography
 const { RangePicker } = DatePicker
@@ -56,8 +70,11 @@ function ShiftTypeModal({
   onCancel: () => void
 }) {
   const [form] = Form.useForm()
+  const [hasError, setHasError] = useState(false)
+
   useEffect(() => {
     if (open) {
+      setHasError(false)
       form.setFieldsValue(
         initial
           ? { ...initial }
@@ -67,12 +84,17 @@ function ShiftTypeModal({
   }, [open, initial, form])
 
   const handleOk = async () => {
-    const values = await form.validateFields()
-    onOk({
-      id: initial?.id ?? newId(),
-      updatedAtISO: new Date().toISOString(),
-      ...values,
-    } as ShiftType)
+    setHasError(false)
+    try {
+      const values = await form.validateFields()
+      onOk({
+        id: initial?.id ?? newId(),
+        updatedAtISO: new Date().toISOString(),
+        ...values,
+      } as ShiftType)
+    } catch {
+      setHasError(true)
+    }
   }
 
   return (
@@ -84,6 +106,9 @@ function ShiftTypeModal({
       okText="저장"
       cancelText="취소"
     >
+      {hasError && (
+        <Alert message="필수 항목을 입력해주세요" type="warning" showIcon style={{ marginBottom: 12 }} />
+      )}
       <Form form={form} layout="vertical">
         <Form.Item name="name" label="이름" rules={[{ required: true, message: '이름 입력' }]}>
           <Input placeholder="오픈" />
@@ -126,10 +151,12 @@ function EmployeeModal({
   onCancel: () => void
 }) {
   const [form] = Form.useForm()
+  const [hasError, setHasError] = useState(false)
   const role = Form.useWatch('role', form)
 
   useEffect(() => {
     if (open) {
+      setHasError(false)
       form.setFieldsValue(
         initial
           ? { ...initial, workPatterns: initial.workPatterns ?? [] }
@@ -147,15 +174,20 @@ function EmployeeModal({
   }, [open, initial, form])
 
   const handleOk = async () => {
-    const values = await form.validateFields()
-    onOk({
-      id: initial?.id ?? newId(),
-      updatedAtISO: new Date().toISOString(),
-      availableShiftIds: values.availableShiftIds ?? [],
-      regularDaysOff: values.regularDaysOff ?? [],
-      workPatterns: values.workPatterns ?? [],
-      ...values,
-    } as Employee)
+    setHasError(false)
+    try {
+      const values = await form.validateFields()
+      onOk({
+        id: initial?.id ?? newId(),
+        updatedAtISO: new Date().toISOString(),
+        availableShiftIds: values.availableShiftIds ?? [],
+        regularDaysOff: values.regularDaysOff ?? [],
+        workPatterns: values.workPatterns ?? [],
+        ...values,
+      } as Employee)
+    } catch {
+      setHasError(true)
+    }
   }
 
   return (
@@ -168,6 +200,9 @@ function EmployeeModal({
       cancelText="취소"
       width={480}
     >
+      {hasError && (
+        <Alert message="필수 항목을 입력해주세요" type="warning" showIcon style={{ marginBottom: 12 }} />
+      )}
       <Form form={form} layout="vertical">
         <Flex gap={8}>
           <Form.Item name="name" label="이름" rules={[{ required: true }]} style={{ flex: 1 }}>
@@ -258,6 +293,153 @@ function EmployeeModal({
       </Form>
     </Modal>
   )
+}
+
+// ─── 주간 프리셋 모달 ─────────────────────────────────────────────
+type DayMode = 'default' | 'specific' | 'off'
+type PresetDayState = { mode: DayMode; shiftIds: string[] }
+
+function buildDayStates(preset: WeekPreset | null): Record<number, PresetDayState> {
+  const result: Record<number, PresetDayState> = {}
+  for (let d = 0; d < 7; d++) {
+    if (!preset || !(d in preset.dayConfig)) {
+      result[d] = { mode: 'default', shiftIds: [] }
+    } else {
+      const cfg = preset.dayConfig[d]!
+      result[d] = cfg.length === 0
+        ? { mode: 'off', shiftIds: [] }
+        : { mode: 'specific', shiftIds: cfg }
+    }
+  }
+  return result
+}
+
+function WeekPresetModal({
+  open,
+  initial,
+  shiftTypes,
+  onOk,
+  onCancel,
+}: {
+  open: boolean
+  initial?: WeekPreset | null
+  shiftTypes: ShiftType[]
+  onOk: (v: WeekPreset) => void
+  onCancel: () => void
+}) {
+  const [name, setName] = useState('')
+  const [nameError, setNameError] = useState(false)
+  const [dayStates, setDayStates] = useState<Record<number, PresetDayState>>(buildDayStates(null))
+
+  useEffect(() => {
+    if (open) {
+      setName(initial?.name ?? '')
+      setNameError(false)
+      setDayStates(buildDayStates(initial ?? null))
+    }
+  }, [open, initial])
+
+  const setDayMode = (day: number, mode: DayMode) => {
+    setDayStates((prev) => ({ ...prev, [day]: { ...prev[day], mode } }))
+  }
+
+  const setDayShifts = (day: number, shiftIds: string[]) => {
+    setDayStates((prev) => ({ ...prev, [day]: { ...prev[day], shiftIds } }))
+  }
+
+  const handleOk = () => {
+    if (!name.trim()) { setNameError(true); return }
+    setNameError(false)
+    const dayConfig: Partial<Record<number, string[]>> = {}
+    for (let d = 0; d < 7; d++) {
+      const st = dayStates[d]
+      if (st.mode === 'off') dayConfig[d] = []
+      else if (st.mode === 'specific') dayConfig[d] = st.shiftIds
+    }
+    onOk({
+      id: initial?.id ?? newId(),
+      name: name.trim(),
+      dayConfig,
+      updatedAtISO: new Date().toISOString(),
+    })
+  }
+
+  return (
+    <Modal
+      title={initial ? '프리셋 수정' : '프리셋 추가'}
+      open={open}
+      onOk={handleOk}
+      onCancel={onCancel}
+      okText="저장"
+      cancelText="취소"
+      width={520}
+    >
+      <Flex vertical gap={12}>
+        <div>
+          <Text style={{ display: 'block', marginBottom: 4 }}>프리셋 이름</Text>
+          <Input
+            value={name}
+            onChange={(e) => { setName(e.target.value); setNameError(false) }}
+            placeholder="기본 주간 편성"
+            status={nameError ? 'error' : ''}
+          />
+          {nameError && <Text type="danger" style={{ fontSize: 12 }}>이름을 입력해주세요</Text>}
+        </div>
+
+        <div>
+          <Text style={{ display: 'block', marginBottom: 8 }}>요일별 근무유형</Text>
+          <Flex vertical gap={6}>
+            {WEEKDAY_LABELS.map((label, day) => {
+              const st = dayStates[day] ?? { mode: 'default', shiftIds: [] }
+              return (
+                <Flex key={day} gap={8} align="flex-start" style={{ padding: '8px', border: '1px solid #f0f0f0', borderRadius: 6 }}>
+                  <Text style={{ width: 20, fontWeight: 600, paddingTop: 4, color: day === 0 ? '#cf1322' : day === 6 ? '#096dd9' : undefined }}>
+                    {label}
+                  </Text>
+                  <Flex vertical gap={6} style={{ flex: 1 }}>
+                    <Radio.Group
+                      value={st.mode}
+                      onChange={(e) => setDayMode(day, e.target.value as DayMode)}
+                      size="small"
+                    >
+                      <Radio.Button value="default">기본</Radio.Button>
+                      <Radio.Button value="specific">특정</Radio.Button>
+                      <Radio.Button value="off">휴무</Radio.Button>
+                    </Radio.Group>
+                    {st.mode === 'specific' && shiftTypes.length > 0 && (
+                      <Checkbox.Group
+                        value={st.shiftIds}
+                        onChange={(v) => setDayShifts(day, v as string[])}
+                        options={shiftTypes.map((s) => ({ label: s.name, value: s.id }))}
+                      />
+                    )}
+                    {st.mode === 'specific' && shiftTypes.length === 0 && (
+                      <Text type="secondary" style={{ fontSize: 12 }}>먼저 근무유형을 추가해주세요</Text>
+                    )}
+                  </Flex>
+                </Flex>
+              )
+            })}
+          </Flex>
+        </div>
+      </Flex>
+    </Modal>
+  )
+}
+
+function presetSummary(preset: WeekPreset, shiftTypes: ShiftType[]): string {
+  const parts: string[] = []
+  for (let d = 0; d < 7; d++) {
+    const cfg = preset.dayConfig[d]
+    if (cfg === undefined) continue
+    if (cfg.length === 0) {
+      parts.push(`${WEEKDAY_LABELS[d]}:휴무`)
+    } else {
+      const names = cfg.map((id) => shiftTypes.find((s) => s.id === id)?.name ?? '?').join('+')
+      parts.push(`${WEEKDAY_LABELS[d]}:${names}`)
+    }
+  }
+  return parts.length === 0 ? '기본 (전체 적용)' : parts.join(' / ')
 }
 
 // ─── 날짜 셀 편집 모달 ────────────────────────────────────────────
@@ -559,6 +741,7 @@ export function CreateSchedulePage() {
 
   const [shiftTypes, setShiftTypes] = useState<ShiftType[]>([])
   const [employees, setEmployees] = useState<Employee[]>([])
+  const [weekPresets, setWeekPresets] = useState<WeekPreset[]>([])
 
   const [stModalOpen, setStModalOpen] = useState(false)
   const [editingSt, setEditingSt] = useState<ShiftType | null>(null)
@@ -566,9 +749,13 @@ export function CreateSchedulePage() {
   const [empModalOpen, setEmpModalOpen] = useState(false)
   const [editingEmp, setEditingEmp] = useState<Employee | null>(null)
 
+  const [presetModalOpen, setPresetModalOpen] = useState(false)
+  const [editingPreset, setEditingPreset] = useState<WeekPreset | null>(null)
+
   const [scheduleName, setScheduleName] = useState('')
   const [dateRange, setDateRange] = useState<[Dayjs, Dayjs] | null>(null)
   const [offDays, setOffDays] = useState<number[]>([])
+  const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null)
 
   const [generatedSchedule, setGeneratedSchedule] = useState<ScheduleV3 | null>(null)
   const [editingDate, setEditingDate] = useState<string | null>(null)
@@ -577,6 +764,7 @@ export function CreateSchedulePage() {
   useEffect(() => {
     loadShiftTypes().then(setShiftTypes)
     loadEmployees().then(setEmployees)
+    setWeekPresets(loadWeekPresets())
   }, [])
 
   const handleStSave = async (st: ShiftType) => {
@@ -617,9 +805,22 @@ export function CreateSchedulePage() {
     } catch { msgApi.error('삭제 실패') }
   }
 
+  const handlePresetSave = (preset: WeekPreset) => {
+    upsertWeekPreset(preset)
+    setWeekPresets(loadWeekPresets())
+    setPresetModalOpen(false)
+  }
+
+  const handlePresetDelete = (id: string) => {
+    deleteWeekPreset(id)
+    setWeekPresets(loadWeekPresets())
+    if (selectedPresetId === id) setSelectedPresetId(null)
+  }
+
   const handleGenerate = () => {
     if (!dateRange) { msgApi.warning('기간을 선택해주세요'); return }
     if (employees.length === 0) { msgApi.warning('직원을 먼저 추가해주세요'); return }
+    const preset = selectedPresetId ? weekPresets.find((p) => p.id === selectedPresetId) : undefined
     const schedule = generateScheduleV3({
       employees,
       shiftTypes,
@@ -627,8 +828,11 @@ export function CreateSchedulePage() {
       endDateISO: dateRange[1].format('YYYY-MM-DD'),
       regularDaysOff: offDays,
       scheduleName: scheduleName || undefined,
+      weekPreset: preset,
     })
+    const totalEntries = Object.values(schedule.entries).reduce((sum, es) => sum + es.length, 0)
     setGeneratedSchedule({ ...schedule, name: scheduleName || schedule.name })
+    msgApi.success(`스케줄 생성 완료. ${totalEntries}건 자동 배정됐습니다.`)
     setActiveTab('result')
   }
 
@@ -652,19 +856,18 @@ export function CreateSchedulePage() {
     finally { setSaving(false) }
   }
 
-  const salaryData = useMemo(() => {
+  const workSummaryData = useMemo(() => {
     if (!generatedSchedule) return []
     return generatedSchedule.employees.map((emp) => {
-      const summary = calcEmployeeSummary(generatedSchedule, emp.id, emp.hourlyWage)
-      return { key: emp.id, name: emp.name, ...summary }
+      const { totalDays, totalHours } = calcEmployeeSummary(generatedSchedule, emp.id, emp.hourlyWage)
+      return { key: emp.id, name: emp.name, totalDays, totalHours }
     })
   }, [generatedSchedule])
 
-  const salaryColumns = [
+  const workSummaryColumns = [
     { title: '직원', dataIndex: 'name', key: 'name' },
     { title: '근무일', dataIndex: 'totalDays', key: 'totalDays', render: (v: number) => `${v}일` },
     { title: '총시간', dataIndex: 'totalHours', key: 'totalHours', render: (v: number) => `${v}h` },
-    { title: '예상급여', dataIndex: 'totalWage', key: 'totalWage', render: (v: number) => `${v.toLocaleString()}원` },
   ]
 
   const settingsTab = (
@@ -724,6 +927,32 @@ export function CreateSchedulePage() {
           })}
         </Flex>
       </div>
+
+      <div>
+        <Flex justify="space-between" align="center" style={{ marginBottom: 8 }}>
+          <Text strong>주간 프리셋</Text>
+          <Button type="dashed" size="small" icon={<PlusOutlined />} onClick={() => { setEditingPreset(null); setPresetModalOpen(true) }}>추가</Button>
+        </Flex>
+        <Flex vertical gap={8}>
+          {weekPresets.length === 0 && (
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              프리셋을 추가하면 요일별로 사용할 근무유형을 미리 지정할 수 있습니다
+            </Text>
+          )}
+          {weekPresets.map((preset) => (
+            <Flex key={preset.id} justify="space-between" align="center" style={{ padding: '8px 12px', border: '1px solid #f0f0f0', borderRadius: 8, background: '#fafafa' }}>
+              <Flex vertical>
+                <Text strong style={{ fontSize: 13 }}>{preset.name}</Text>
+                <Text type="secondary" style={{ fontSize: 11 }}>{presetSummary(preset, shiftTypes)}</Text>
+              </Flex>
+              <Space>
+                <Button type="text" size="small" icon={<EditOutlined />} onClick={() => { setEditingPreset(preset); setPresetModalOpen(true) }} />
+                <Button danger type="text" size="small" icon={<DeleteOutlined />} onClick={() => handlePresetDelete(preset.id)} />
+              </Space>
+            </Flex>
+          ))}
+        </Flex>
+      </div>
     </Flex>
   )
 
@@ -741,6 +970,17 @@ export function CreateSchedulePage() {
         <Text style={{ display: 'block', marginBottom: 4 }}>정기휴무 요일</Text>
         <Checkbox.Group value={offDays} onChange={(v) => setOffDays(v as number[])} options={WEEKDAY_LABELS.map((label, idx) => ({ label, value: idx }))} />
       </div>
+      <div>
+        <Text style={{ display: 'block', marginBottom: 4 }}>주간 프리셋 (선택사항)</Text>
+        <Select
+          placeholder="없음 — 모든 근무유형 기본 적용"
+          value={selectedPresetId}
+          onChange={setSelectedPresetId}
+          allowClear
+          style={{ width: '100%' }}
+          options={weekPresets.map((p) => ({ value: p.id, label: p.name }))}
+        />
+      </div>
       <Button type="primary" onClick={handleGenerate} block>자동 생성</Button>
     </Flex>
   )
@@ -749,10 +989,10 @@ export function CreateSchedulePage() {
     <Flex vertical gap={16}>
       <Text type="secondary" style={{ fontSize: 12 }}>날짜 셀을 클릭하면 편집할 수 있습니다.</Text>
       <ScheduleCalendar schedule={generatedSchedule} onCellClick={setEditingDate} />
-      {isAdmin && salaryData.length > 0 && (
+      {workSummaryData.length > 0 && (
         <div>
-          <Text strong style={{ display: 'block', marginBottom: 8 }}>급여 요약</Text>
-          <Table dataSource={salaryData} columns={salaryColumns} pagination={false} size="small" />
+          <Text strong style={{ display: 'block', marginBottom: 8 }}>근무 요약</Text>
+          <Table dataSource={workSummaryData} columns={workSummaryColumns} pagination={false} size="small" />
         </div>
       )}
       <Button type="primary" onClick={handleSave} loading={saving} block>저장</Button>
@@ -780,6 +1020,7 @@ export function CreateSchedulePage() {
 
       <ShiftTypeModal open={stModalOpen} initial={editingSt} onOk={handleStSave} onCancel={() => setStModalOpen(false)} />
       <EmployeeModal open={empModalOpen} initial={editingEmp} shiftTypes={shiftTypes} isAdmin={isAdmin ?? false} onOk={handleEmpSave} onCancel={() => setEmpModalOpen(false)} />
+      <WeekPresetModal open={presetModalOpen} initial={editingPreset} shiftTypes={shiftTypes} onOk={handlePresetSave} onCancel={() => setPresetModalOpen(false)} />
 
       {editingDate && generatedSchedule && (
         <DayEditModal
