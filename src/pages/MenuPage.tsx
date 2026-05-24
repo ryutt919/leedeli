@@ -76,7 +76,7 @@ export function MenuPage() {
 
   const prepUnitLabelOf = (prepId: string) => {
     const prep = prepById.get(prepId)
-    return prep?.yieldUnit ?? 'g'
+    return prep?.yieldUnit ?? '개'
   }
 
   const calcPrepTotalCost = (prep: Prep): number => {
@@ -165,7 +165,7 @@ export function MenuPage() {
             prepId: x.prepId,
             prepName: x.prepName || (prep?.name ?? ''),
             amount: safeNumber(x.amount, 0),
-            unitLabel: x.unitLabel || (prep?.yieldUnit ?? 'g'),
+            unitLabel: x.unitLabel || (prep?.yieldUnit ?? '개'),
           }
         })
 
@@ -317,7 +317,7 @@ export function MenuPage() {
           {/* 직접 재료 섹션 */}
           <Form.List name="ingredientItems">
             {(fields, { add, remove }) => (
-              <Card size="small" title="직접 재료" style={{ marginBottom: 12 }} extra={<Button size="small" onClick={() => add()}>추가</Button>}>
+              <Card size="small" title="직접 재료" style={{ marginBottom: 12 }} extra={<Button size="small" onClick={() => add({ amount: 1 })}>추가</Button>}>
                 <Space direction="vertical" style={{ width: '100%' }} size={8}>
                   {fields.length === 0 && (
                     <Typography.Text type="secondary" style={{ fontSize: 12 }}>재료를 추가하세요.</Typography.Text>
@@ -373,7 +373,7 @@ export function MenuPage() {
           {/* 프렙 섹션 */}
           <Form.List name="prepItems">
             {(fields, { add, remove }) => (
-              <Card size="small" title="프렙" extra={<Button size="small" onClick={() => add()}>추가</Button>}>
+              <Card size="small" title="프렙" extra={<Button size="small" onClick={() => add({ amount: 1 })}>추가</Button>}>
                 <Space direction="vertical" style={{ width: '100%' }} size={8}>
                   {fields.length === 0 && (
                     <Typography.Text type="secondary" style={{ fontSize: 12 }}>프렙을 추가하세요.</Typography.Text>
@@ -400,7 +400,7 @@ export function MenuPage() {
                           onChange={(id) => {
                             const prep = prepById.get(id)
                             form.setFieldValue(['prepItems', f.name, 'prepName'], prep?.name ?? '')
-                            form.setFieldValue(['prepItems', f.name, 'unitLabel'], prep?.yieldUnit ?? 'g')
+                            form.setFieldValue(['prepItems', f.name, 'unitLabel'], prep?.yieldUnit ?? '개')
                           }}
                         />
                       </Form.Item>

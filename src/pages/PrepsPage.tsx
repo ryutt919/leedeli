@@ -733,7 +733,7 @@ export function PrepsPage() {
 
           <Form.List name="items">
             {(fields, { add, remove }) => (
-              <Card size="small" title="재료 목록" extra={<Button onClick={() => add()}>추가</Button>}>
+              <Card size="small" title="재료 목록" extra={<Button onClick={() => add({ amount: 1 })}>추가</Button>}>
                 <Space direction="vertical" style={{ width: '100%' }} size={10}>
                   {fields.map((f) => (
                     <Flex key={f.key} gap={8} align="start">
