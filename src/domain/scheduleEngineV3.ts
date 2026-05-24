@@ -51,9 +51,10 @@ export function generateScheduleV3(config: {
   endDateISO: string
   regularDaysOff: number[]
   scheduleName?: string
-  weekPreset?: WeekPreset
+  weekPresetMap?: Record<number, WeekPreset>
 }): ScheduleV3 {
-  const { employees, shiftTypes, startDateISO, endDateISO, regularDaysOff, weekPreset } = config
+  const { employees, shiftTypes, startDateISO, endDateISO, regularDaysOff, weekPresetMap } = config
+  const startMs = new Date(startDateISO).getTime()
 
   // shiftTypeId → employeeId → count (배정 균등화용)
   const assignCount: Record<string, Record<string, number>> = {}
@@ -70,10 +71,16 @@ export function generateScheduleV3(config: {
     const dOW = new Date(dateISO + 'T00:00:00').getDay()
     if (regularDaysOff.includes(dOW)) continue
 
-    // Apply week preset: filter active shift types for this day
+    // Determine week index (0-based, 7-day blocks from schedule start)
+    const dayIndex = Math.floor((new Date(dateISO).getTime() - startMs) / 86400000)
+    const weekIndex = Math.floor(dayIndex / 7)
+
+    // Apply week preset: check per-week override first, then fall back to default dayConfig
     let activeShiftTypes = shiftTypes
-    if (weekPreset) {
-      const presetConfig = weekPreset.dayConfig[dOW]
+    const activePreset = weekPresetMap?.[weekIndex]
+    if (activePreset) {
+      const presetConfig: string[] | undefined =
+        activePreset.weekOverrides?.[weekIndex]?.[dOW] ?? activePreset.dayConfig[dOW]
       if (presetConfig !== undefined) {
         if (presetConfig.length === 0) continue
         activeShiftTypes = shiftTypes.filter((st) => presetConfig.includes(st.id))

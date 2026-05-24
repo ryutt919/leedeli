@@ -299,17 +299,25 @@ function EmployeeModal({
 type DayMode = 'default' | 'specific' | 'off'
 type PresetDayState = { mode: DayMode; shiftIds: string[] }
 
-function buildDayStates(preset: WeekPreset | null): Record<number, PresetDayState> {
+function buildDayStatesFromConfig(cfg: Partial<Record<number, string[]>> | undefined): Record<number, PresetDayState> {
   const result: Record<number, PresetDayState> = {}
   for (let d = 0; d < 7; d++) {
-    if (!preset || !(d in preset.dayConfig)) {
+    if (!cfg || !(d in cfg)) {
       result[d] = { mode: 'default', shiftIds: [] }
     } else {
-      const cfg = preset.dayConfig[d]!
-      result[d] = cfg.length === 0
-        ? { mode: 'off', shiftIds: [] }
-        : { mode: 'specific', shiftIds: cfg }
+      const c = cfg[d]!
+      result[d] = c.length === 0 ? { mode: 'off', shiftIds: [] } : { mode: 'specific', shiftIds: c }
     }
+  }
+  return result
+}
+
+function dayStatesToConfig(states: Record<number, PresetDayState>): Partial<Record<number, string[]>> {
+  const result: Partial<Record<number, string[]>> = {}
+  for (let d = 0; d < 7; d++) {
+    const st = states[d]
+    if (st.mode === 'off') result[d] = []
+    else if (st.mode === 'specific') result[d] = st.shiftIds
   }
   return result
 }
@@ -329,40 +337,103 @@ function WeekPresetModal({
 }) {
   const [name, setName] = useState('')
   const [nameError, setNameError] = useState(false)
-  const [dayStates, setDayStates] = useState<Record<number, PresetDayState>>(buildDayStates(null))
+  const [activeWeekIdx, setActiveWeekIdx] = useState<number>(-1) // -1 = 전체 기본
+  const [configuredWeeks, setConfiguredWeeks] = useState<number[]>([])
+  const [defaultStates, setDefaultStates] = useState<Record<number, PresetDayState>>(
+    () => buildDayStatesFromConfig(undefined)
+  )
+  const [weekStates, setWeekStates] = useState<Record<number, Record<number, PresetDayState>>>({})
 
   useEffect(() => {
     if (open) {
       setName(initial?.name ?? '')
       setNameError(false)
-      setDayStates(buildDayStates(initial ?? null))
+      setActiveWeekIdx(-1)
+      setDefaultStates(buildDayStatesFromConfig(initial?.dayConfig))
+      if (initial?.weekOverrides) {
+        const weeks = Object.keys(initial.weekOverrides).map(Number).sort((a, b) => a - b)
+        setConfiguredWeeks(weeks)
+        const states: Record<number, Record<number, PresetDayState>> = {}
+        for (const w of weeks) {
+          states[w] = buildDayStatesFromConfig(initial.weekOverrides[w])
+        }
+        setWeekStates(states)
+      } else {
+        setConfiguredWeeks([])
+        setWeekStates({})
+      }
     }
   }, [open, initial])
 
+  const currentStates =
+    activeWeekIdx === -1
+      ? defaultStates
+      : (weekStates[activeWeekIdx] ?? buildDayStatesFromConfig(undefined))
+
   const setDayMode = (day: number, mode: DayMode) => {
-    setDayStates((prev) => ({ ...prev, [day]: { ...prev[day], mode } }))
+    if (activeWeekIdx === -1) {
+      setDefaultStates((prev) => ({ ...prev, [day]: { ...prev[day], mode } }))
+    } else {
+      const base = weekStates[activeWeekIdx] ?? buildDayStatesFromConfig(undefined)
+      setWeekStates((prev) => ({
+        ...prev,
+        [activeWeekIdx]: { ...base, [day]: { ...base[day], mode } },
+      }))
+    }
   }
 
   const setDayShifts = (day: number, shiftIds: string[]) => {
-    setDayStates((prev) => ({ ...prev, [day]: { ...prev[day], shiftIds } }))
+    if (activeWeekIdx === -1) {
+      setDefaultStates((prev) => ({ ...prev, [day]: { ...prev[day], shiftIds } }))
+    } else {
+      const base = weekStates[activeWeekIdx] ?? buildDayStatesFromConfig(undefined)
+      setWeekStates((prev) => ({
+        ...prev,
+        [activeWeekIdx]: { ...base, [day]: { ...base[day], shiftIds } },
+      }))
+    }
+  }
+
+  const addWeek = (weekIdx: number) => {
+    if (configuredWeeks.includes(weekIdx)) return
+    setConfiguredWeeks((prev) => [...prev, weekIdx].sort((a, b) => a - b))
+    setWeekStates((prev) => ({ ...prev, [weekIdx]: buildDayStatesFromConfig(undefined) }))
+    setActiveWeekIdx(weekIdx)
+  }
+
+  const removeWeek = (weekIdx: number) => {
+    setConfiguredWeeks((prev) => prev.filter((w) => w !== weekIdx))
+    setWeekStates((prev) => {
+      const next = { ...prev }
+      delete next[weekIdx]
+      return next
+    })
+    if (activeWeekIdx === weekIdx) setActiveWeekIdx(-1)
   }
 
   const handleOk = () => {
     if (!name.trim()) { setNameError(true); return }
     setNameError(false)
-    const dayConfig: Partial<Record<number, string[]>> = {}
-    for (let d = 0; d < 7; d++) {
-      const st = dayStates[d]
-      if (st.mode === 'off') dayConfig[d] = []
-      else if (st.mode === 'specific') dayConfig[d] = st.shiftIds
+    const dayConfig = dayStatesToConfig(defaultStates)
+    const weekOverrides: Partial<Record<number, Partial<Record<number, string[]>>>> = {}
+    for (const weekIdx of configuredWeeks) {
+      const states = weekStates[weekIdx]
+      if (!states) continue
+      const cfg = dayStatesToConfig(states)
+      if (Object.keys(cfg).length > 0) weekOverrides[weekIdx] = cfg
     }
     onOk({
       id: initial?.id ?? newId(),
       name: name.trim(),
       dayConfig,
+      weekOverrides: Object.keys(weekOverrides).length > 0 ? weekOverrides : undefined,
       updatedAtISO: new Date().toISOString(),
     })
   }
+
+  const availableWeekOptions = [0, 1, 2, 3, 4, 5]
+    .filter((w) => !configuredWeeks.includes(w))
+    .map((w) => ({ value: w, label: `${w + 1}주차` }))
 
   return (
     <Modal
@@ -372,9 +443,10 @@ function WeekPresetModal({
       onCancel={onCancel}
       okText="저장"
       cancelText="취소"
-      width={520}
+      width={560}
     >
       <Flex vertical gap={12}>
+        {/* 이름 */}
         <div>
           <Text style={{ display: 'block', marginBottom: 4 }}>프리셋 이름</Text>
           <Input
@@ -386,14 +458,63 @@ function WeekPresetModal({
           {nameError && <Text type="danger" style={{ fontSize: 12 }}>이름을 입력해주세요</Text>}
         </div>
 
+        {/* 주차 탭 */}
         <div>
-          <Text style={{ display: 'block', marginBottom: 8 }}>요일별 근무유형</Text>
+          <Text style={{ display: 'block', marginBottom: 6 }}>주차 선택</Text>
+          <Flex gap={4} wrap>
+            <Tag
+              color={activeWeekIdx === -1 ? 'blue' : undefined}
+              onClick={() => setActiveWeekIdx(-1)}
+              style={{ cursor: 'pointer', fontWeight: activeWeekIdx === -1 ? 600 : undefined }}
+            >
+              전체 기본
+            </Tag>
+            {configuredWeeks.map((weekIdx) => (
+              <Tag
+                key={weekIdx}
+                color={activeWeekIdx === weekIdx ? 'blue' : 'geekblue'}
+                closable
+                onClose={(e) => { e.preventDefault(); removeWeek(weekIdx) }}
+                onClick={() => setActiveWeekIdx(weekIdx)}
+                style={{ cursor: 'pointer', fontWeight: activeWeekIdx === weekIdx ? 600 : undefined }}
+              >
+                {weekIdx + 1}주차
+              </Tag>
+            ))}
+            {availableWeekOptions.length > 0 && (
+              <Select
+                placeholder="+ 주차 추가"
+                size="small"
+                value={null}
+                style={{ width: 100 }}
+                onChange={addWeek}
+                options={availableWeekOptions}
+              />
+            )}
+          </Flex>
+          {activeWeekIdx >= 0 && (
+            <Text type="secondary" style={{ fontSize: 11, marginTop: 4, display: 'block' }}>
+              '기본 따름' 요일은 전체 기본 설정을 따릅니다.
+            </Text>
+          )}
+        </div>
+
+        {/* 요일별 설정 */}
+        <div>
+          <Text style={{ display: 'block', marginBottom: 8 }}>
+            {activeWeekIdx === -1 ? '요일별 근무유형 (전체 주 기본)' : `${activeWeekIdx + 1}주차 요일별 설정`}
+          </Text>
           <Flex vertical gap={6}>
             {WEEKDAY_LABELS.map((label, day) => {
-              const st = dayStates[day] ?? { mode: 'default', shiftIds: [] }
+              const st = currentStates[day] ?? { mode: 'default', shiftIds: [] }
               return (
                 <Flex key={day} gap={8} align="flex-start" style={{ padding: '8px', border: '1px solid #f0f0f0', borderRadius: 6 }}>
-                  <Text style={{ width: 20, fontWeight: 600, paddingTop: 4, color: day === 0 ? '#cf1322' : day === 6 ? '#096dd9' : undefined }}>
+                  <Text style={{
+                    width: 20,
+                    fontWeight: 600,
+                    paddingTop: 4,
+                    color: day === 0 ? '#cf1322' : day === 6 ? '#096dd9' : undefined,
+                  }}>
                     {label}
                   </Text>
                   <Flex vertical gap={6} style={{ flex: 1 }}>
@@ -402,7 +523,9 @@ function WeekPresetModal({
                       onChange={(e) => setDayMode(day, e.target.value as DayMode)}
                       size="small"
                     >
-                      <Radio.Button value="default">기본</Radio.Button>
+                      <Radio.Button value="default">
+                        {activeWeekIdx === -1 ? '자동' : '기본 따름'}
+                      </Radio.Button>
                       <Radio.Button value="specific">특정</Radio.Button>
                       <Radio.Button value="off">휴무</Radio.Button>
                     </Radio.Group>
@@ -439,7 +562,9 @@ function presetSummary(preset: WeekPreset, shiftTypes: ShiftType[]): string {
       parts.push(`${WEEKDAY_LABELS[d]}:${names}`)
     }
   }
-  return parts.length === 0 ? '기본 (전체 적용)' : parts.join(' / ')
+  const base = parts.length === 0 ? '기본 (전체 적용)' : parts.join(' / ')
+  const overrideCount = preset.weekOverrides ? Object.keys(preset.weekOverrides).length : 0
+  return overrideCount > 0 ? `${base} +${overrideCount}주 개별설정` : base
 }
 
 // ─── 날짜 셀 편집 모달 ────────────────────────────────────────────
@@ -617,7 +742,10 @@ export function ScheduleCalendar({
   const allDates: (string | null)[] = Array(startDOW).fill(null)
   const cur = new Date(start)
   while (cur <= end) {
-    allDates.push(cur.toISOString().slice(0, 10))
+    const y = cur.getFullYear()
+    const m = String(cur.getMonth() + 1).padStart(2, '0')
+    const d = String(cur.getDate()).padStart(2, '0')
+    allDates.push(`${y}-${m}-${d}`)
     cur.setDate(cur.getDate() + 1)
   }
   while (allDates.length % 7 !== 0) allDates.push(null)
@@ -667,13 +795,10 @@ export function ScheduleCalendar({
                 }
                 const dOW = new Date(dateISO + 'T00:00:00').getDay()
                 const isOff = schedule.regularDaysOff.includes(dOW)
-                const isWeekend = dOW === 0 || dOW === 6
                 const dayEntries = schedule.entries[dateISO] ?? []
                 const day = parseInt(dateISO.slice(8, 10))
 
-                let bg = token.colorBgContainer
-                if (isOff) bg = token.colorFillSecondary
-                else if (isWeekend) bg = token.colorFillTertiary
+                const bg = isOff ? token.colorFillSecondary : token.colorBgContainer
 
                 return (
                   <td
@@ -755,7 +880,8 @@ export function CreateSchedulePage() {
   const [scheduleName, setScheduleName] = useState('')
   const [dateRange, setDateRange] = useState<[Dayjs, Dayjs] | null>(null)
   const [offDays, setOffDays] = useState<number[]>([])
-  const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null)
+  const [weekPresetMap, setWeekPresetMap] = useState<Record<number, string | null>>({})
+  const [applyAllPresetId, setApplyAllPresetId] = useState<string | null>(null)
 
   const [generatedSchedule, setGeneratedSchedule] = useState<ScheduleV3 | null>(null)
   const [editingDate, setEditingDate] = useState<string | null>(null)
@@ -814,13 +940,37 @@ export function CreateSchedulePage() {
   const handlePresetDelete = (id: string) => {
     deleteWeekPreset(id)
     setWeekPresets(loadWeekPresets())
-    if (selectedPresetId === id) setSelectedPresetId(null)
+    setWeekPresetMap((prev) => {
+      const next = { ...prev }
+      for (const k of Object.keys(next)) {
+        if (next[Number(k)] === id) next[Number(k)] = null
+      }
+      return next
+    })
   }
+
+  const weeks = useMemo(() => {
+    if (!dateRange) return []
+    const start = dateRange[0]
+    const totalDays = dateRange[1].diff(start, 'day') + 1
+    const weekCount = Math.ceil(totalDays / 7)
+    return Array.from({ length: weekCount }, (_, i) => {
+      const wStart = start.add(i * 7, 'day')
+      const wEnd = start.add(Math.min((i + 1) * 7 - 1, totalDays - 1), 'day')
+      return { index: i, label: `${wStart.format('M/D')}~${wEnd.format('M/D')}` }
+    })
+  }, [dateRange])
 
   const handleGenerate = () => {
     if (!dateRange) { msgApi.warning('기간을 선택해주세요'); return }
     if (employees.length === 0) { msgApi.warning('직원을 먼저 추가해주세요'); return }
-    const preset = selectedPresetId ? weekPresets.find((p) => p.id === selectedPresetId) : undefined
+    const builtMap: Record<number, WeekPreset> = {}
+    for (const [k, presetId] of Object.entries(weekPresetMap)) {
+      if (presetId) {
+        const p = weekPresets.find((x) => x.id === presetId)
+        if (p) builtMap[Number(k)] = p
+      }
+    }
     const schedule = generateScheduleV3({
       employees,
       shiftTypes,
@@ -828,7 +978,7 @@ export function CreateSchedulePage() {
       endDateISO: dateRange[1].format('YYYY-MM-DD'),
       regularDaysOff: offDays,
       scheduleName: scheduleName || undefined,
-      weekPreset: preset,
+      weekPresetMap: Object.keys(builtMap).length > 0 ? builtMap : undefined,
     })
     const totalEntries = Object.values(schedule.entries).reduce((sum, es) => sum + es.length, 0)
     setGeneratedSchedule({ ...schedule, name: scheduleName || schedule.name })
@@ -964,23 +1114,66 @@ export function CreateSchedulePage() {
       </div>
       <div>
         <Text style={{ display: 'block', marginBottom: 4 }}>기간</Text>
-        <RangePicker value={dateRange} onChange={(v) => setDateRange(v as [Dayjs, Dayjs] | null)} style={{ width: '100%' }} format="YYYY-MM-DD" />
+        <RangePicker
+          value={dateRange}
+          onChange={(v) => {
+            setDateRange(v as [Dayjs, Dayjs] | null)
+            setWeekPresetMap({})
+          }}
+          style={{ width: '100%' }}
+          format="YYYY-MM-DD"
+        />
       </div>
       <div>
         <Text style={{ display: 'block', marginBottom: 4 }}>정기휴무 요일</Text>
         <Checkbox.Group value={offDays} onChange={(v) => setOffDays(v as number[])} options={WEEKDAY_LABELS.map((label, idx) => ({ label, value: idx }))} />
       </div>
-      <div>
-        <Text style={{ display: 'block', marginBottom: 4 }}>주간 프리셋 (선택사항)</Text>
-        <Select
-          placeholder="없음 — 모든 근무유형 기본 적용"
-          value={selectedPresetId}
-          onChange={setSelectedPresetId}
-          allowClear
-          style={{ width: '100%' }}
-          options={weekPresets.map((p) => ({ value: p.id, label: p.name }))}
-        />
-      </div>
+      {weekPresets.length > 0 && (
+        <div>
+          <Text style={{ display: 'block', marginBottom: 6 }}>주차별 프리셋</Text>
+          <Flex gap={8} style={{ marginBottom: 8 }}>
+            <Select
+              placeholder="전체 일괄 적용할 프리셋"
+              value={applyAllPresetId}
+              onChange={setApplyAllPresetId}
+              allowClear
+              style={{ flex: 1 }}
+              options={weekPresets.map((p) => ({ value: p.id, label: p.name }))}
+              size="small"
+            />
+            <Button
+              size="small"
+              onClick={() => {
+                const next: Record<number, string | null> = {}
+                weeks.forEach((w) => { next[w.index] = applyAllPresetId })
+                setWeekPresetMap(next)
+              }}
+              disabled={weeks.length === 0}
+            >
+              전체 적용
+            </Button>
+          </Flex>
+          {weeks.length === 0 && (
+            <Text type="secondary" style={{ fontSize: 12 }}>기간을 선택하면 주차별로 설정할 수 있습니다</Text>
+          )}
+          {weeks.map((w) => (
+            <Flex key={w.index} gap={8} align="center" style={{ marginBottom: 6 }}>
+              <Text style={{ width: 90, fontSize: 12, flexShrink: 0 }}>
+                {w.index + 1}주차 {w.label}
+              </Text>
+              <Select
+                placeholder="없음 (기본)"
+                value={weekPresetMap[w.index] ?? null}
+                onChange={(v) => setWeekPresetMap((prev) => ({ ...prev, [w.index]: v ?? null }))}
+                allowClear
+                style={{ flex: 1 }}
+                options={weekPresets.map((p) => ({ value: p.id, label: p.name }))}
+                size="small"
+              />
+            </Flex>
+          ))}
+        </div>
+      )}
       <Button type="primary" onClick={handleGenerate} block>자동 생성</Button>
     </Flex>
   )

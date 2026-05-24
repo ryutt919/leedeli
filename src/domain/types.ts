@@ -221,5 +221,7 @@ export type WeekPreset = {
   name: string
   // weekday 0-6 → shiftType IDs; undefined = use all; [] = day off
   dayConfig: Partial<Record<number, string[]>>
+  // 0-based week index → per-week dayConfig overrides (overrides dayConfig for that week)
+  weekOverrides?: Partial<Record<number, Partial<Record<number, string[]>>>>
   updatedAtISO: string
 }
