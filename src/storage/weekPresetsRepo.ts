@@ -1,23 +1,31 @@
 import type { WeekPreset } from '../domain/types'
-import { readJson, writeJson } from './jsonStore'
+import { supabase } from '../utils/supabase'
 
-const KEY = 'leedeli:weekPresets'
-type Store = { items: WeekPreset[] }
+type DbRow = { id: string; data: WeekPreset }
 
-export function loadWeekPresets(): WeekPreset[] {
-  const r = readJson<Store>(KEY)
-  if (!r.ok || !Array.isArray(r.value.items)) return []
-  return r.value.items
+export async function loadWeekPresets(): Promise<WeekPreset[]> {
+  const { data, error } = await supabase.from('week_presets').select('id, data').order('updated_at')
+  if (error) {
+    console.error('[weekPresetsRepo] loadWeekPresets', error)
+    return []
+  }
+  return (data ?? []).map((row: DbRow) => ({ ...(row.data as WeekPreset), id: row.id }))
 }
 
-export function upsertWeekPreset(next: WeekPreset): void {
-  const items = loadWeekPresets()
-  const idx = items.findIndex((x) => x.id === next.id)
-  if (idx >= 0) items[idx] = next
-  else items.unshift(next)
-  writeJson<Store>(KEY, { items })
+export async function upsertWeekPreset(next: WeekPreset): Promise<void> {
+  const { error } = await supabase
+    .from('week_presets')
+    .upsert({ id: next.id, name: next.name, data: next }, { onConflict: 'id' })
+  if (error) {
+    console.error('[weekPresetsRepo] upsertWeekPreset', error)
+    throw error
+  }
 }
 
-export function deleteWeekPreset(id: string): void {
-  writeJson<Store>(KEY, { items: loadWeekPresets().filter((x) => x.id !== id) })
+export async function deleteWeekPreset(id: string): Promise<void> {
+  const { error } = await supabase.from('week_presets').delete().eq('id', id)
+  if (error) {
+    console.error('[weekPresetsRepo] deleteWeekPreset', error)
+    throw error
+  }
 }

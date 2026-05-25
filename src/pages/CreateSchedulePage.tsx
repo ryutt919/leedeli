@@ -877,7 +877,7 @@ export function CreateSchedulePage() {
   useEffect(() => {
     loadShiftTypes().then(setShiftTypes)
     loadEmployees().then(setEmployees)
-    setWeekPresets(loadWeekPresets())
+    loadWeekPresets().then(setWeekPresets)
   }, [])
 
   // 비관리자는 관리 탭으로 자동 이동
@@ -931,15 +931,21 @@ export function CreateSchedulePage() {
     } catch { msgApi.error('삭제 실패') }
   }
 
-  const handlePresetSave = (preset: WeekPreset) => {
-    upsertWeekPreset(preset)
-    setWeekPresets(loadWeekPresets())
-    setPresetModalOpen(false)
+  const handlePresetSave = async (preset: WeekPreset) => {
+    try {
+      await upsertWeekPreset(preset)
+      const updated = await loadWeekPresets()
+      setWeekPresets(updated)
+      setPresetModalOpen(false)
+    } catch { msgApi.error('프리셋 저장 실패') }
   }
 
-  const handlePresetDelete = (id: string) => {
-    deleteWeekPreset(id)
-    setWeekPresets(loadWeekPresets())
+  const handlePresetDelete = async (id: string) => {
+    try {
+      await deleteWeekPreset(id)
+      const updated = await loadWeekPresets()
+      setWeekPresets(updated)
+    } catch { msgApi.error('프리셋 삭제 실패') }
     setWeekPresetMap((prev) => {
       const next = { ...prev }
       for (const k of Object.keys(next)) {
