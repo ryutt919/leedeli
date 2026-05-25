@@ -837,7 +837,7 @@ const MONTH_OPTIONS = [
 
 // ─── 메인 페이지 ─────────────────────────────────────────────────
 export function CreateSchedulePage() {
-  const { isAdmin } = useAuth()
+  const { isAdmin, loading } = useAuth()
   const [activeTab, setActiveTab] = useState('settings')
   const [msgApi, contextHolder] = message.useMessage()
 
@@ -880,10 +880,11 @@ export function CreateSchedulePage() {
     loadWeekPresets().then(setWeekPresets)
   }, [])
 
-  // 비관리자는 관리 탭으로 자동 이동
+  // 비관리자(확인 완료)는 관리 탭으로 자동 이동
+  // null은 admin 확인 실패/로딩 중 — 세션은 유효하므로 건드리지 않음
   useEffect(() => {
-    if (isAdmin === false) setActiveTab('manage')
-  }, [isAdmin])
+    if (isAdmin === false && !loading) setActiveTab('manage')
+  }, [isAdmin, loading])
 
   // 관리 탭 진입 시 스케줄 로드
   useEffect(() => {
@@ -1378,8 +1379,11 @@ export function CreateSchedulePage() {
 
   const editingDayEntries = editingDate ? (generatedSchedule?.entries[editingDate] ?? []) : []
 
+  // isAdmin === true: 관리자 탭 전체 표시
+  // isAdmin === null: admin 확인 실패지만 세션은 유효 → 관리 탭만 표시 (비관리자와 동일)
+  // isAdmin === false: 비관리자 확인 완료 → 관리 탭만 표시
   const tabItems = [
-    ...(isAdmin
+    ...(isAdmin === true
       ? [
           { key: 'settings', label: '설정', children: settingsTab },
           { key: 'generate', label: '생성', children: generateTab },
