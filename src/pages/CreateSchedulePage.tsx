@@ -48,44 +48,6 @@ const { RangePicker } = DatePicker
 const WEEKDAY_LABELS = ['일', '월', '화', '수', '목', '금', '토']
 
 
-function normalizeHex(hex: string): string | null {
-  const raw = hex.trim().replace('#', '')
-  if (raw.length === 3) {
-    const expanded = raw.split('').map((c) => c + c).join('')
-    return `#${expanded.toLowerCase()}`
-  }
-  if (raw.length === 6) return `#${raw.toLowerCase()}`
-  return null
-}
-
-function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
-  const normalized = normalizeHex(hex)
-  if (!normalized) return null
-  const raw = normalized.slice(1)
-  const r = parseInt(raw.slice(0, 2), 16)
-  const g = parseInt(raw.slice(2, 4), 16)
-  const b = parseInt(raw.slice(4, 6), 16)
-  return { r, g, b }
-}
-
-function hexToRgba(hex: string | undefined, alpha: number): string | null {
-  if (!hex) return null
-  const rgb = hexToRgb(hex)
-  if (!rgb) return null
-  return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`
-}
-
-
-const SHIFT_TAG_PALETTE = ['#a088d8', '#60c8a0', '#f8a880', '#70b8e0']
-
-function buildShiftTypeColorMap(shiftTypes: ShiftType[]): Map<string, string> {
-  const map = new Map<string, string>()
-  shiftTypes.forEach((st, idx) => {
-    map.set(st.id, SHIFT_TAG_PALETTE[idx % SHIFT_TAG_PALETTE.length])
-  })
-  return map
-}
-
 function newId() {
   return crypto.randomUUID()
 }
@@ -745,24 +707,10 @@ export function ScheduleCalendar({
   onCellClick?: (dateISO: string) => void
 }) {
   const { token } = theme.useToken()
-  const tagTextColor = 'rgba(17, 17, 17, 0.78)'
-  const tagBgAlpha = 0.16
-  const tagBorderAlpha = 0.33
-  const shiftColors = useMemo(
-    () => buildShiftTypeColorMap(schedule.shiftTypes),
-    [schedule.shiftTypes]
+  const empRoleMap = useMemo(
+    () => new Map(schedule.employees.map((e) => [e.id, e.role])),
+    [schedule.employees]
   )
-  const shiftNameToId = useMemo(
-    () => new Map(schedule.shiftTypes.map((st) => [st.name, st.id])),
-    [schedule.shiftTypes]
-  )
-  const fallbackBg = hexToRgba(token.colorFillSecondary, tagBgAlpha) ?? 'rgba(0, 0, 0, 0.08)'
-  const fallbackBorder = hexToRgba(token.colorBorderSecondary, tagBorderAlpha) ?? 'rgba(0, 0, 0, 0.16)'
-  const tagStyleFor = (hex: string | undefined) => ({
-    backgroundColor: hexToRgba(hex, tagBgAlpha) ?? fallbackBg,
-    borderColor: hexToRgba(hex, tagBorderAlpha) ?? fallbackBorder,
-    color: tagTextColor,
-  })
   const start = new Date(schedule.startDateISO + 'T00:00:00')
   const end = new Date(schedule.endDateISO + 'T00:00:00')
   const startDOW = start.getDay()
@@ -785,27 +733,6 @@ export function ScheduleCalendar({
 
   return (
     <div style={{ overflowX: 'auto' }}>
-      {schedule.shiftTypes.length > 0 && (
-        <div style={{ marginBottom: 6 }}>
-          <Text type="secondary" style={{ fontSize: 11 }}>근무유형</Text>
-          <Flex wrap="wrap" gap={6} style={{ marginTop: 4 }}>
-            {schedule.shiftTypes.map((st) => (
-              <Tag
-                key={st.id}
-                style={{
-                  fontSize: 11,
-                  fontWeight: 500,
-                  padding: '0 6px',
-                  marginInlineEnd: 0,
-                  ...tagStyleFor(shiftColors.get(st.id)),
-                }}
-              >
-                {st.name}
-              </Tag>
-            ))}
-          </Flex>
-        </div>
-      )}
       <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 420 }}>
         <thead>
           <tr>
@@ -878,22 +805,25 @@ export function ScheduleCalendar({
                       </Tag>
                     ) : (
                       dayEntries.map((entry) => {
-                        const entryShiftId = entry.shiftTypeId
-                          ?? (entry.shiftTypeName ? shiftNameToId.get(entry.shiftTypeName) : undefined)
-                        const entryColor = entryShiftId ? shiftColors.get(entryShiftId) : undefined
+                        const role = empRoleMap.get(entry.employeeId)
+                        const tagColor = role === '정직원' ? 'blue' : 'orange'
+                        const label = entry.shiftTypeName
+                          ? `${entry.employeeName} · ${entry.shiftTypeName}`
+                          : entry.employeeName
                         return (
                           <Tag
                             key={entry.id}
+                            color={tagColor}
                             style={{
-                              fontSize: 11,
+                              fontSize: 10,
                               fontWeight: 500,
                               padding: '0 3px',
                               marginBottom: 2,
                               display: 'block',
-                              ...tagStyleFor(entryColor),
+                              marginInlineEnd: 0,
                             }}
                           >
-                            {entry.employeeName}
+                            {label}
                           </Tag>
                         )
                       })
