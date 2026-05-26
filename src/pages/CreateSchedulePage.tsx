@@ -47,11 +47,6 @@ const { RangePicker } = DatePicker
 
 const WEEKDAY_LABELS = ['일', '월', '화', '수', '목', '금', '토']
 
-type HslColor = { h: number; s: number; l: number }
-
-function clampNumber(value: number, min: number, max: number) {
-  return Math.min(max, Math.max(min, value))
-}
 
 function normalizeHex(hex: string): string | null {
   const raw = hex.trim().replace('#', '')
@@ -80,68 +75,13 @@ function hexToRgba(hex: string | undefined, alpha: number): string | null {
   return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`
 }
 
-function rgbToHsl({ r, g, b }: { r: number; g: number; b: number }): HslColor {
-  const rn = r / 255
-  const gn = g / 255
-  const bn = b / 255
-  const max = Math.max(rn, gn, bn)
-  const min = Math.min(rn, gn, bn)
-  const delta = max - min
-  let h = 0
-  if (delta !== 0) {
-    if (max === rn) h = ((gn - bn) / delta) % 6
-    else if (max === gn) h = (bn - rn) / delta + 2
-    else h = (rn - gn) / delta + 4
-    h *= 60
-    if (h < 0) h += 360
-  }
-  const l = (max + min) / 2
-  const s = delta === 0 ? 0 : delta / (1 - Math.abs(2 * l - 1))
-  return { h, s: s * 100, l: l * 100 }
-}
 
-function hslToHex({ h, s, l }: HslColor): string {
-  const sat = clampNumber(s, 0, 100) / 100
-  const light = clampNumber(l, 0, 100) / 100
-  const c = (1 - Math.abs(2 * light - 1)) * sat
-  const x = c * (1 - Math.abs(((h / 60) % 2) - 1))
-  const m = light - c / 2
-  let r1 = 0
-  let g1 = 0
-  let b1 = 0
-  if (h >= 0 && h < 60) { r1 = c; g1 = x; b1 = 0 }
-  else if (h >= 60 && h < 120) { r1 = x; g1 = c; b1 = 0 }
-  else if (h >= 120 && h < 180) { r1 = 0; g1 = c; b1 = x }
-  else if (h >= 180 && h < 240) { r1 = 0; g1 = x; b1 = c }
-  else if (h >= 240 && h < 300) { r1 = x; g1 = 0; b1 = c }
-  else { r1 = c; g1 = 0; b1 = x }
-  const toHex = (v: number) => Math.round((v + m) * 255).toString(16).padStart(2, '0')
-  return `#${toHex(r1)}${toHex(g1)}${toHex(b1)}`
-}
+const SHIFT_TAG_PALETTE = ['#a088d8', '#60c8a0', '#f8a880', '#70b8e0']
 
-function buildShiftPalette(count: number, baseHex: string): string[] {
-  if (count <= 0) return []
-  const baseColor = normalizeHex(baseHex) ?? '#1677ff'
-  if (count === 1) return [baseColor]
-  const baseRgb = hexToRgb(baseColor)
-  const baseHsl = baseRgb ? rgbToHsl(baseRgb) : { h: 215, s: 60, l: 45 }
-  const s = clampNumber(baseHsl.s + 10, 55, 80)
-  const l = clampNumber(baseHsl.l + 6, 54, 66)
-  const step = 360 / count
-  return Array.from({ length: count }, (_, idx) => {
-    const h = (baseHsl.h + idx * step) % 360
-    return hslToHex({ h, s, l })
-  })
-}
-
-function buildShiftTypeColorMap(
-  shiftTypes: ShiftType[],
-  baseHex: string
-): Map<string, string> {
+function buildShiftTypeColorMap(shiftTypes: ShiftType[]): Map<string, string> {
   const map = new Map<string, string>()
-  const palette = buildShiftPalette(shiftTypes.length, baseHex)
   shiftTypes.forEach((st, idx) => {
-    map.set(st.id, palette[idx])
+    map.set(st.id, SHIFT_TAG_PALETTE[idx % SHIFT_TAG_PALETTE.length])
   })
   return map
 }
@@ -805,12 +745,12 @@ export function ScheduleCalendar({
   onCellClick?: (dateISO: string) => void
 }) {
   const { token } = theme.useToken()
-  const tagTextColor = 'rgba(17, 17, 17, 0.7)'
-  const tagBgAlpha = 0.28
-  const tagBorderAlpha = 0.46
+  const tagTextColor = 'rgba(17, 17, 17, 0.78)'
+  const tagBgAlpha = 0.16
+  const tagBorderAlpha = 0.33
   const shiftColors = useMemo(
-    () => buildShiftTypeColorMap(schedule.shiftTypes, token.colorPrimary),
-    [schedule.shiftTypes, token.colorPrimary]
+    () => buildShiftTypeColorMap(schedule.shiftTypes),
+    [schedule.shiftTypes]
   )
   const shiftNameToId = useMemo(
     () => new Map(schedule.shiftTypes.map((st) => [st.name, st.id])),
