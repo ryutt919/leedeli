@@ -93,6 +93,21 @@ function rgbToHsl({ r, g, b }: { r: number; g: number; b: number }): HslColor {
   return { h, s: s * 100, l: l * 100 }
 }
 
+function relativeLuminance({ r, g, b }: { r: number; g: number; b: number }) {
+  const toLinear = (v: number) => {
+    const s = v / 255
+    return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4)
+  }
+  return 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b)
+}
+
+function getReadableTextColor(bgHex: string | undefined, darkHex: string, lightHex: string) {
+  if (!bgHex) return darkHex
+  const rgb = hexToRgb(bgHex)
+  if (!rgb) return darkHex
+  return relativeLuminance(rgb) > 0.58 ? darkHex : lightHex
+}
+
 function hslToHex({ h, s, l }: HslColor): string {
   const sat = clampNumber(s, 0, 100) / 100
   const light = clampNumber(l, 0, 100) / 100
@@ -118,8 +133,8 @@ function buildShiftPalette(count: number, baseHex: string): string[] {
   if (count === 1) return [baseColor]
   const baseRgb = hexToRgb(baseColor)
   const baseHsl = baseRgb ? rgbToHsl(baseRgb) : { h: 215, s: 60, l: 45 }
-  const s = clampNumber(baseHsl.s, 45, 70)
-  const l = clampNumber(baseHsl.l, 38, 52)
+  const s = clampNumber(baseHsl.s, 40, 65)
+  const l = clampNumber(baseHsl.l + 16, 60, 74)
   const step = 360 / count
   return Array.from({ length: count }, (_, idx) => {
     const h = (baseHsl.h + idx * step) % 360
@@ -129,19 +144,12 @@ function buildShiftPalette(count: number, baseHex: string): string[] {
 
 function buildShiftTypeColorMap(
   shiftTypes: ShiftType[],
-  baseHex: string,
-  partTimeHex: string
+  baseHex: string
 ): Map<string, string> {
   const map = new Map<string, string>()
-  const partTimeColor = normalizeHex(partTimeHex) ?? '#faad14'
-  const regularTypes = shiftTypes.filter((st) => st.targetRole !== '알바')
-  const partTimeTypes = shiftTypes.filter((st) => st.targetRole === '알바')
-  const palette = buildShiftPalette(regularTypes.length, baseHex)
-  regularTypes.forEach((st, idx) => {
+  const palette = buildShiftPalette(shiftTypes.length, baseHex)
+  shiftTypes.forEach((st, idx) => {
     map.set(st.id, palette[idx])
-  })
-  partTimeTypes.forEach((st) => {
-    map.set(st.id, partTimeColor)
   })
   return map
 }
@@ -806,8 +814,8 @@ export function ScheduleCalendar({
 }) {
   const { token } = theme.useToken()
   const shiftColors = useMemo(
-    () => buildShiftTypeColorMap(schedule.shiftTypes, token.colorPrimary, token.colorWarning),
-    [schedule.shiftTypes, token.colorPrimary, token.colorWarning]
+    () => buildShiftTypeColorMap(schedule.shiftTypes, token.colorPrimary),
+    [schedule.shiftTypes, token.colorPrimary]
   )
   const shiftNameToId = useMemo(
     () => new Map(schedule.shiftTypes.map((st) => [st.name, st.id])),
@@ -843,7 +851,13 @@ export function ScheduleCalendar({
               <Tag
                 key={st.id}
                 color={shiftColors.get(st.id)}
-                style={{ fontSize: 11, padding: '0 6px', marginInlineEnd: 0 }}
+                style={{
+                  fontSize: 11,
+                  fontWeight: 600,
+                  padding: '0 6px',
+                  marginInlineEnd: 0,
+                  color: getReadableTextColor(shiftColors.get(st.id), token.colorText, '#ffffff'),
+                }}
               >
                 {st.name}
               </Tag>
@@ -926,15 +940,18 @@ export function ScheduleCalendar({
                         const entryShiftId = entry.shiftTypeId
                           ?? (entry.shiftTypeName ? shiftNameToId.get(entry.shiftTypeName) : undefined)
                         const entryColor = entryShiftId ? shiftColors.get(entryShiftId) : undefined
+                        const entryTextColor = getReadableTextColor(entryColor, token.colorText, '#ffffff')
                         return (
                           <Tag
                             key={entry.id}
                             color={entryColor}
                             style={{
-                              fontSize: 10,
+                              fontSize: 11,
+                              fontWeight: 600,
                               padding: '0 3px',
                               marginBottom: 2,
                               display: 'block',
+                              color: entryTextColor,
                             }}
                           >
                             {entry.employeeName}
