@@ -47,6 +47,105 @@ const { RangePicker } = DatePicker
 
 const WEEKDAY_LABELS = ['일', '월', '화', '수', '목', '금', '토']
 
+type HslColor = { h: number; s: number; l: number }
+
+function clampNumber(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value))
+}
+
+function normalizeHex(hex: string): string | null {
+  const raw = hex.trim().replace('#', '')
+  if (raw.length === 3) {
+    const expanded = raw.split('').map((c) => c + c).join('')
+    return `#${expanded.toLowerCase()}`
+  }
+  if (raw.length === 6) return `#${raw.toLowerCase()}`
+  return null
+}
+
+function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
+  const normalized = normalizeHex(hex)
+  if (!normalized) return null
+  const raw = normalized.slice(1)
+  const r = parseInt(raw.slice(0, 2), 16)
+  const g = parseInt(raw.slice(2, 4), 16)
+  const b = parseInt(raw.slice(4, 6), 16)
+  return { r, g, b }
+}
+
+function rgbToHsl({ r, g, b }: { r: number; g: number; b: number }): HslColor {
+  const rn = r / 255
+  const gn = g / 255
+  const bn = b / 255
+  const max = Math.max(rn, gn, bn)
+  const min = Math.min(rn, gn, bn)
+  const delta = max - min
+  let h = 0
+  if (delta !== 0) {
+    if (max === rn) h = ((gn - bn) / delta) % 6
+    else if (max === gn) h = (bn - rn) / delta + 2
+    else h = (rn - gn) / delta + 4
+    h *= 60
+    if (h < 0) h += 360
+  }
+  const l = (max + min) / 2
+  const s = delta === 0 ? 0 : delta / (1 - Math.abs(2 * l - 1))
+  return { h, s: s * 100, l: l * 100 }
+}
+
+function hslToHex({ h, s, l }: HslColor): string {
+  const sat = clampNumber(s, 0, 100) / 100
+  const light = clampNumber(l, 0, 100) / 100
+  const c = (1 - Math.abs(2 * light - 1)) * sat
+  const x = c * (1 - Math.abs(((h / 60) % 2) - 1))
+  const m = light - c / 2
+  let r1 = 0
+  let g1 = 0
+  let b1 = 0
+  if (h >= 0 && h < 60) { r1 = c; g1 = x; b1 = 0 }
+  else if (h >= 60 && h < 120) { r1 = x; g1 = c; b1 = 0 }
+  else if (h >= 120 && h < 180) { r1 = 0; g1 = c; b1 = x }
+  else if (h >= 180 && h < 240) { r1 = 0; g1 = x; b1 = c }
+  else if (h >= 240 && h < 300) { r1 = x; g1 = 0; b1 = c }
+  else { r1 = c; g1 = 0; b1 = x }
+  const toHex = (v: number) => Math.round((v + m) * 255).toString(16).padStart(2, '0')
+  return `#${toHex(r1)}${toHex(g1)}${toHex(b1)}`
+}
+
+function buildShiftPalette(count: number, baseHex: string): string[] {
+  if (count <= 0) return []
+  const baseColor = normalizeHex(baseHex) ?? '#1677ff'
+  if (count === 1) return [baseColor]
+  const baseRgb = hexToRgb(baseColor)
+  const baseHsl = baseRgb ? rgbToHsl(baseRgb) : { h: 215, s: 60, l: 45 }
+  const s = clampNumber(baseHsl.s, 45, 70)
+  const l = clampNumber(baseHsl.l, 38, 52)
+  const step = 360 / count
+  return Array.from({ length: count }, (_, idx) => {
+    const h = (baseHsl.h + idx * step) % 360
+    return hslToHex({ h, s, l })
+  })
+}
+
+function buildShiftTypeColorMap(
+  shiftTypes: ShiftType[],
+  baseHex: string,
+  partTimeHex: string
+): Map<string, string> {
+  const map = new Map<string, string>()
+  const partTimeColor = normalizeHex(partTimeHex) ?? '#faad14'
+  const regularTypes = shiftTypes.filter((st) => st.targetRole !== '알바')
+  const partTimeTypes = shiftTypes.filter((st) => st.targetRole === '알바')
+  const palette = buildShiftPalette(regularTypes.length, baseHex)
+  regularTypes.forEach((st, idx) => {
+    map.set(st.id, palette[idx])
+  })
+  partTimeTypes.forEach((st) => {
+    map.set(st.id, partTimeColor)
+  })
+  return map
+}
+
 function newId() {
   return crypto.randomUUID()
 }
@@ -706,6 +805,14 @@ export function ScheduleCalendar({
   onCellClick?: (dateISO: string) => void
 }) {
   const { token } = theme.useToken()
+  const shiftColors = useMemo(
+    () => buildShiftTypeColorMap(schedule.shiftTypes, token.colorPrimary, token.colorWarning),
+    [schedule.shiftTypes, token.colorPrimary, token.colorWarning]
+  )
+  const shiftNameToId = useMemo(
+    () => new Map(schedule.shiftTypes.map((st) => [st.name, st.id])),
+    [schedule.shiftTypes]
+  )
   const start = new Date(schedule.startDateISO + 'T00:00:00')
   const end = new Date(schedule.endDateISO + 'T00:00:00')
   const startDOW = start.getDay()
@@ -728,6 +835,22 @@ export function ScheduleCalendar({
 
   return (
     <div style={{ overflowX: 'auto' }}>
+      {schedule.shiftTypes.length > 0 && (
+        <div style={{ marginBottom: 6 }}>
+          <Text type="secondary" style={{ fontSize: 11 }}>근무유형</Text>
+          <Flex wrap="wrap" gap={6} style={{ marginTop: 4 }}>
+            {schedule.shiftTypes.map((st) => (
+              <Tag
+                key={st.id}
+                color={shiftColors.get(st.id)}
+                style={{ fontSize: 11, padding: '0 6px', marginInlineEnd: 0 }}
+              >
+                {st.name}
+              </Tag>
+            ))}
+          </Flex>
+        </div>
+      )}
       <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 420 }}>
         <thead>
           <tr>
@@ -799,23 +922,25 @@ export function ScheduleCalendar({
                         휴
                       </Tag>
                     ) : (
-                      dayEntries.map((entry) => (
-                        <Tag
-                          key={entry.id}
-                          color="blue"
-                          style={{
-                            fontSize: 10,
-                            padding: '0 3px',
-                            marginBottom: 2,
-                            display: 'block',
-                          }}
-                        >
-                          {entry.employeeName}
-                          {entry.shiftTypeName
-                            ? ` ${entry.shiftTypeName}`
-                            : ` ${entry.startTime}`}
-                        </Tag>
-                      ))
+                      dayEntries.map((entry) => {
+                        const entryShiftId = entry.shiftTypeId
+                          ?? (entry.shiftTypeName ? shiftNameToId.get(entry.shiftTypeName) : undefined)
+                        const entryColor = entryShiftId ? shiftColors.get(entryShiftId) : undefined
+                        return (
+                          <Tag
+                            key={entry.id}
+                            color={entryColor}
+                            style={{
+                              fontSize: 10,
+                              padding: '0 3px',
+                              marginBottom: 2,
+                              display: 'block',
+                            }}
+                          >
+                            {entry.employeeName}
+                          </Tag>
+                        )
+                      })
                     )}
                   </td>
                 )
