@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Shift Tag Variants</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&family=Fraunces:wght@600&display=swap');
+
+    :root {
+      --ink: #1b1b1b;
+      --muted: #5d5d5d;
+      --bg-base: #f4efe7;
+      --card: rgba(255, 255, 255, 0.9);
+      --card-border: rgba(30, 30, 30, 0.08);
+      --tag-text-alpha: 0.75;
+      --tag-bg-alpha: 0.3;
+      --tag-border-alpha: 0.4;
+      --tag-weight: 500;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: 'Space Grotesk', 'Avenir Next', 'Segoe UI', sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(1200px 600px at 15% -10%, rgba(255, 204, 153, 0.25), transparent 60%),
+        radial-gradient(900px 500px at 110% 0%, rgba(152, 205, 214, 0.28), transparent 55%),
+        linear-gradient(180deg, #f7f2ea 0%, #f0f4ef 60%, #f5f1ea 100%);
+      min-height: 100vh;
+    }
+
+    header {
+      padding: 28px 24px 10px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      font-family: 'Fraunces', serif;
+      font-size: 26px;
+      margin: 0 0 6px;
+      letter-spacing: 0.01em;
+    }
+
+    .subtitle {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(220px, 1fr));
+      gap: 16px;
+      padding: 16px 24px 40px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 12px;
+      box-shadow: 0 8px 20px rgba(30, 30, 30, 0.08);
+      backdrop-filter: blur(6px);
+    }
+
+    .card-title {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+
+    .card-title strong {
+      font-size: 14px;
+      letter-spacing: 0.03em;
+    }
+
+    .meta {
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin: 8px 0 10px;
+    }
+
+    .calendar {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+
+    .cell {
+      background: rgba(255, 255, 255, 0.8);
+      border: 1px solid rgba(30, 30, 30, 0.06);
+      border-radius: 12px;
+      padding: 8px;
+      min-height: 64px;
+    }
+
+    .day {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 2px 6px;
+      border-radius: 7px;
+      font-size: 11px;
+      font-weight: var(--tag-weight);
+      color: rgba(17, 17, 17, var(--tag-text-alpha));
+      border: 1px solid hsla(var(--h), var(--s), calc(var(--l) - 12%), var(--tag-border-alpha));
+      background: hsla(var(--h), var(--s), var(--l), var(--tag-bg-alpha));
+    }
+
+    .tag.open { --h: 210; --s: 68%; --l: 54%; }
+    .tag.mid { --h: 145; --s: 55%; --l: 46%; }
+    .tag.close { --h: 24; --s: 78%; --l: 56%; }
+    .tag.extra { --h: 350; --s: 70%; --l: 56%; }
+
+    @media (max-width: 980px) {
+      .grid { grid-template-columns: repeat(2, minmax(220px, 1fr)); }
+    }
+
+    @media (max-width: 560px) {
+      .grid { grid-template-columns: 1fr; }
+      header { padding: 22px 16px 8px; }
+      .grid { padding: 12px 16px 30px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Shift Tag Variants</h1>
+    <div class="subtitle">Pick a case label (A1 to D4). Rows change background strength, columns change text opacity.</div>
+  </header>
+  <section class="grid" id="grid"></section>
+
+  <script>
+    const bgLevels = [0.18, 0.28, 0.38, 0.48];
+    const textLevels = [0.55, 0.7, 0.82, 0.95];
+    const rows = ['A', 'B', 'C', 'D'];
+    const grid = document.getElementById('grid');
+
+    const buildCard = (rowIndex, colIndex) => {
+      const bgAlpha = bgLevels[rowIndex];
+      const textAlpha = textLevels[colIndex];
+      const borderAlpha = Math.min(0.6, bgAlpha + 0.18);
+      const label = `${rows[rowIndex]}${colIndex + 1}`;
+
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.style.setProperty('--tag-bg-alpha', bgAlpha);
+      card.style.setProperty('--tag-border-alpha', borderAlpha);
+      card.style.setProperty('--tag-text-alpha', textAlpha);
+
+      card.innerHTML = `
+        <div class="card-title">
+          <strong>${label}</strong>
+          <span class="meta">bg ${bgAlpha.toFixed(2)} / text ${textAlpha.toFixed(2)}</span>
+        </div>
+        <div class="legend">
+          <span class="tag open">OPEN</span>
+          <span class="tag mid">MID</span>
+          <span class="tag close">CLOSE</span>
+          <span class="tag extra">EXTRA</span>
+        </div>
+        <div class="calendar">
+          <div class="cell">
+            <div class="day">Tue 12</div>
+            <span class="tag open">JIN</span>
+            <span class="tag mid">MINA</span>
+          </div>
+          <div class="cell">
+            <div class="day">Wed 13</div>
+            <span class="tag close">SORA</span>
+            <span class="tag extra">ALEX</span>
+          </div>
+        </div>
+      `;
+      return card;
+    };
+
+    bgLevels.forEach((_, rowIndex) => {
+      textLevels.forEach((_, colIndex) => {
+        grid.appendChild(buildCard(rowIndex, colIndex));
+      });
+    });
+  </script>
+</body>
+</html>

@@ -73,6 +73,13 @@ function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
   return { r, g, b }
 }
 
+function hexToRgba(hex: string | undefined, alpha: number): string | null {
+  if (!hex) return null
+  const rgb = hexToRgb(hex)
+  if (!rgb) return null
+  return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`
+}
+
 function rgbToHsl({ r, g, b }: { r: number; g: number; b: number }): HslColor {
   const rn = r / 255
   const gn = g / 255
@@ -798,7 +805,9 @@ export function ScheduleCalendar({
   onCellClick?: (dateISO: string) => void
 }) {
   const { token } = theme.useToken()
-  const tagTextColor = '#111111'
+  const tagTextColor = 'rgba(17, 17, 17, 0.7)'
+  const tagBgAlpha = 0.28
+  const tagBorderAlpha = 0.46
   const shiftColors = useMemo(
     () => buildShiftTypeColorMap(schedule.shiftTypes, token.colorPrimary),
     [schedule.shiftTypes, token.colorPrimary]
@@ -807,6 +816,13 @@ export function ScheduleCalendar({
     () => new Map(schedule.shiftTypes.map((st) => [st.name, st.id])),
     [schedule.shiftTypes]
   )
+  const fallbackBg = hexToRgba(token.colorFillSecondary, tagBgAlpha) ?? 'rgba(0, 0, 0, 0.08)'
+  const fallbackBorder = hexToRgba(token.colorBorderSecondary, tagBorderAlpha) ?? 'rgba(0, 0, 0, 0.16)'
+  const tagStyleFor = (hex: string | undefined) => ({
+    backgroundColor: hexToRgba(hex, tagBgAlpha) ?? fallbackBg,
+    borderColor: hexToRgba(hex, tagBorderAlpha) ?? fallbackBorder,
+    color: tagTextColor,
+  })
   const start = new Date(schedule.startDateISO + 'T00:00:00')
   const end = new Date(schedule.endDateISO + 'T00:00:00')
   const startDOW = start.getDay()
@@ -836,13 +852,12 @@ export function ScheduleCalendar({
             {schedule.shiftTypes.map((st) => (
               <Tag
                 key={st.id}
-                color={shiftColors.get(st.id)}
                 style={{
                   fontSize: 11,
                   fontWeight: 500,
                   padding: '0 6px',
                   marginInlineEnd: 0,
-                  color: tagTextColor,
+                  ...tagStyleFor(shiftColors.get(st.id)),
                 }}
               >
                 {st.name}
@@ -929,14 +944,13 @@ export function ScheduleCalendar({
                         return (
                           <Tag
                             key={entry.id}
-                            color={entryColor}
                             style={{
                               fontSize: 11,
                               fontWeight: 500,
                               padding: '0 3px',
                               marginBottom: 2,
                               display: 'block',
-                              color: tagTextColor,
+                              ...tagStyleFor(entryColor),
                             }}
                           >
                             {entry.employeeName}
