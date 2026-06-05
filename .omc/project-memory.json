@@ -52,7 +52,7 @@
     "runtime": null
   },
   "build": {
-    "buildCommand": "npm run build 2>&1 | tail -20",
+    "buildCommand": "npm run build 2>&1 | tail -15",
     "testCommand": null,
     "lintCommand": "npm run lint",
     "devCommand": "npm run dev",
@@ -265,20 +265,26 @@
   "hotPaths": [
     {
       "path": "src/pages/CreateSchedulePage.tsx",
-      "accessCount": 33,
-      "lastAccessed": 1780649111987,
+      "accessCount": 45,
+      "lastAccessed": 1780676704997,
       "type": "file"
     },
     {
       "path": "src/pages/PrepsPage.tsx",
-      "accessCount": 27,
-      "lastAccessed": 1780649128961,
+      "accessCount": 38,
+      "lastAccessed": 1780676355549,
       "type": "file"
     },
     {
       "path": "src/domain/types.ts",
-      "accessCount": 11,
-      "lastAccessed": 1780649071604,
+      "accessCount": 15,
+      "lastAccessed": 1780676187478,
+      "type": "file"
+    },
+    {
+      "path": "src/pages/MenuPage.tsx",
+      "accessCount": 14,
+      "lastAccessed": 1780676946193,
       "type": "file"
     },
     {
@@ -288,45 +294,51 @@
       "type": "file"
     },
     {
-      "path": "src/pages/MenuPage.tsx",
+      "path": "src/App.tsx",
       "accessCount": 5,
-      "lastAccessed": 1780648417100,
+      "lastAccessed": 1780675509777,
       "type": "file"
     },
     {
-      "path": "src/App.tsx",
-      "accessCount": 4,
-      "lastAccessed": 1780648982529,
+      "path": "src/utils/shiftColors.ts",
+      "accessCount": 5,
+      "lastAccessed": 1780676589619,
+      "type": "file"
+    },
+    {
+      "path": "src/pages/VacationPage.tsx",
+      "accessCount": 5,
+      "lastAccessed": 1780676668591,
+      "type": "file"
+    },
+    {
+      "path": "src/pages/HomePage.tsx",
+      "accessCount": 5,
+      "lastAccessed": 1780676678510,
       "type": "file"
     },
     {
       "path": "src/storage/restockRepo.ts",
-      "accessCount": 3,
-      "lastAccessed": 1780648608382,
+      "accessCount": 4,
+      "lastAccessed": 1780675738932,
+      "type": "file"
+    },
+    {
+      "path": "src/storage/menuItemsRepo.ts",
+      "accessCount": 4,
+      "lastAccessed": 1780676725048,
+      "type": "file"
+    },
+    {
+      "path": "src/utils/calorieCalc.ts",
+      "accessCount": 4,
+      "lastAccessed": 1780676920429,
       "type": "file"
     },
     {
       "path": "supabase/migrations/014_security_fix_rls.sql",
       "accessCount": 2,
       "lastAccessed": 1780648483792,
-      "type": "file"
-    },
-    {
-      "path": "src/pages/HomePage.tsx",
-      "accessCount": 2,
-      "lastAccessed": 1780648988242,
-      "type": "file"
-    },
-    {
-      "path": "src/utils/shiftColors.ts",
-      "accessCount": 2,
-      "lastAccessed": 1780649068006,
-      "type": "file"
-    },
-    {
-      "path": "src/utils/calorieCalc.ts",
-      "accessCount": 2,
-      "lastAccessed": 1780649068622,
       "type": "file"
     },
     {
@@ -345,6 +357,12 @@
       "path": "supabase/migrations/016_restock_memo.sql",
       "accessCount": 2,
       "lastAccessed": 1780649072742,
+      "type": "file"
+    },
+    {
+      "path": "src/storage/prepsRepo.ts",
+      "accessCount": 2,
+      "lastAccessed": 1780676154736,
       "type": "file"
     },
     {
@@ -408,9 +426,51 @@
       "type": "file"
     },
     {
-      "path": "src/pages/VacationPage.tsx",
+      "path": "src/pages/ManageSchedulesPage.tsx",
       "accessCount": 1,
-      "lastAccessed": 1780648970164,
+      "lastAccessed": 1780675513551,
+      "type": "file"
+    },
+    {
+      "path": "supabase/migrations/017_menu_restock.sql",
+      "accessCount": 1,
+      "lastAccessed": 1780676201015,
+      "type": "file"
+    },
+    {
+      "path": "src/storage/menuRestockRepo.ts",
+      "accessCount": 1,
+      "lastAccessed": 1780676223418,
+      "type": "file"
+    },
+    {
+      "path": "harness/specs/S14T1_menu_restock_infra.yaml",
+      "accessCount": 1,
+      "lastAccessed": 1780676798667,
+      "type": "file"
+    },
+    {
+      "path": "harness/specs/S14T2_menu_restock_repo.yaml",
+      "accessCount": 1,
+      "lastAccessed": 1780676799785,
+      "type": "file"
+    },
+    {
+      "path": "harness/specs/S14T3_preps_history_interactive.yaml",
+      "accessCount": 1,
+      "lastAccessed": 1780676809057,
+      "type": "file"
+    },
+    {
+      "path": "harness/specs/S14T5_shift_color_by_name.yaml",
+      "accessCount": 1,
+      "lastAccessed": 1780676817086,
+      "type": "file"
+    },
+    {
+      "path": "harness/specs/S14T6_vacation_tab_migration.yaml",
+      "accessCount": 1,
+      "lastAccessed": 1780676822159,
       "type": "file"
     }
   ],

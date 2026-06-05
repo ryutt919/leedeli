@@ -7,7 +7,11 @@ export async function loadMenuItems(): Promise<MenuItem[]> {
     console.error('[menuItemsRepo] loadMenuItems', error)
     return []
   }
-  return (data ?? []).map((row) => ({ ...(row.data as MenuItem), id: row.id }))
+  return (data ?? []).map((row) => ({
+    ...(row.data as MenuItem),
+    id: row.id,
+    restockDatesISO: ((row.data as MenuItem).restockDatesISO) ?? [],
+  }))
 }
 
 export async function upsertMenuItem(next: MenuItem): Promise<void> {

@@ -150,6 +150,16 @@ export type MenuItem = {
   ingredientItems: MenuIngredientItem[]
   prepItems: MenuPrepItem[]
   updatedAtISO: string
+  restockDatesISO: string[]
+}
+
+export type MenuRestockRecord = {
+  id: string
+  menu_id: string
+  user_email: string
+  restock_date: string
+  created_at: string
+  memo?: string
 }
 
 export type ExtraWork = {

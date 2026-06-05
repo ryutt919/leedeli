@@ -1,0 +1,30 @@
+id: S14T5
+title: "ShiftType 색상: 이름 해시 기반 고유 색상"
+category: ui
+status: implemented
+
+description: |
+  기존 getShiftColor(role, shiftIndex, totalShifts): 같은 역할(정직원/알바)끼리
+  채도만 달라 오픈/미들/마감 색상이 유사하게 보이는 문제 수정.
+
+  변경: getShiftColor(shiftName: string)
+    - 이름 문자열을 djb2 해시 → hue 0~359 결정
+    - 고정 채도 65%, 명도 42% → 선명하고 구분 가능한 색
+    - 같은 이름 → 항상 같은 색 (일관성 보장)
+
+  CreateSchedulePage.tsx 호출 3곳 수정:
+    - 달력 셀: getShiftColor(entry.shiftTypeName ?? entry.employeeName ?? '')
+    - 요약 테이블 역할: getShiftColor(v)
+    - 직원 목록 역할: getShiftColor(emp.role)
+
+implementation_targets:
+  - src/utils/shiftColors.ts
+  - src/pages/CreateSchedulePage.tsx
+
+acceptance_criteria:
+  - npm run build 성공
+  - shiftColors.ts의 getShiftColor 시그니처: (shiftName: string): string
+  - CreateSchedulePage.tsx에 구 시그니처(role, idx, total) 호출 없음
+  - 3곳 모두 단일 인자 호출로 변경
+
+test_command: "npm run build"

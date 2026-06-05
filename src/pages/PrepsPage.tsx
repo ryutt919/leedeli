@@ -36,7 +36,7 @@ import { calcPrepCalories } from '../utils/calorieCalc'
 import { MobileShell } from '../layouts/MobileShell'
 import { loadIngredients, saveIngredients } from '../storage/ingredientsRepo'
 import { clearPreps, deletePrep, loadPreps, savePreps, upsertPrep } from '../storage/prepsRepo'
-import { addRestockRecord, loadRestockHistory } from '../storage/restockRepo'
+import { addRestockRecord, deleteRestockRecord, loadRestockHistory } from '../storage/restockRepo'
 import { downloadText } from '../utils/download'
 import { newId } from '../utils/id'
 import { round2, safeNumber } from '../utils/money'
@@ -129,11 +129,13 @@ export function PrepsPage() {
   const [editActiveTab, setEditActiveTab] = useState<'history' | 'form'>('history')
   const [editHistoryRecords, setEditHistoryRecords] = useState<RestockRecord[]>([])
   const [editHistoryLoading, setEditHistoryLoading] = useState(false)
+  const [historyDatePicker, setHistoryDatePicker] = useState<dayjs.Dayjs | null>(null)
 
   const [multiSelectOpen, setMultiSelectOpen] = useState(false)
   const [multiSelectDate, setMultiSelectDate] = useState<string | null>(null)
   const [multiSelectIds, setMultiSelectIds] = useState<Set<string>>(new Set())
   const [multiSelectSubmitting, setMultiSelectSubmitting] = useState(false)
+  const [multiSearch, setMultiSearch] = useState('')
 
   const refresh = () => setTick((x) => x + 1)
 
@@ -754,25 +756,72 @@ export function PrepsPage() {
             {
               key: 'history',
               label: '보충 이력',
-              children: editHistoryLoading ? (
-                <Typography.Text type="secondary">로딩 중...</Typography.Text>
-              ) : editHistoryRecords.length === 0 ? (
-                <Typography.Text type="secondary">보충 이력이 없습니다.</Typography.Text>
-              ) : (
-                <List
-                  size="small"
-                  dataSource={editHistoryRecords}
-                  renderItem={(r) => (
-                    <List.Item>
-                      <Space direction="vertical" size={0}>
-                        <Typography.Text>{r.restock_date} — {r.user_email}</Typography.Text>
-                        {r.memo && (
-                          <Typography.Text type="secondary" style={{ fontSize: 12 }}>{r.memo}</Typography.Text>
-                        )}
-                      </Space>
-                    </List.Item>
+              children: (
+                <Space direction="vertical" style={{ width: '100%' }}>
+                  <Space>
+                    <DatePicker
+                      placeholder="날짜 선택 후 추가"
+                      value={historyDatePicker}
+                      inputReadOnly
+                      onChange={async (d) => {
+                        if (!d || !editing) return
+                        const dateStr = d.format('YYYY-MM-DD')
+                        if (editHistoryRecords.some((r) => r.restock_date === dateStr)) {
+                          message.warning('이미 보충된 날짜입니다.')
+                          setHistoryDatePicker(null)
+                          return
+                        }
+                        try {
+                          await addRestockRecord(editing.id, dateStr)
+                          const cur = preps.find((p) => p.id === editing.id)
+                          if (cur) {
+                            await upsertPrep({
+                              ...cur,
+                              restockDatesISO: [...new Set([...(cur.restockDatesISO ?? []), dateStr])].sort(),
+                              updatedAtISO: new Date().toISOString(),
+                            })
+                          }
+                          setEditHistoryRecords(await loadRestockHistory(editing.id))
+                          refresh()
+                        } catch (e) { console.error(e); message.error('추가 실패') }
+                        setHistoryDatePicker(null)
+                      }}
+                    />
+                  </Space>
+                  {editHistoryLoading ? (
+                    <Typography.Text type="secondary">로딩 중...</Typography.Text>
+                  ) : editHistoryRecords.length === 0 ? (
+                    <Typography.Text type="secondary">보충 이력이 없습니다.</Typography.Text>
+                  ) : (
+                    <Space wrap size={4} style={{ marginTop: 8 }}>
+                      {editHistoryRecords.map((r) => (
+                        <Tag
+                          key={r.id}
+                          closable
+                          onClose={async (e) => {
+                            e.preventDefault()
+                            if (!editing) return
+                            try {
+                              await deleteRestockRecord(editing.id, r.restock_date)
+                              const cur = preps.find((p) => p.id === editing.id)
+                              if (cur) {
+                                await upsertPrep({
+                                  ...cur,
+                                  restockDatesISO: (cur.restockDatesISO ?? []).filter((d) => d !== r.restock_date),
+                                  updatedAtISO: new Date().toISOString(),
+                                })
+                              }
+                              setEditHistoryRecords(await loadRestockHistory(editing.id))
+                              refresh()
+                            } catch (e) { console.error(e); message.error('삭제 실패') }
+                          }}
+                        >
+                          {r.restock_date} · {r.user_email}
+                        </Tag>
+                      ))}
+                    </Space>
                   )}
-                />
+                </Space>
               ),
             },
             {
@@ -785,12 +834,16 @@ export function PrepsPage() {
                       const items = (form.getFieldValue('items') ?? []) as PrepIngredientItem[]
                       const normalized = items.filter((x) => x?.ingredientId)
                       const cost = Math.round(calcCostFromFormItems(items))
+                      const kcal = calcPrepCalories(
+                        { id: '', name: '', items: normalized, restockDatesISO: [], updatedAtISO: '' },
+                        ingredientById
+                      )
                       const ingredientSummary = normalized
                         .map((it) => `${it.ingredientName} ${it.amount}${unitLabelOf(it.ingredientId)}`)
                         .join(', ') || '재료 없음'
                       return (
                         <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>
-                          재료: {ingredientSummary} · 총비용 {cost}원
+                          재료: {ingredientSummary} · 총비용 {cost}원{kcal > 0 ? ` · ${kcal}kcal` : ''}
                         </Typography.Text>
                       )
                     }}
@@ -938,8 +991,8 @@ export function PrepsPage() {
       <Modal
         open={multiSelectOpen}
         title={`${multiSelectDate ?? ''} 보충 프렙 선택`}
-        onCancel={() => setMultiSelectOpen(false)}
-        okText="보충 추가"
+        onCancel={() => { setMultiSelectOpen(false); setMultiSearch('') }}
+        okText="적용"
         okButtonProps={{ loading: multiSelectSubmitting }}
         onOk={async () => {
           if (!multiSelectDate) return
@@ -948,8 +1001,10 @@ export function PrepsPage() {
             preps.filter((p) => p.restockDatesISO.includes(date)).map((p) => p.id)
           )
           const toAdd = [...multiSelectIds].filter((id) => !alreadyRestocked.has(id))
-          if (toAdd.length === 0) {
+          const toRemove = [...alreadyRestocked].filter((id) => !multiSelectIds.has(id))
+          if (toAdd.length === 0 && toRemove.length === 0) {
             setMultiSelectOpen(false)
+            setMultiSearch('')
             return
           }
           setMultiSelectSubmitting(true)
@@ -960,38 +1015,57 @@ export function PrepsPage() {
             await upsertPrep({ ...prep, restockDatesISO: nextDates, updatedAtISO: new Date().toISOString() })
             try { await addRestockRecord(prep.id, date) } catch (e) { console.error(e) }
           }
+          for (const id of toRemove) {
+            const prep = preps.find((p) => p.id === id)
+            if (!prep) continue
+            const nextDates = (prep.restockDatesISO ?? []).filter((d) => d !== date)
+            await upsertPrep({ ...prep, restockDatesISO: nextDates, updatedAtISO: new Date().toISOString() })
+            try { await deleteRestockRecord(prep.id, date) } catch (e) { console.error(e) }
+          }
           setMultiSelectSubmitting(false)
           setMultiSelectOpen(false)
+          setMultiSearch('')
           refresh()
-          message.success(`${toAdd.length}개 프렙 보충 이력을 추가했습니다.`)
+          if (toAdd.length > 0 && toRemove.length > 0) {
+            message.success(`추가 ${toAdd.length}개 · 제거 ${toRemove.length}개 완료`)
+          } else if (toAdd.length > 0) {
+            message.success(`${toAdd.length}개 프렙 보충 이력을 추가했습니다.`)
+          } else {
+            message.success(`${toRemove.length}개 프렙 보충 이력을 제거했습니다.`)
+          }
         }}
       >
-        <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>
-          보충할 프렙을 선택하세요. 이미 보충된 항목은 표시됩니다.
-        </Typography.Text>
-        <div style={{ maxHeight: 320, overflowY: 'auto' }}>
+        <Input.Search
+          placeholder="프렙 이름 검색"
+          value={multiSearch}
+          onChange={(e) => setMultiSearch(e.target.value)}
+          allowClear
+          style={{ marginBottom: 12 }}
+        />
+        <div style={{ maxHeight: 300, overflowY: 'auto' }}>
           <Space direction="vertical" style={{ width: '100%' }}>
-            {preps.map((p) => {
-              const already = p.restockDatesISO.includes(multiSelectDate ?? '')
-              return (
-                <Checkbox
-                  key={p.id}
-                  checked={multiSelectIds.has(p.id)}
-                  disabled={already}
-                  onChange={(e) => {
-                    setMultiSelectIds((prev) => {
-                      const next = new Set(prev)
-                      if (e.target.checked) next.add(p.id)
-                      else next.delete(p.id)
-                      return next
-                    })
-                  }}
-                >
-                  {p.name}
-                  {already && <Tag color="green" style={{ marginLeft: 8, fontSize: 11 }}>이미 보충됨</Tag>}
-                </Checkbox>
-              )
-            })}
+            {preps
+              .filter((p) => !multiSearch.trim() || p.name.toLowerCase().includes(multiSearch.trim().toLowerCase()))
+              .map((p) => {
+                const already = p.restockDatesISO.includes(multiSelectDate ?? '')
+                return (
+                  <Checkbox
+                    key={p.id}
+                    checked={multiSelectIds.has(p.id)}
+                    onChange={(e) => {
+                      setMultiSelectIds((prev) => {
+                        const next = new Set(prev)
+                        if (e.target.checked) next.add(p.id)
+                        else next.delete(p.id)
+                        return next
+                      })
+                    }}
+                  >
+                    {p.name}
+                    {already && <Tag color="green" style={{ marginLeft: 8, fontSize: 11 }}>보충됨</Tag>}
+                  </Checkbox>
+                )
+              })}
           </Space>
         </div>
       </Modal>

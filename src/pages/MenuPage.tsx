@@ -181,7 +181,7 @@ export function MenuPage() {
 
       const next: MenuItem = editing
         ? { ...editing, name, category, ingredientItems, prepItems, updatedAtISO: now }
-        : { id: newId(), name, category, ingredientItems, prepItems, updatedAtISO: now }
+        : { id: newId(), name, category, ingredientItems, prepItems, restockDatesISO: [], updatedAtISO: now }
 
       await upsertMenuItem(next)
       setOpenEdit(false)
@@ -301,15 +301,21 @@ export function MenuPage() {
         ]}
       >
         <Form form={form} layout="vertical" initialValues={{ ingredientItems: [], prepItems: [] }}>
-          {/* 라이브 비용 미리보기 */}
+          {/* 라이브 비용·칼로리 미리보기 */}
           <Form.Item shouldUpdate noStyle>
             {() => {
               const ingItems = (form.getFieldValue('ingredientItems') ?? []) as MenuIngredientItem[]
               const prepItems = (form.getFieldValue('prepItems') ?? []) as MenuPrepItem[]
               const cost = Math.round(calcMenuCostFromForm(ingItems, prepItems))
+              const tempMenu: MenuItem = {
+                id: '', name: '', ingredientItems: ingItems.filter((x) => x?.ingredientId && x.amount > 0),
+                prepItems: prepItems.filter((x) => x?.prepId && x.amount > 0),
+                restockDatesISO: [], updatedAtISO: '',
+              }
+              const kcal = calcMenuCalories(tempMenu, ingredientById, prepById)
               return (
                 <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>
-                  예상 단가: {cost}원
+                  예상 단가: {cost}원{kcal > 0 ? ` · ${kcal}kcal` : ''}
                 </Typography.Text>
               )
             }}

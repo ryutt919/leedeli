@@ -1,0 +1,21 @@
+id: S14T2
+title: "menuRestockRepo.ts 신규 생성"
+category: storage
+status: implemented
+
+description: |
+  restockRepo.ts 패턴 그대로 메뉴용 보충이력 저장소 신규 생성.
+  prep_id → menu_id, 테이블명 menu_restock_records.
+  loadMenuRestockHistory, addMenuRestockRecord, deleteMenuRestockRecord 3개 함수.
+
+implementation_targets:
+  - src/storage/menuRestockRepo.ts
+
+acceptance_criteria:
+  - npm run build 성공
+  - src/storage/menuRestockRepo.ts 파일 존재
+  - loadMenuRestockHistory(menuId) 함수 export
+  - addMenuRestockRecord(menuId, date, memo?) 함수 export
+  - deleteMenuRestockRecord(menuId, date) 함수 export
+
+test_command: "npm run build"

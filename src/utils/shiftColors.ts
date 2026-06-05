@@ -1,6 +1,5 @@
-// HSL 기반 동적 ShiftType 색상 배정
-// 정직원: hue 210 (파랑 계열), 알바: hue 30 (주황 계열)
-// totalShifts=1이면 채도 60(중간값), n>1이면 40~80 균등 분배
+// ShiftType 이름 기반 고유 색상 배정
+// 같은 이름 → 항상 같은 색, 오픈/미들/마감 등 서로 다른 색
 
 function hslToHex(h: number, s: number, l: number): string {
   const sNorm = s / 100
@@ -14,17 +13,12 @@ function hslToHex(h: number, s: number, l: number): string {
   return `#${f(0)}${f(8)}${f(4)}`
 }
 
-export function getShiftColor(
-  role: '정직원' | '알바',
-  shiftIndex: number,
-  totalShifts: number
-): string {
-  const hue = role === '정직원' ? 210 : 30
-  const minS = 40
-  const maxS = 80
-  const saturation =
-    totalShifts <= 1
-      ? 60
-      : Math.round(minS + ((maxS - minS) * shiftIndex) / (totalShifts - 1))
-  return hslToHex(hue, saturation, 45)
+function stringToHue(name: string): number {
+  let h = 5381
+  for (const c of name) h = ((h << 5) + h) ^ c.charCodeAt(0)
+  return ((h % 360) + 360) % 360
+}
+
+export function getShiftColor(shiftName: string): string {
+  return hslToHex(stringToHue(shiftName), 65, 42)
 }

@@ -42,6 +42,7 @@ import {
   deleteWeekPreset,
 } from '../storage/weekPresetsRepo'
 import { getShiftColor } from '../utils/shiftColors'
+import { VacationTabContent } from './VacationPage'
 
 const { Text } = Typography
 const { RangePicker } = DatePicker
@@ -812,14 +813,7 @@ export function ScheduleCalendar({
                       </Tag>
                     ) : (
                       sortedDayEntries.map((entry) => {
-                        const role = empRoleMap.get(entry.employeeId) ?? '알바'
-                        const shiftIdx = schedule.shiftTypes.findIndex((s) => s.id === entry.shiftTypeId)
-                        const totalST = schedule.shiftTypes.length
-                        const tagColor = getShiftColor(
-                          role as '정직원' | '알바',
-                          shiftIdx >= 0 ? shiftIdx : 0,
-                          totalST > 0 ? totalST : 1
-                        )
+                        const tagColor = getShiftColor(entry.shiftTypeName ?? entry.employeeName ?? '')
                         const label = entry.shiftTypeName
                           ? `${entry.employeeName} · ${entry.shiftTypeName}`
                           : entry.employeeName
@@ -1138,7 +1132,7 @@ export function CreateSchedulePage() {
 
   const mgWorkSummaryColumns = [
     { title: '직원', dataIndex: 'name', key: 'name' },
-    { title: '역할', dataIndex: 'role', key: 'role', render: (v: string) => <Tag color={getShiftColor(v as '정직원' | '알바', 0, 1)}>{v}</Tag> },
+    { title: '역할', dataIndex: 'role', key: 'role', render: (v: string) => <Tag color={getShiftColor(v)}>{v}</Tag> },
     { title: '근무일', dataIndex: 'totalDays', key: 'totalDays', render: (v: number) => `${v}일` },
     { title: '총시간', dataIndex: 'totalHours', key: 'totalHours', render: (v: number) => `${v}h` },
   ]
@@ -1315,7 +1309,7 @@ export function CreateSchedulePage() {
                 <Flex vertical>
                   <Flex gap={8} align="center">
                     <Text strong style={{ fontSize: 13 }}>{emp.name}</Text>
-                    <Tag color={getShiftColor(emp.role as '정직원' | '알바', 0, 1)} style={{ fontSize: 11 }}>{emp.role}</Tag>
+                    <Tag color={getShiftColor(emp.role)} style={{ fontSize: 11 }}>{emp.role}</Tag>
                   </Flex>
                   <Text type="secondary" style={{ fontSize: 11 }}>
                     {availableNames
@@ -1463,6 +1457,7 @@ export function CreateSchedulePage() {
         ]
       : []),
     { key: 'manage', label: '관리', children: manageTab },
+    { key: 'vacation', label: '휴가', children: <VacationTabContent /> },
   ]
 
   return (

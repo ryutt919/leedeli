@@ -22,7 +22,7 @@ import { addVacation, deleteVacation, getVacations } from '../storage/vacationRe
 
 const VACATION_TYPES = ['연차', '반차(오전)', '반차(오후)', '병가', '경조사', '공가', '기타']
 
-export function VacationPage() {
+export function VacationTabContent() {
   const [employees, setEmployees] = useState<Employee[]>([])
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null)
   const [records, setRecords] = useState<VacationRecord[]>([])
@@ -86,7 +86,7 @@ export function VacationPage() {
   }, 0)
 
   return (
-    <MobileShell title="휴가 관리">
+    <>
       <Card size="small" style={{ marginBottom: 12 }}>
         <Select
           placeholder="직원 선택"
@@ -178,6 +178,14 @@ export function VacationPage() {
           위에서 직원을 선택하면 휴가 이력을 확인하고 추가할 수 있습니다.
         </Typography.Text>
       )}
+    </>
+  )
+}
+
+export function VacationPage() {
+  return (
+    <MobileShell title="휴가 관리">
+      <VacationTabContent />
     </MobileShell>
   )
 }

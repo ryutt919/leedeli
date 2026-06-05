@@ -767,6 +767,94 @@
         "npm run build 통과"
       ],
       "last_tested": null
+    },
+    {
+      "id": "S14T1",
+      "sprint": 14,
+      "category": "db",
+      "priority": 65,
+      "name": "MenuItem 타입 확장 + menu_restock_records 마이그레이션",
+      "name_ascii": "MenuItem type extension + menu_restock_records migration",
+      "description": "MenuItem에 restockDatesISO: string[] 추가, MenuRestockRecord 타입 신규. supabase/migrations/017_menu_restock.sql 생성.",
+      "status": "implemented",
+      "test_command": "npm run build",
+      "test_spec": null,
+      "acceptance_criteria": [
+        "npm run build 성공",
+        "MenuItem에 restockDatesISO 존재",
+        "MenuRestockRecord 타입 존재",
+        "017_menu_restock.sql 존재"
+      ]
+    },
+    {
+      "id": "S14T2",
+      "sprint": 14,
+      "category": "storage",
+      "priority": 66,
+      "name": "menuRestockRepo.ts 신규 생성",
+      "name_ascii": "New menuRestockRepo.ts",
+      "description": "restockRepo 패턴으로 menuRestockRepo 신규 생성. loadMenuRestockHistory, addMenuRestockRecord, deleteMenuRestockRecord 3개 함수.",
+      "status": "implemented",
+      "test_command": "npm run build",
+      "test_spec": null,
+      "acceptance_criteria": [
+        "npm run build 성공",
+        "src/storage/menuRestockRepo.ts 존재",
+        "3개 함수 export"
+      ]
+    },
+    {
+      "id": "S14T3",
+      "sprint": 14,
+      "category": "ui",
+      "priority": 67,
+      "name": "PrepsPage: 이력 탭 인터랙티브 + multiSelect 검색/선택취소 + 칼로리",
+      "name_ascii": "PrepsPage: interactive history tab + multiSelect search/deselect + calories",
+      "description": "보충이력 탭: DatePicker+closable Tag(추가/삭제). multiSelect 모달: 이름 검색, disabled 제거, toRemove 로직. 기본정보 탭 요약줄에 kcal 추가.",
+      "status": "implemented",
+      "test_command": "npm run build",
+      "test_spec": null,
+      "acceptance_criteria": [
+        "npm run build 성공",
+        "이력 탭에 DatePicker 존재",
+        "multiSelect 모달에 Input.Search 존재",
+        "기본정보 요약줄에 kcal 표시"
+      ]
+    },
+    {
+      "id": "S14T5",
+      "sprint": 14,
+      "category": "ui",
+      "priority": 68,
+      "name": "ShiftType 색상: 이름 해시 기반 고유 색상",
+      "name_ascii": "ShiftType color: name-hash based unique color",
+      "description": "getShiftColor(role,idx,total) → getShiftColor(shiftName). 오픈/미들/마감 등 이름 다르면 완전히 다른 색. CreateSchedulePage 호출 3곳 수정.",
+      "status": "implemented",
+      "test_command": "npm run build",
+      "test_spec": null,
+      "acceptance_criteria": [
+        "npm run build 성공",
+        "getShiftColor 시그니처 (shiftName: string)",
+        "CreateSchedulePage 구 시그니처 호출 없음"
+      ]
+    },
+    {
+      "id": "S14T6",
+      "sprint": 14,
+      "category": "ui",
+      "priority": 69,
+      "name": "휴가 탭: 스케줄 페이지로 이전, 홈 카드 제거",
+      "name_ascii": "Vacation tab: move to schedule page, remove home card",
+      "description": "VacationPage → VacationTabContent(MobileShell 제거) + VacationPage(래퍼). CreateSchedulePage tabItems에 vacation 탭 추가. HomePage 휴가 카드 제거.",
+      "status": "implemented",
+      "test_command": "npm run build",
+      "test_spec": null,
+      "acceptance_criteria": [
+        "npm run build 성공",
+        "VacationTabContent named export 존재",
+        "CreateSchedulePage tabItems에 vacation 탭",
+        "HomePage에 /vacation 링크 없음"
+      ]
     }
   ],
   "progress": {

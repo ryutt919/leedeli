@@ -1,0 +1,24 @@
+id: S14T1
+title: "MenuItem 타입 확장 + menu_restock_records 마이그레이션"
+category: db
+status: implemented
+
+description: |
+  MenuItem에 restockDatesISO: string[] 필드 추가.
+  MenuRestockRecord 신규 타입 추가 (menu_id, user_email, restock_date, memo).
+  supabase/migrations/017_menu_restock.sql: menu_restock_records 테이블 + RLS 정책 생성.
+  menuItemsRepo.ts: loadMenuItems에서 restockDatesISO ?? [] 기본값 처리 추가.
+
+implementation_targets:
+  - src/domain/types.ts
+  - supabase/migrations/017_menu_restock.sql
+  - src/storage/menuItemsRepo.ts
+
+acceptance_criteria:
+  - npm run build 성공 (tsc 에러 0)
+  - src/domain/types.ts의 MenuItem에 restockDatesISO: string[] 존재
+  - src/domain/types.ts에 MenuRestockRecord 타입 존재
+  - supabase/migrations/017_menu_restock.sql 파일 존재
+  - menuItemsRepo.ts에 restockDatesISO ?? [] 기본값 처리
+
+test_command: "npm run build"
