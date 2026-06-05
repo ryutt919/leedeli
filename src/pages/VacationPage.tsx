@@ -23,7 +23,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { Employee, LeaveGrant, LeavePolicy, VacationRecord } from '../domain/types'
 import { MobileShell } from '../layouts/MobileShell'
 import { loadEmployees } from '../storage/employeesRepo'
-import { addLeaveGrant, loadLeaveGrants } from '../storage/leaveGrantsRepo'
+import { addLeaveGrant, deleteLeaveGrant, loadLeaveGrants } from '../storage/leaveGrantsRepo'
 import { deleteLeavePolicy, loadLeavePolicies, upsertLeavePolicy } from '../storage/leavePoliciesRepo'
 import { addVacation, deleteVacation, getVacations } from '../storage/vacationRepo'
 import { FULL_TIME_PALETTE, PART_TIME_PALETTE } from '../utils/shiftColors'
@@ -39,11 +39,11 @@ function roleTagColor(role: Employee['role']) {
   return role === '알바' ? PART_TIME_PALETTE[0] : FULL_TIME_PALETTE[0]
 }
 
-function policyTypeLabel(policy?: LeavePolicy): string {
-  if (!policy) return '조정'
-  if (policy.type === 'monthly') return '월마다'
-  if (policy.type === 'yearly') return '년마다'
-  return `${policy.interval_days ?? '?'}일마다`
+function parseBalanceInput(value: string, fallback: number): number {
+  const trimmed = value.trim()
+  if (!trimmed) return fallback
+  const parsed = Number(trimmed)
+  return Number.isFinite(parsed) ? parsed : fallback
 }
 
 export function VacationTabContent() {
@@ -59,6 +59,7 @@ export function VacationTabContent() {
   const [records, setRecords] = useState<VacationRecord[]>([])
   const [loading, setLoading] = useState(false)
   const [grantLoading, setGrantLoading] = useState(false)
+  const [grantDeleteLoading, setGrantDeleteLoading] = useState(false)
 
   // 잔여 휴가 인라인 편집
   const [editingBalance, setEditingBalance] = useState<{ empId: string; value: number } | null>(null)
@@ -177,6 +178,33 @@ export function VacationTabContent() {
     }
   }
 
+  const onGrantDelete = async (grant: LeaveGrant) => {
+    setGrantDeleteLoading(true)
+    try {
+      await deleteLeaveGrant(grant.id)
+      refresh()
+      message.success('휴가 부여 기록을 삭제했습니다.')
+    } catch (e) {
+      message.error('삭제 실패: ' + (e instanceof Error ? e.message : String(e)))
+    } finally {
+      setGrantDeleteLoading(false)
+    }
+  }
+
+  const onGrantReset = async () => {
+    if (selectedGrantRecords.length === 0) return
+    setGrantDeleteLoading(true)
+    try {
+      await Promise.all(selectedGrantRecords.map((g) => deleteLeaveGrant(g.id)))
+      refresh()
+      message.success('휴가 부여 기록을 모두 초기화했습니다.')
+    } catch (e) {
+      message.error('초기화 실패: ' + (e instanceof Error ? e.message : String(e)))
+    } finally {
+      setGrantDeleteLoading(false)
+    }
+  }
+
   const totalDays = records.reduce((sum, r) => {
     if (r.type.includes('반차')) return sum + 0.5
     return sum + 1
@@ -249,8 +277,8 @@ export function VacationTabContent() {
               step={0.5}
               style={{ width: 72 }}
               autoFocus
-              onBlur={(e) => void handleBalanceEdit(row.key, parseFloat(e.target.value) || v)}
-              onPressEnter={(e) => void handleBalanceEdit(row.key, parseFloat((e.target as HTMLInputElement).value) || v)}
+              onBlur={(e) => void handleBalanceEdit(row.key, parseBalanceInput(e.target.value, v))}
+              onPressEnter={(e) => void handleBalanceEdit(row.key, parseBalanceInput((e.target as HTMLInputElement).value, v))}
             />
           )
         }
@@ -506,6 +534,25 @@ export function VacationTabContent() {
               </Space>
             }
             style={{ marginTop: 12 }}
+            extra={
+              <Popconfirm
+                title="모든 휴가 부여 기록을 초기화할까요?"
+                description={`초기화하면 잔여 휴가에서 ${selectedGrantedDays}일이 차감됩니다.`}
+                okText="초기화"
+                cancelText="취소"
+                onConfirm={() => void onGrantReset()}
+              >
+                <Button
+                  danger
+                  type="text"
+                  size="small"
+                  disabled={selectedGrantRecords.length === 0}
+                  loading={grantDeleteLoading}
+                >
+                  전체 초기화
+                </Button>
+              </Popconfirm>
+            }
           >
             <List
               dataSource={selectedGrantRecords}
@@ -514,7 +561,20 @@ export function VacationTabContent() {
                 const policy = g.rule_id ? policyById.get(g.rule_id) : undefined
                 const sourceLabel = policy?.label ?? (g.rule_id ? '알 수 없는 규칙' : '수동 조정')
                 return (
-                  <List.Item>
+                  <List.Item
+                    actions={[
+                      <Popconfirm
+                        key="delete"
+                        title="휴가 부여 기록을 삭제할까요?"
+                        description={`삭제하면 잔여 휴가에서 ${g.amount}일이 차감됩니다.`}
+                        okText="삭제"
+                        cancelText="취소"
+                        onConfirm={() => void onGrantDelete(g)}
+                      >
+                        <Button danger type="text" icon={<DeleteOutlined />} size="small" loading={grantDeleteLoading} />
+                      </Popconfirm>,
+                    ]}
+                  >
                     <List.Item.Meta
                       title={
                         <Space size={6} wrap>
@@ -524,9 +584,6 @@ export function VacationTabContent() {
                           </Tag>
                           <Tag color={g.rule_id ? 'blue' : 'default'} style={{ fontSize: 11 }}>
                             {sourceLabel}
-                          </Tag>
-                          <Tag color="default" style={{ fontSize: 11 }}>
-                            {policyTypeLabel(policy)}
                           </Tag>
                         </Space>
                       }
