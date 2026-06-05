@@ -31,14 +31,17 @@ export async function loadAllRestockHistory(): Promise<RestockRecord[]> {
 }
 
 // 보충 이력 추가 (현재 로그인한 사용자의 이름을 기록, 이름 없으면 이메일 fallback)
-export async function addRestockRecord(prepId: string, date: string): Promise<RestockRecord> {
+export async function addRestockRecord(prepId: string, date: string, memo?: string): Promise<RestockRecord> {
     const { data: { user } } = await supabase.auth.getUser()
     // user_metadata.name (회원가입 시 입력한 이름)을 우선 사용
     const displayName = (user?.user_metadata?.name as string) || user?.email || '알 수 없음'
 
+    const row: Record<string, unknown> = { prep_id: prepId, user_email: displayName, restock_date: date }
+    if (memo) row.memo = memo
+
     const { data, error } = await supabase
         .from('restock_history')
-        .insert({ prep_id: prepId, user_email: displayName, restock_date: date })
+        .insert(row)
         .select()
         .single()
 

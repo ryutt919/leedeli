@@ -98,7 +98,7 @@ export function IngredientsPage() {
 
   const openCreate = () => {
     setEditing(null)
-    form.setFieldsValue({ name: '', purchasePrice: 0, purchaseUnit: 1, unitLabel: 'g', category: undefined })
+    form.setFieldsValue({ name: '', purchasePrice: 0, purchaseUnit: 1, unitLabel: 'g', category: undefined, caloriesPer100g: undefined })
     setOpenEdit(true)
   }
 
@@ -111,6 +111,7 @@ export function IngredientsPage() {
       purchaseUnit: it.purchaseUnit,
       unitLabel: it.unitLabel ?? (it.unitType === 'ea' ? '개' : 'g'),
       category: it.category ?? undefined,
+      caloriesPer100g: it.caloriesPer100g ?? undefined,
     })
     setOpenEdit(true)
   }
@@ -123,13 +124,14 @@ export function IngredientsPage() {
       const purchaseUnit = safeNumber(v.purchaseUnit, 1)
       const unitLabel = normalizeUnitLabel(v.unitLabel) || 'g'
       const category: string | undefined = v.category || undefined
+      const caloriesPer100g = v.caloriesPer100g != null && Number.isFinite(Number(v.caloriesPer100g)) ? Number(v.caloriesPer100g) : undefined
       if (!name) return
       if (purchaseUnit <= 0) { message.error('구매단위는 0보다 커야 합니다.'); return }
       const now = new Date().toISOString()
       const unitPrice = round2(purchasePrice / purchaseUnit)
       const next: Ingredient = editing
-        ? { ...editing, name, purchasePrice, purchaseUnit, unitPrice, unitLabel, category, updatedAtISO: now }
-        : { id: newId(), name, purchasePrice, purchaseUnit, unitPrice, unitLabel, category, updatedAtISO: now }
+        ? { ...editing, name, purchasePrice, purchaseUnit, unitPrice, unitLabel, category, caloriesPer100g, updatedAtISO: now }
+        : { id: newId(), name, purchasePrice, purchaseUnit, unitPrice, unitLabel, category, caloriesPer100g, updatedAtISO: now }
       await upsertIngredient(next)
       setOpenEdit(false)
       await loadData()
@@ -410,6 +412,9 @@ export function IngredientsPage() {
               placeholder="카테고리 선택 또는 직접 입력"
               options={allCategories.map((c) => ({ value: c }))}
             />
+          </Form.Item>
+          <Form.Item name="caloriesPer100g" label="칼로리 (kcal/100g, g 단위 재료만)">
+            <InputNumber min={0} placeholder="예) 350" style={{ width: '100%' }} />
           </Form.Item>
         </Form>
       </Modal>

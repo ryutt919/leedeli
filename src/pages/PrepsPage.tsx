@@ -10,6 +10,7 @@ import {
   Button,
   Calendar,
   Card,
+  Checkbox,
   DatePicker,
   Flex,
   Form,
@@ -20,6 +21,7 @@ import {
   Popconfirm,
   Select,
   Space,
+  Tabs,
   Tag,
   Typography,
   Upload,
@@ -30,16 +32,59 @@ import { useEffect, useMemo, useState } from 'react'
 import { CsvPreviewModal } from '../components/CsvPreviewModal'
 import type { CsvPreviewRow } from '../components/CsvPreviewModal'
 import type { Ingredient, Prep, PrepIngredientItem, RestockRecord } from '../domain/types'
+import { calcPrepCalories } from '../utils/calorieCalc'
 import { MobileShell } from '../layouts/MobileShell'
 import { loadIngredients, saveIngredients } from '../storage/ingredientsRepo'
 import { clearPreps, deletePrep, loadPreps, savePreps, upsertPrep } from '../storage/prepsRepo'
-import { addRestockRecord, deleteRestockRecord, loadRestockByDate } from '../storage/restockRepo'
+import { addRestockRecord, loadRestockHistory } from '../storage/restockRepo'
 import { downloadText } from '../utils/download'
 import { newId } from '../utils/id'
 import { round2, safeNumber } from '../utils/money'
 import { normalizeUnitLabel, parseAmountAndUnit } from '../utils/unit'
 import { downloadXlsx } from '../utils/xlsxExport'
 import { parseXlsxFileToAOA } from '../utils/xlsxImport'
+
+type PrepTargetEditProps = {
+  prep: Prep
+  onSave: (qty: number | undefined, unit: string | undefined) => Promise<void>
+}
+
+function PrepTargetEdit({ prep, onSave }: PrepTargetEditProps) {
+  const [qty, setQty] = useState<number | undefined>(prep.targetQuantity)
+  const [unit, setUnit] = useState<string>(prep.targetUnit ?? 'g')
+
+  useEffect(() => {
+    setQty(prep.targetQuantity)
+    setUnit(prep.targetUnit ?? 'g')
+  }, [prep.targetQuantity, prep.targetUnit])
+
+  return (
+    <Space size={4} onClick={(e) => e.stopPropagation()}>
+      <Typography.Text type="secondary" style={{ fontSize: 12 }}>목표</Typography.Text>
+      <InputNumber
+        size="small"
+        min={0}
+        placeholder="-"
+        value={qty}
+        style={{ width: 72 }}
+        onChange={(v) => setQty(v ?? undefined)}
+        onBlur={() => void onSave(qty, unit)}
+      />
+      <Select
+        size="small"
+        value={unit}
+        style={{ width: 64 }}
+        onChange={(v) => { setUnit(v); void onSave(qty, v) }}
+        options={[
+          { value: 'g', label: 'g' },
+          { value: '개', label: '개' },
+          { value: '장', label: '장' },
+          { value: 'ml', label: 'ml' },
+        ]}
+      />
+    </Space>
+  )
+}
 
 export function PrepsPage() {
   const [tick, setTick] = useState(0)
@@ -81,14 +126,28 @@ export function PrepsPage() {
   const [csvOpen, setCsvOpen] = useState(false)
   const [csvRows, setCsvRows] = useState<CsvPreviewRow<{ prep: Prep; changedIngredients: Ingredient[] }>[]>([])
 
-  const [dateHistoryOpen, setDateHistoryOpen] = useState(false)
-  const [selectedDate, setSelectedDate] = useState<string | null>(null)
-  // Supabase에서 가져온 보충 이력 레코드 (선택된 날짜)
-  const [dateRecords, setDateRecords] = useState<RestockRecord[]>([])
+  const [editActiveTab, setEditActiveTab] = useState<'history' | 'form'>('history')
+  const [editHistoryRecords, setEditHistoryRecords] = useState<RestockRecord[]>([])
+  const [editHistoryLoading, setEditHistoryLoading] = useState(false)
+
+  const [multiSelectOpen, setMultiSelectOpen] = useState(false)
+  const [multiSelectDate, setMultiSelectDate] = useState<string | null>(null)
+  const [multiSelectIds, setMultiSelectIds] = useState<Set<string>>(new Set())
+  const [multiSelectSubmitting, setMultiSelectSubmitting] = useState(false)
 
   const refresh = () => setTick((x) => x + 1)
 
   const ingredientById = useMemo(() => new Map(ingredients.map((x) => [x.id, x])), [ingredients])
+
+  const prepCaloriesMap = useMemo(() => {
+    const m = new Map<string, number>()
+    for (const p of preps) {
+      const kcal = calcPrepCalories(p, ingredientById)
+      if (kcal > 0) m.set(p.id, kcal)
+    }
+    return m
+  }, [preps, ingredientById])
+
   const unitLabelOf = (ingredientId: string) => {
     const ing = ingredientById.get(ingredientId)
     return ing?.unitLabel ?? (ing?.unitType === 'ea' ? '개' : 'g')
@@ -139,17 +198,31 @@ export function PrepsPage() {
 
   const openCreate = () => {
     setEditing(null)
-    form.setFieldsValue({ name: '', category: undefined, yieldAmount: undefined, yieldUnit: undefined, items: [], restockDatesISO: [] })
+    setEditActiveTab('form')
+    setEditHistoryRecords([])
+    form.setFieldsValue({ name: '', category: undefined, yieldAmount: undefined, yieldUnit: undefined, targetQuantity: undefined, targetUnit: undefined, items: [], restockDatesISO: [] })
     setOpenEdit(true)
   }
 
   const openUpdate = (p: Prep) => {
     setEditing(p)
+    setEditActiveTab('history')
+    setEditHistoryRecords([])
+    setEditHistoryLoading(true)
+    loadRestockHistory(p.id).then((records) => {
+      setEditHistoryRecords(records)
+      setEditHistoryLoading(false)
+    }).catch((e) => {
+      console.error('보충 이력 로드 실패:', e)
+      setEditHistoryLoading(false)
+    })
     form.setFieldsValue({
       name: p.name,
       category: p.category ?? undefined,
       yieldAmount: p.yieldAmount ?? undefined,
       yieldUnit: p.yieldUnit ?? undefined,
+      targetQuantity: p.targetQuantity ?? undefined,
+      targetUnit: p.targetUnit ?? undefined,
       items: p.items.map((x) => ({ ...x })),
       restockDatesISO: p.restockDatesISO,
     })
@@ -172,20 +245,6 @@ export function PrepsPage() {
     message.success(`${p.name}: 오늘(${today}) 보충 이력을 추가했습니다.`)
   }
 
-  const removeDateRestockFor = async (p: Prep, dateStr: string) => {
-    const nextDates = p.restockDatesISO.filter((d) => d !== dateStr)
-    const now = new Date().toISOString()
-    const next: Prep = { ...p, restockDatesISO: nextDates, updatedAtISO: now }
-    await upsertPrep(next)
-    // Supabase에서도 해당 보충 이력 삭제
-    try {
-      await deleteRestockRecord(p.id, dateStr)
-    } catch (e) {
-      console.error('Supabase 보충 이력 삭제 실패:', e)
-    }
-    refresh()
-    message.success(`${p.name}: ${dateStr} 보충 이력을 삭제했습니다.`)
-  }
 
 
   const onSave = async () => {
@@ -195,6 +254,8 @@ export function PrepsPage() {
       const category = v.category ? String(v.category).trim() : undefined
       const yieldAmount = v.yieldAmount != null && Number.isFinite(Number(v.yieldAmount)) ? Number(v.yieldAmount) : undefined
       const yieldUnit = v.yieldUnit ? String(v.yieldUnit).trim() : undefined
+      const targetQuantity = v.targetQuantity != null && Number.isFinite(Number(v.targetQuantity)) ? Number(v.targetQuantity) : undefined
+      const targetUnit = v.targetUnit ? String(v.targetUnit).trim() : undefined
       const items = (v.items ?? []) as PrepIngredientItem[]
       const restockDatesISO = (v.restockDatesISO ?? []) as string[]
       const now = new Date().toISOString()
@@ -208,8 +269,8 @@ export function PrepsPage() {
         }))
 
       const next: Prep = editing
-        ? { ...editing, name, category, yieldAmount, yieldUnit, items: normalizedItems, restockDatesISO, updatedAtISO: now }
-        : { id: newId(), name, category, yieldAmount, yieldUnit, items: normalizedItems, restockDatesISO, updatedAtISO: now }
+        ? { ...editing, name, category, yieldAmount, yieldUnit, targetQuantity, targetUnit, items: normalizedItems, restockDatesISO, updatedAtISO: now }
+        : { id: newId(), name, category, yieldAmount, yieldUnit, targetQuantity, targetUnit, items: normalizedItems, restockDatesISO, updatedAtISO: now }
 
       await upsertPrep(next)
       setOpenEdit(false)
@@ -534,23 +595,14 @@ export function PrepsPage() {
         </Typography.Title>
         <Calendar
           fullscreen={false}
-          onSelect={async (date) => {
+          onSelect={(date) => {
             const dateStr = date.format('YYYY-MM-DD')
-            const prepsOnDate = preps.filter((p) =>
-              p.restockDatesISO.includes(dateStr)
+            const alreadyRestocked = new Set(
+              preps.filter((p) => p.restockDatesISO.includes(dateStr)).map((p) => p.id)
             )
-            if (prepsOnDate.length > 0) {
-              setSelectedDate(dateStr)
-              // Supabase에서 해당 날짜의 보충 이력(누가 했는지) 로드
-              try {
-                const records = await loadRestockByDate(dateStr)
-                setDateRecords(records)
-              } catch (e) {
-                console.error('보충 이력 로드 실패:', e)
-                setDateRecords([])
-              }
-              setDateHistoryOpen(true)
-            }
+            setMultiSelectDate(dateStr)
+            setMultiSelectIds(alreadyRestocked)
+            setMultiSelectOpen(true)
           }}
           dateCellRender={(date) => {
             const dateStr = date.format('YYYY-MM-DD')
@@ -642,7 +694,17 @@ export function PrepsPage() {
                         {p.yieldAmount && p.yieldUnit
                           ? ` · ${p.yieldUnit}당 ${Math.round(cost / p.yieldAmount)}원`
                           : ''}
+                        {prepCaloriesMap.get(p.id) != null
+                          ? ` · ${prepCaloriesMap.get(p.id)}kcal`
+                          : ''}
                       </Typography.Text>
+                      <PrepTargetEdit
+                        prep={p}
+                        onSave={async (qty, unit) => {
+                          await upsertPrep({ ...p, targetQuantity: qty, targetUnit: unit, updatedAtISO: new Date().toISOString() })
+                          refresh()
+                        }}
+                      />
                     </Space>
                   }
                 />
@@ -685,164 +747,178 @@ export function PrepsPage() {
           </Button>,
         ]}
       >
-        <Form form={form} layout="vertical" initialValues={{ items: [], restockDatesISO: [] }}>
-          <Form.Item shouldUpdate noStyle>
-            {() => {
-              const items = (form.getFieldValue('items') ?? []) as PrepIngredientItem[]
-              const normalized = items.filter((x) => x?.ingredientId)
-              const cost = Math.round(calcCostFromFormItems(items))
-              const ingredientSummary = normalized
-                .map((it) => `${it.ingredientName} ${it.amount}${unitLabelOf(it.ingredientId)}`)
-                .join(', ') || '재료 없음'
-              return (
-                <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>
-                  재료: {ingredientSummary} · 총비용 {cost}원
-                </Typography.Text>
-              )
-            }}
-          </Form.Item>
-          <Form.Item name="name" label="이름" rules={[{ required: true, message: '이름을 입력하세요' }]}>
-            <Input placeholder="예) 토마토 소스" />
-          </Form.Item>
-
-          <Form.Item name="category" label="카테고리">
-            <AutoComplete
-              allowClear
-              placeholder="카테고리 선택 또는 직접 입력"
-              options={allCategories.map((c) => ({ value: c }))}
-            />
-          </Form.Item>
-
-          <Flex gap={12} style={{ marginBottom: 0 }}>
-            <Form.Item name="yieldAmount" label="총 생산량" style={{ flex: 1 }}>
-              <InputNumber min={0} placeholder="예) 500" style={{ width: '100%' }} />
-            </Form.Item>
-            <Form.Item name="yieldUnit" label="생산 단위" style={{ width: 120 }}>
-              <Select
-                allowClear
-                placeholder="단위"
-                options={[
-                  { value: 'g', label: 'g' },
-                  { value: '개', label: '개' },
-                  { value: '장', label: '장' },
-                  { value: 'ml', label: 'ml' },
-                ]}
-              />
-            </Form.Item>
-          </Flex>
-
-          <Form.List name="items">
-            {(fields, { add, remove }) => (
-              <Card size="small" title="재료 목록" extra={<Button onClick={() => add({ amount: 1 })}>추가</Button>}>
-                <Space direction="vertical" style={{ width: '100%' }} size={10}>
-                  {fields.map((f) => (
-                    <Flex key={f.key} gap={8} align="start">
-                      <Form.Item
-                        {...f}
-                        name={[f.name, 'ingredientId']}
-                        label="재료"
-                        rules={[{ required: true, message: '재료 선택' }]}
-                        style={{ flex: 1, marginBottom: 0 }}
-                      >
-                        <Select
-                          showSearch
-                          placeholder="재료 선택"
-                          optionFilterProp="label"
-                          options={ingredients.map((i) => ({ value: i.id, label: i.name }))}
-                          onChange={(id) => {
-                            const ing = ingredientById.get(id)
-                            form.setFieldValue(['items', f.name, 'ingredientName'], ing?.name ?? '')
-                          }}
-                        />
-                      </Form.Item>
-                      <Form.Item label="투입량" style={{ width: 180, marginBottom: 0 }}>
-                        <Space.Compact style={{ width: '100%' }}>
-                          <Form.Item {...f} name={[f.name, 'amount']} rules={[{ required: true, message: '투입량' }]} noStyle>
-                            <InputNumber min={0} style={{ width: 120 }} />
-                          </Form.Item>
-                          <Form.Item
-                            shouldUpdate={(prev, cur) =>
-                              (prev.items?.[f.name]?.ingredientId ?? '') !== (cur.items?.[f.name]?.ingredientId ?? '')
-                            }
-                            noStyle
-                          >
-                            {() => {
-                              const id = String(form.getFieldValue(['items', f.name, 'ingredientId']) ?? '')
-                              return (
-                                <Button disabled style={{ width: 60 }}>
-                                  {id ? unitLabelOf(id) : '-'}
-                                </Button>
-                              )
-                            }}
-                          </Form.Item>
-                        </Space.Compact>
-                      </Form.Item>
-                      <Button danger type="text" onClick={() => remove(f.name)} aria-label="삭제">
-                        삭제
-                      </Button>
-
-                      <Form.Item {...f} name={[f.name, 'ingredientName']} hidden>
-                        <Input />
-                      </Form.Item>
-                    </Flex>
-                  ))}
-                </Space>
-              </Card>
-            )}
-          </Form.List>
-
-          <Form.Item label="보충 이력">
-            <Space wrap>
-              <DatePicker
-                value={restockPicker}
-                inputReadOnly
-                onChange={(d) => {
-                  if (!d) return
-                  const cur = (form.getFieldValue('restockDatesISO') ?? []) as string[]
-                  const iso = d.format('YYYY-MM-DD')
-                  form.setFieldValue('restockDatesISO', [...new Set([iso, ...cur])].sort())
-                  setRestockPicker(null) // 선택 즉시 목록 반영 + 입력 초기화
-                }}
-              />
-            </Space>
-            <Form.Item name="restockDatesISO" noStyle>
-              <Input type="hidden" />
-            </Form.Item>
-            <Form.Item shouldUpdate noStyle>
-              {() => {
-                const dates = ((form.getFieldValue('restockDatesISO') ?? []) as string[])
-                  .filter((x) => dayjs(x, 'YYYY-MM-DD', true).isValid())
-                  .sort()
-                if (!dates.length) {
-                  return (
-                    <Typography.Text type="secondary" style={{ display: 'block', marginTop: 8 }}>
-                      보충 이력이 없습니다.
-                    </Typography.Text>
-                  )
-                }
-                return (
-                  <div style={{ marginTop: 8 }}>
-                    <Space wrap size={4}>
-                      {dates.map((d) => (
-                        <Tag
-                          key={d}
-                          closable
-                          onClose={(e) => {
-                            e.preventDefault()
-                            const next = dates.filter((x) => x !== d)
-                            form.setFieldValue('restockDatesISO', next)
-                          }}
-                        >
-                          {d}
-                        </Tag>
-                      ))}
+        <Tabs
+          activeKey={editActiveTab}
+          onChange={(k) => setEditActiveTab(k as 'history' | 'form')}
+          items={[
+            {
+              key: 'history',
+              label: '보충 이력',
+              children: editHistoryLoading ? (
+                <Typography.Text type="secondary">로딩 중...</Typography.Text>
+              ) : editHistoryRecords.length === 0 ? (
+                <Typography.Text type="secondary">보충 이력이 없습니다.</Typography.Text>
+              ) : (
+                <List
+                  size="small"
+                  dataSource={editHistoryRecords}
+                  renderItem={(r) => (
+                    <List.Item>
+                      <Space direction="vertical" size={0}>
+                        <Typography.Text>{r.restock_date} — {r.user_email}</Typography.Text>
+                        {r.memo && (
+                          <Typography.Text type="secondary" style={{ fontSize: 12 }}>{r.memo}</Typography.Text>
+                        )}
+                      </Space>
+                    </List.Item>
+                  )}
+                />
+              ),
+            },
+            {
+              key: 'form',
+              label: '기본 정보',
+              children: (
+                <Form form={form} layout="vertical" initialValues={{ items: [], restockDatesISO: [] }}>
+                  <Form.Item shouldUpdate noStyle>
+                    {() => {
+                      const items = (form.getFieldValue('items') ?? []) as PrepIngredientItem[]
+                      const normalized = items.filter((x) => x?.ingredientId)
+                      const cost = Math.round(calcCostFromFormItems(items))
+                      const ingredientSummary = normalized
+                        .map((it) => `${it.ingredientName} ${it.amount}${unitLabelOf(it.ingredientId)}`)
+                        .join(', ') || '재료 없음'
+                      return (
+                        <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>
+                          재료: {ingredientSummary} · 총비용 {cost}원
+                        </Typography.Text>
+                      )
+                    }}
+                  </Form.Item>
+                  <Form.Item name="name" label="이름" rules={[{ required: true, message: '이름을 입력하세요' }]}>
+                    <Input placeholder="예) 토마토 소스" />
+                  </Form.Item>
+                  <Form.Item name="category" label="카테고리">
+                    <AutoComplete
+                      allowClear
+                      placeholder="카테고리 선택 또는 직접 입력"
+                      options={allCategories.map((c) => ({ value: c }))}
+                    />
+                  </Form.Item>
+                  <Flex gap={12} style={{ marginBottom: 0 }}>
+                    <Form.Item name="yieldAmount" label="총 생산량" style={{ flex: 1 }}>
+                      <InputNumber min={0} placeholder="예) 500" style={{ width: '100%' }} />
+                    </Form.Item>
+                    <Form.Item name="yieldUnit" label="생산 단위" style={{ width: 120 }}>
+                      <Select allowClear placeholder="단위" options={[
+                        { value: 'g', label: 'g' }, { value: '개', label: '개' },
+                        { value: '장', label: '장' }, { value: 'ml', label: 'ml' },
+                      ]} />
+                    </Form.Item>
+                  </Flex>
+                  <Flex gap={12} style={{ marginBottom: 0 }}>
+                    <Form.Item name="targetQuantity" label="목표 총량" style={{ flex: 1 }}>
+                      <InputNumber min={0} placeholder="예) 1000" style={{ width: '100%' }} />
+                    </Form.Item>
+                    <Form.Item name="targetUnit" label="목표 단위" style={{ width: 120 }}>
+                      <Select allowClear placeholder="단위" options={[
+                        { value: 'g', label: 'g' }, { value: '개', label: '개' },
+                        { value: '장', label: '장' }, { value: 'ml', label: 'ml' },
+                      ]} />
+                    </Form.Item>
+                  </Flex>
+                  <Form.List name="items">
+                    {(fields, { add, remove }) => (
+                      <Card size="small" title="재료 목록" extra={<Button onClick={() => add({ amount: 1 })}>추가</Button>}>
+                        <Space direction="vertical" style={{ width: '100%' }} size={10}>
+                          {fields.map((f) => (
+                            <Flex key={f.key} gap={8} align="start">
+                              <Form.Item
+                                {...f}
+                                name={[f.name, 'ingredientId']}
+                                label="재료"
+                                rules={[{ required: true, message: '재료 선택' }]}
+                                style={{ flex: 1, marginBottom: 0 }}
+                              >
+                                <Select
+                                  showSearch
+                                  placeholder="재료 선택"
+                                  optionFilterProp="label"
+                                  options={ingredients.map((i) => ({ value: i.id, label: i.name }))}
+                                  onChange={(id) => {
+                                    const ing = ingredientById.get(id)
+                                    form.setFieldValue(['items', f.name, 'ingredientName'], ing?.name ?? '')
+                                  }}
+                                />
+                              </Form.Item>
+                              <Form.Item label="투입량" style={{ width: 180, marginBottom: 0 }}>
+                                <Space.Compact style={{ width: '100%' }}>
+                                  <Form.Item {...f} name={[f.name, 'amount']} rules={[{ required: true, message: '투입량' }]} noStyle>
+                                    <InputNumber min={0} style={{ width: 120 }} />
+                                  </Form.Item>
+                                  <Form.Item
+                                    shouldUpdate={(prev, cur) =>
+                                      (prev.items?.[f.name]?.ingredientId ?? '') !== (cur.items?.[f.name]?.ingredientId ?? '')
+                                    }
+                                    noStyle
+                                  >
+                                    {() => {
+                                      const id = String(form.getFieldValue(['items', f.name, 'ingredientId']) ?? '')
+                                      return <Button disabled style={{ width: 60 }}>{id ? unitLabelOf(id) : '-'}</Button>
+                                    }}
+                                  </Form.Item>
+                                </Space.Compact>
+                              </Form.Item>
+                              <Button danger type="text" onClick={() => remove(f.name)} aria-label="삭제">삭제</Button>
+                              <Form.Item {...f} name={[f.name, 'ingredientName']} hidden><Input /></Form.Item>
+                            </Flex>
+                          ))}
+                        </Space>
+                      </Card>
+                    )}
+                  </Form.List>
+                  <Form.Item label="보충 날짜">
+                    <Space wrap>
+                      <DatePicker
+                        value={restockPicker}
+                        inputReadOnly
+                        onChange={(d) => {
+                          if (!d) return
+                          const cur = (form.getFieldValue('restockDatesISO') ?? []) as string[]
+                          const iso = d.format('YYYY-MM-DD')
+                          form.setFieldValue('restockDatesISO', [...new Set([iso, ...cur])].sort())
+                          setRestockPicker(null)
+                        }}
+                      />
                     </Space>
-                  </div>
-                )
-              }}
-            </Form.Item>
-          </Form.Item>
-        </Form>
+                    <Form.Item name="restockDatesISO" noStyle><Input type="hidden" /></Form.Item>
+                    <Form.Item shouldUpdate noStyle>
+                      {() => {
+                        const dates = ((form.getFieldValue('restockDatesISO') ?? []) as string[])
+                          .filter((x) => dayjs(x, 'YYYY-MM-DD', true).isValid()).sort()
+                        if (!dates.length) {
+                          return <Typography.Text type="secondary" style={{ display: 'block', marginTop: 8 }}>날짜 없음</Typography.Text>
+                        }
+                        return (
+                          <div style={{ marginTop: 8 }}>
+                            <Space wrap size={4}>
+                              {dates.map((d) => (
+                                <Tag key={d} closable onClose={(e) => {
+                                  e.preventDefault()
+                                  form.setFieldValue('restockDatesISO', dates.filter((x) => x !== d))
+                                }}>{d}</Tag>
+                              ))}
+                            </Space>
+                          </div>
+                        )
+                      }}
+                    </Form.Item>
+                  </Form.Item>
+                </Form>
+              ),
+            },
+          ]}
+        />
       </Modal>
 
       <CsvPreviewModal
@@ -860,78 +936,64 @@ export function PrepsPage() {
       />
 
       <Modal
-        open={dateHistoryOpen}
-        title={`${selectedDate} 보충 이력`}
-        onCancel={() => setDateHistoryOpen(false)}
-        footer={[
-          <Button key="close" onClick={() => setDateHistoryOpen(false)}>
-            닫기
-          </Button>,
-        ]}
+        open={multiSelectOpen}
+        title={`${multiSelectDate ?? ''} 보충 프렙 선택`}
+        onCancel={() => setMultiSelectOpen(false)}
+        okText="보충 추가"
+        okButtonProps={{ loading: multiSelectSubmitting }}
+        onOk={async () => {
+          if (!multiSelectDate) return
+          const date = multiSelectDate
+          const alreadyRestocked = new Set(
+            preps.filter((p) => p.restockDatesISO.includes(date)).map((p) => p.id)
+          )
+          const toAdd = [...multiSelectIds].filter((id) => !alreadyRestocked.has(id))
+          if (toAdd.length === 0) {
+            setMultiSelectOpen(false)
+            return
+          }
+          setMultiSelectSubmitting(true)
+          for (const id of toAdd) {
+            const prep = preps.find((p) => p.id === id)
+            if (!prep) continue
+            const nextDates = [...new Set([...(prep.restockDatesISO ?? []), date])].sort()
+            await upsertPrep({ ...prep, restockDatesISO: nextDates, updatedAtISO: new Date().toISOString() })
+            try { await addRestockRecord(prep.id, date) } catch (e) { console.error(e) }
+          }
+          setMultiSelectSubmitting(false)
+          setMultiSelectOpen(false)
+          refresh()
+          message.success(`${toAdd.length}개 프렙 보충 이력을 추가했습니다.`)
+        }}
       >
-        {selectedDate && (
-          <List
-            dataSource={preps.filter((p) => p.restockDatesISO.includes(selectedDate))}
-            locale={{ emptyText: '해당 날짜에 보충된 프렙이 없습니다.' }}
-            renderItem={(p) => {
-              const cost = Math.round(calcPrepCost(p))
+        <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>
+          보충할 프렙을 선택하세요. 이미 보충된 항목은 표시됩니다.
+        </Typography.Text>
+        <div style={{ maxHeight: 320, overflowY: 'auto' }}>
+          <Space direction="vertical" style={{ width: '100%' }}>
+            {preps.map((p) => {
+              const already = p.restockDatesISO.includes(multiSelectDate ?? '')
               return (
-                <List.Item
-                  actions={[
-                    <Button
-                      key="edit"
-                      type="link"
-                      onClick={() => {
-                        setDateHistoryOpen(false)
-                        openUpdate(p)
-                      }}
-                    >
-                      수정
-                    </Button>,
-                    <Popconfirm
-                      key="delete"
-                      title={`${p.name}의 ${selectedDate} 보충 이력을 삭제할까요?`}
-                      okText="삭제"
-                      cancelText="취소"
-                      onConfirm={() => {
-                        removeDateRestockFor(p, selectedDate)
-                        const remainingPreps = preps.filter((prep) =>
-                          prep.id !== p.id && prep.restockDatesISO.includes(selectedDate)
-                        )
-                        if (remainingPreps.length === 0) {
-                          setDateHistoryOpen(false)
-                        }
-                      }}
-                    >
-                      <Button danger type="link">
-                        삭제
-                      </Button>
-                    </Popconfirm>,
-                  ]}
+                <Checkbox
+                  key={p.id}
+                  checked={multiSelectIds.has(p.id)}
+                  disabled={already}
+                  onChange={(e) => {
+                    setMultiSelectIds((prev) => {
+                      const next = new Set(prev)
+                      if (e.target.checked) next.add(p.id)
+                      else next.delete(p.id)
+                      return next
+                    })
+                  }}
                 >
-                  <List.Item.Meta
-                    title={p.name}
-                    description={
-                      <Space direction="vertical" size={2}>
-                        <Typography.Text type="secondary">
-                          총 비용 {cost}원
-                        </Typography.Text>
-                        {/* Supabase에서 가져온 보충자 이름 표시 */}
-                        {dateRecords
-                          .filter((r) => r.prep_id === p.id)
-                          .map((r) => (
-                            <Tag key={r.id} color="green" style={{ fontSize: 11 }}>
-                              {r.user_email} 보충
-                            </Tag>
-                          ))}
-                      </Space>
-                    }
-                  />
-                </List.Item>
+                  {p.name}
+                  {already && <Tag color="green" style={{ marginLeft: 8, fontSize: 11 }}>이미 보충됨</Tag>}
+                </Checkbox>
               )
-            }}
-          />
-        )}
+            })}
+          </Space>
+        </div>
       </Modal>
     </MobileShell>
   )

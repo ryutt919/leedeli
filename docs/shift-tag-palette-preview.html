@@ -1,0 +1,448 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Shift Tag Palette Preview</title>
+  <style>
+    :root {
+      --ink: #1b1b1b;
+      --muted: #6b6b6b;
+      --bg: #f5f4f1;
+      --card: #ffffff;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+      padding: 28px 20px 80px;
+    }
+    h1 { font-size: 18px; font-weight: 700; margin-bottom: 2px; }
+    .page-sub { font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+
+    /* ── filter bar ── */
+    .filter-bar {
+      display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 28px;
+    }
+    .filter-btn {
+      font-size: 11px; font-weight: 600; padding: 4px 12px;
+      border-radius: 20px; border: 1.5px solid rgba(0,0,0,0.15);
+      background: white; color: #333; cursor: pointer;
+      transition: all .15s;
+    }
+    .filter-btn.active, .filter-btn:hover {
+      background: #1b1b1b; color: #fff; border-color: #1b1b1b;
+    }
+
+    /* ── alpha selector ── */
+    .alpha-bar {
+      display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 20px;
+      align-items: center;
+    }
+    .alpha-label { font-size: 11px; font-weight: 600; color: var(--muted); margin-right: 4px; }
+    .alpha-btn {
+      font-size: 11px; padding: 3px 10px; border-radius: 16px;
+      border: 1.5px solid rgba(0,0,0,0.15); background: white;
+      color: #333; cursor: pointer; transition: all .15s;
+    }
+    .alpha-btn.active, .alpha-btn:hover {
+      background: #1677ff; color: #fff; border-color: #1677ff;
+    }
+
+    /* ── sections ── */
+    .section { margin-bottom: 36px; }
+    .section-head {
+      display: flex; align-items: center; gap: 8px; margin-bottom: 4px;
+    }
+    .section-title { font-size: 14px; font-weight: 700; }
+    .section-sub { font-size: 11px; color: var(--muted); margin-bottom: 12px; }
+
+    .badge {
+      font-size: 9px; font-weight: 700; padding: 2px 7px;
+      border-radius: 20px; color: #fff; letter-spacing: .04em;
+    }
+
+    /* ── card grid ── */
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+      gap: 12px;
+    }
+
+    /* ── card ── */
+    .card {
+      background: var(--card);
+      border: 1px solid rgba(0,0,0,0.08);
+      border-radius: 12px;
+      padding: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      display: none; /* shown by JS */
+    }
+    .card.visible { display: block; }
+
+    .card-alpha-label {
+      font-size: 10px; font-weight: 600; color: var(--muted);
+      letter-spacing: .06em; text-transform: uppercase; margin-bottom: 8px;
+    }
+
+    /* ── color chips ── */
+    .chips { display: flex; gap: 4px; margin-bottom: 8px; }
+    .chip {
+      width: 16px; height: 16px; border-radius: 4px;
+      border: 1px solid rgba(0,0,0,0.1);
+    }
+
+    /* ── legend ── */
+    .legend { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 10px; }
+    .stag {
+      display: inline-block; padding: 1px 6px; border-radius: 5px;
+      font-size: 11px; font-weight: 500; border: 1px solid transparent;
+      white-space: nowrap;
+    }
+
+    /* ── mini calendar ── */
+    .mini-cal {
+      display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px;
+    }
+    .cal-head {
+      text-align: center; font-size: 9px; font-weight: 700;
+      color: var(--muted); padding-bottom: 3px;
+    }
+    .cal-head.sun { color: #cf1322; }
+    .cal-head.sat { color: #096dd9; }
+    .cal-cell {
+      border: 1px solid rgba(0,0,0,0.06); border-radius: 5px;
+      padding: 3px 2px 4px; min-height: 52px;
+      background: rgba(255,255,255,0.9);
+    }
+    .cal-cell.empty { background: rgba(0,0,0,0.03); border-color: transparent; }
+    .cal-cell.off-cell { background: rgba(0,0,0,0.025); }
+    .cal-day {
+      font-size: 9px; font-weight: 700; color: var(--muted); margin-bottom: 2px;
+    }
+    .cal-day.sun { color: #cf1322; }
+    .cal-day.sat { color: #096dd9; }
+    .cal-stag {
+      display: block; padding: 1px 3px; border-radius: 3px;
+      font-size: 9px; font-weight: 500; border: 1px solid transparent;
+      margin-bottom: 1px; overflow: hidden; white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+    .off-tag {
+      display: block; padding: 1px 3px; border-radius: 3px;
+      font-size: 9px; font-weight: 500;
+      background: rgba(0,0,0,0.06); color: rgba(17,17,17,0.4);
+      border: 1px solid rgba(0,0,0,0.1);
+    }
+  </style>
+</head>
+<body>
+  <h1>근무유형 태그 팔레트 비교</h1>
+  <p class="page-sub">팔레트·알파 조합을 고른 뒤 코드에 적용합니다. 마음에 드는 조합을 알려주세요.</p>
+
+  <!-- alpha selector -->
+  <div class="alpha-bar">
+    <span class="alpha-label">배경 농도</span>
+    <button class="alpha-btn" data-alpha="0">① 극연 0.08</button>
+    <button class="alpha-btn" data-alpha="1">② 연 0.12</button>
+    <button class="alpha-btn active" data-alpha="2">③ 보통 0.18</button>
+    <button class="alpha-btn" data-alpha="3">④ 중간 0.26</button>
+    <button class="alpha-btn" data-alpha="4">⑤ 진 0.36</button>
+  </div>
+
+  <!-- category filter -->
+  <div class="filter-bar">
+    <button class="filter-btn active" data-cat="all">전체</button>
+    <button class="filter-btn" data-cat="cool">쿨톤</button>
+    <button class="filter-btn" data-cat="warm">웜톤</button>
+    <button class="filter-btn" data-cat="muted">무채색</button>
+    <button class="filter-btn" data-cat="vivid">비비드</button>
+    <button class="filter-btn" data-cat="pastel">파스텔</button>
+  </div>
+
+  <div id="root"></div>
+
+  <script>
+  /* ─────────────── 데이터 ─────────────── */
+
+  const SHIFT_NAMES = ['오픈', '미드', '마감', '추가']
+  const OFF_DOW = [3] // 수 휴무
+
+  const DEMO = {
+    1: [{ n: '진호', s: 0 }, { n: '민아', s: 1 }],
+    2: [{ n: '소라', s: 2 }, { n: '알렉스', s: 3 }],
+    3: [{ n: '진호', s: 0 }],
+    4: [], // 수 = 휴무
+    5: [{ n: '민아', s: 1 }, { n: '소라', s: 2 }],
+    6: [{ n: '알렉스', s: 3 }, { n: '진호', s: 0 }],
+    7: [{ n: '민아', s: 1 }],
+  }
+
+  /* alpha combos: [bgAlpha, borderAlpha, textAlpha] */
+  const ALPHAS = [
+    { label: '① 극연  bg 0.08', bg: 0.08, br: 0.20, tx: 0.72 },
+    { label: '② 연    bg 0.12', bg: 0.12, br: 0.28, tx: 0.76 },
+    { label: '③ 보통  bg 0.18', bg: 0.18, br: 0.36, tx: 0.80 },
+    { label: '④ 중간  bg 0.26', bg: 0.26, br: 0.44, tx: 0.84 },
+    { label: '⑤ 진    bg 0.36', bg: 0.36, br: 0.54, tx: 0.88 },
+  ]
+
+  const PALETTES = [
+    /* ── 쿨톤 ─────────────────────────────── */
+    {
+      id: 'C1', name: '클래식 블루', cat: 'cool', badgeColor: '#2b6cb0',
+      sub: '파랑·세이지·주황·로즈. 깔끔하고 읽기 쉬운 정석 조합.',
+      colors: ['#4a8fd4', '#3fa472', '#e07b3a', '#c9506a'],
+    },
+    {
+      id: 'C2', name: '북유럽 슬레이트', cat: 'cool', badgeColor: '#3d607a',
+      sub: '채도를 한 단계 낮춘 북유럽풍. 눈이 덜 피로함.',
+      colors: ['#5b8dd9', '#4ea07a', '#d87c45', '#b85470'],
+    },
+    {
+      id: 'C3', name: '오션 딥', cat: 'cool', badgeColor: '#1a6e8a',
+      sub: '딥 티일·아쿠아·코랄·바이올렛. 시원하고 선명.',
+      colors: ['#2a8fb5', '#3aab8a', '#e06050', '#7b5cb8'],
+    },
+    {
+      id: 'C4', name: '스카이 민트', cat: 'cool', badgeColor: '#38899e',
+      sub: '밝은 하늘빛·민트·살몬·라벤더. 가볍고 청량.',
+      colors: ['#5da8d1', '#48b89a', '#e88a6a', '#9070c8'],
+    },
+    /* ── 웜톤 ─────────────────────────────── */
+    {
+      id: 'W1', name: '카페 웜', cat: 'warm', badgeColor: '#9a5a2a',
+      sub: '앰버·올리브·코랄·버건디. 카페·베이커리 분위기.',
+      colors: ['#d4833a', '#7a9e4e', '#cc5f5f', '#7060a8'],
+    },
+    {
+      id: 'W2', name: '테라코타', cat: 'warm', badgeColor: '#a8522a',
+      sub: '테라코타·세이지·선플라워·모브. 흙빛 따뜻함.',
+      colors: ['#c96a42', '#6a9e62', '#d4a83a', '#9a6090'],
+    },
+    {
+      id: 'W3', name: '선셋 오렌지', cat: 'warm', badgeColor: '#b85a18',
+      sub: '코랄·토스카나·황금·로즈골드. 활기차고 따뜻.',
+      colors: ['#e07050', '#d4a040', '#cc6080', '#7870b8'],
+    },
+    /* ── 무채색 ───────────────────────────── */
+    {
+      id: 'M1', name: '모노 블루', cat: 'muted', badgeColor: '#4a5e78',
+      sub: '채도를 최소화한 회청·회녹·회갈·회자. 모던하고 정제됨.',
+      colors: ['#5b7fa6', '#5a9670', '#a07540', '#8a5c82'],
+    },
+    {
+      id: 'M2', name: '인디고 스모크', cat: 'muted', badgeColor: '#3c4872',
+      sub: '인디고·틸·더스티 오렌지·페이드 바이올렛. 차분한 스모키.',
+      colors: ['#5060a0', '#3a8878', '#b87040', '#7858a0'],
+    },
+    {
+      id: 'M3', name: '그레이지', cat: 'muted', badgeColor: '#5a5a60',
+      sub: '회색 베이스에 살짝 채도. 배경이 어디서든 무난.',
+      colors: ['#6878a8', '#5a9070', '#a06848', '#886088'],
+    },
+    /* ── 비비드 ───────────────────────────── */
+    {
+      id: 'V1', name: '비비드 4색', cat: 'vivid', badgeColor: '#1a66cc',
+      sub: '채도 높은 원색 계열. 선명하고 구분이 쉬움.',
+      colors: ['#2878e0', '#28a858', '#e06020', '#c83060'],
+    },
+    {
+      id: 'V2', name: '네온 라이트', cat: 'vivid', badgeColor: '#1280b0',
+      sub: '밝고 강렬한 네온 계열. 다크 배경에도 잘 보임.',
+      colors: ['#1a90e0', '#22bc72', '#e88018', '#d840a0'],
+    },
+    /* ── 파스텔 ───────────────────────────── */
+    {
+      id: 'P1', name: '소프트 파스텔', cat: 'pastel', badgeColor: '#6090c8',
+      sub: '연한 파스텔. 배경이 연할수록 더 우아해 보임.',
+      colors: ['#7aaae0', '#6abf90', '#f0a060', '#e07898'],
+    },
+    {
+      id: 'P2', name: '마카롱', cat: 'pastel', badgeColor: '#8060b0',
+      sub: '라벤더·민트·피치·스카이. 달콤하고 가벼운 느낌.',
+      colors: ['#a088d8', '#60c8a0', '#f8a880', '#70b8e0'],
+    },
+    {
+      id: 'P3', name: '말차 로즈', cat: 'pastel', badgeColor: '#5a8060',
+      sub: '말차·모카·로즈·라벤더. 일본풍 부드러운 팔레트.',
+      colors: ['#7aaa88', '#c09870', '#d08090', '#9090c8'],
+    },
+  ]
+
+  /* ─────────────── 헬퍼 ─────────────── */
+  function hexRgb(hex) {
+    const h = hex.replace('#', '')
+    return {
+      r: parseInt(h.slice(0,2),16),
+      g: parseInt(h.slice(2,4),16),
+      b: parseInt(h.slice(4,6),16),
+    }
+  }
+  function rgba(hex, a) {
+    const {r,g,b} = hexRgb(hex)
+    return `rgba(${r},${g},${b},${a})`
+  }
+
+  function makeTag(text, hex, alpha, cls) {
+    const el = document.createElement('span')
+    el.className = cls || 'stag'
+    el.textContent = text
+    el.style.backgroundColor = rgba(hex, alpha.bg)
+    el.style.borderColor = rgba(hex, alpha.br)
+    el.style.color = `rgba(17,17,17,${alpha.tx})`
+    return el
+  }
+
+  function buildCard(palette, alpha) {
+    const card = document.createElement('div')
+    card.className = 'card visible'
+    card.dataset.cat = palette.cat
+    card.dataset.alpha = ALPHAS.indexOf(alpha)
+
+    // alpha label
+    const lbl = document.createElement('div')
+    lbl.className = 'card-alpha-label'
+    lbl.textContent = alpha.label
+    card.appendChild(lbl)
+
+    // color chips
+    const chips = document.createElement('div')
+    chips.className = 'chips'
+    palette.colors.forEach((hex, i) => {
+      const chip = document.createElement('div')
+      chip.className = 'chip'
+      chip.style.background = hex
+      chip.title = SHIFT_NAMES[i] + ': ' + hex
+      chips.appendChild(chip)
+    })
+    card.appendChild(chips)
+
+    // legend
+    const legend = document.createElement('div')
+    legend.className = 'legend'
+    SHIFT_NAMES.forEach((name, i) => {
+      legend.appendChild(makeTag(name, palette.colors[i], alpha))
+    })
+    card.appendChild(legend)
+
+    // mini cal
+    const calWrap = document.createElement('div')
+    calWrap.className = 'mini-cal'
+    const HEADS = ['일','월','화','수','목','금','토']
+    HEADS.forEach((h, i) => {
+      const th = document.createElement('div')
+      th.className = `cal-head${i===0?' sun':i===6?' sat':''}`
+      th.textContent = h
+      calWrap.appendChild(th)
+    })
+    // 1일 = 화요일 (offset 2)
+    for (let i = 0; i < 2; i++) {
+      const e = document.createElement('div')
+      e.className = 'cal-cell empty'
+      calWrap.appendChild(e)
+    }
+    for (let d = 1; d <= 7; d++) {
+      const dow = (2 + d - 1) % 7
+      const isOff = OFF_DOW.includes(dow)
+      const cell = document.createElement('div')
+      cell.className = `cal-cell${isOff?' off-cell':''}`
+
+      const dayEl = document.createElement('div')
+      dayEl.className = `cal-day${dow===0?' sun':dow===6?' sat':''}`
+      dayEl.textContent = d
+      cell.appendChild(dayEl)
+
+      if (isOff) {
+        const ot = document.createElement('span')
+        ot.className = 'off-tag'
+        ot.textContent = '휴'
+        cell.appendChild(ot)
+      } else {
+        const entries = DEMO[d] || []
+        entries.forEach(({ n, s }) => {
+          cell.appendChild(makeTag(n, palette.colors[s], alpha, 'cal-stag'))
+        })
+      }
+      calWrap.appendChild(cell)
+    }
+    card.appendChild(calWrap)
+    return card
+  }
+
+  /* ─────────────── 렌더 ─────────────── */
+  function buildSection(palette) {
+    const section = document.createElement('div')
+    section.className = 'section'
+    section.dataset.cat = palette.cat
+
+    const head = document.createElement('div')
+    head.className = 'section-head'
+    const badge = document.createElement('span')
+    badge.className = 'badge'
+    badge.textContent = palette.id
+    badge.style.background = palette.badgeColor
+    const title = document.createElement('span')
+    title.className = 'section-title'
+    title.textContent = palette.name
+    head.appendChild(badge)
+    head.appendChild(title)
+
+    const sub = document.createElement('div')
+    sub.className = 'section-sub'
+    sub.textContent = palette.sub
+
+    const grid = document.createElement('div')
+    grid.className = 'card-grid'
+    ALPHAS.forEach((alpha) => {
+      grid.appendChild(buildCard(palette, alpha))
+    })
+
+    section.appendChild(head)
+    section.appendChild(sub)
+    section.appendChild(grid)
+    return section
+  }
+
+  const root = document.getElementById('root')
+  PALETTES.forEach((p) => root.appendChild(buildSection(p)))
+
+  /* ─────────────── 필터 & 알파 컨트롤 ─────────────── */
+  let activeCat = 'all'
+  let activeAlpha = 2
+
+  function applyFilters() {
+    document.querySelectorAll('.card').forEach(card => {
+      const catMatch = activeCat === 'all' || card.dataset.cat === activeCat
+      const alphaMatch = parseInt(card.dataset.alpha) === activeAlpha
+      card.classList.toggle('visible', catMatch && alphaMatch)
+    })
+    document.querySelectorAll('.section').forEach(section => {
+      const catMatch = activeCat === 'all' || section.dataset.cat === activeCat
+      section.style.display = catMatch ? '' : 'none'
+    })
+  }
+
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'))
+      btn.classList.add('active')
+      activeCat = btn.dataset.cat
+      applyFilters()
+    })
+  })
+
+  document.querySelectorAll('.alpha-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.alpha-btn').forEach(b => b.classList.remove('active'))
+      btn.classList.add('active')
+      activeAlpha = parseInt(btn.dataset.alpha)
+      applyFilters()
+    })
+  })
+
+  applyFilters()
+  </script>
+</body>
+</html>

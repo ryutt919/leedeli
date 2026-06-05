@@ -41,6 +41,11 @@ export function HomePage() {
             스케줄
           </Card>
         </Link>
+        <Link to="/vacation" style={{ width: '100%', maxWidth: 180, textDecoration: 'none' }}>
+          <Card hoverable className="leedeli-card">
+            휴가
+          </Card>
+        </Link>
       </div>
     </MobileShell>
   )

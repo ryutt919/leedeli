@@ -41,6 +41,7 @@ import {
   upsertWeekPreset,
   deleteWeekPreset,
 } from '../storage/weekPresetsRepo'
+import { getShiftColor } from '../utils/shiftColors'
 
 const { Text } = Typography
 const { RangePicker } = DatePicker
@@ -772,6 +773,12 @@ export function ScheduleCalendar({
                 const dOW = new Date(dateISO + 'T00:00:00').getDay()
                 const isOff = schedule.regularDaysOff.includes(dOW)
                 const dayEntries = schedule.entries[dateISO] ?? []
+                const sortedDayEntries = [...dayEntries].sort((a, b) => {
+                  const roleA = empRoleMap.get(a.employeeId) ?? '알바'
+                  const roleB = empRoleMap.get(b.employeeId) ?? '알바'
+                  if (roleA !== roleB) return roleA === '정직원' ? -1 : 1
+                  return (a.startTime ?? '').localeCompare(b.startTime ?? '')
+                })
                 const day = parseInt(dateISO.slice(8, 10))
 
                 const bg = isOff ? token.colorFillSecondary : token.colorBgContainer
@@ -804,9 +811,15 @@ export function ScheduleCalendar({
                         휴
                       </Tag>
                     ) : (
-                      dayEntries.map((entry) => {
-                        const role = empRoleMap.get(entry.employeeId)
-                        const tagColor = role === '정직원' ? 'blue' : 'orange'
+                      sortedDayEntries.map((entry) => {
+                        const role = empRoleMap.get(entry.employeeId) ?? '알바'
+                        const shiftIdx = schedule.shiftTypes.findIndex((s) => s.id === entry.shiftTypeId)
+                        const totalST = schedule.shiftTypes.length
+                        const tagColor = getShiftColor(
+                          role as '정직원' | '알바',
+                          shiftIdx >= 0 ? shiftIdx : 0,
+                          totalST > 0 ? totalST : 1
+                        )
                         const label = entry.shiftTypeName
                           ? `${entry.employeeName} · ${entry.shiftTypeName}`
                           : entry.employeeName
@@ -884,6 +897,7 @@ export function CreateSchedulePage() {
   const [mgDrawerOpen, setMgDrawerOpen] = useState(false)
   const [mgEditingDate, setMgEditingDate] = useState<string | null>(null)
   const [mgSaving, setMgSaving] = useState(false)
+  const [memoDrawerOpen, setMemoDrawerOpen] = useState(false)
 
   useEffect(() => {
     loadShiftTypes().then(setShiftTypes)
@@ -1104,9 +1118,27 @@ export function CreateSchedulePage() {
     })
   }, [mgViewingSchedule])
 
+  const allMemos = useMemo(() => {
+    if (!mgViewingSchedule) return []
+    const result: Array<{ date: string; employeeName: string; shiftTypeName: string; note: string }> = []
+    Object.entries(mgViewingSchedule.entries).forEach(([date, entries]) => {
+      entries.forEach((entry) => {
+        if (entry.note) {
+          result.push({
+            date,
+            employeeName: entry.employeeName,
+            shiftTypeName: entry.shiftTypeName ?? '',
+            note: entry.note,
+          })
+        }
+      })
+    })
+    return result.sort((a, b) => a.date.localeCompare(b.date))
+  }, [mgViewingSchedule])
+
   const mgWorkSummaryColumns = [
     { title: '직원', dataIndex: 'name', key: 'name' },
-    { title: '역할', dataIndex: 'role', key: 'role', render: (v: string) => <Tag color={v === '정직원' ? 'blue' : 'orange'}>{v}</Tag> },
+    { title: '역할', dataIndex: 'role', key: 'role', render: (v: string) => <Tag color={getShiftColor(v as '정직원' | '알바', 0, 1)}>{v}</Tag> },
     { title: '근무일', dataIndex: 'totalDays', key: 'totalDays', render: (v: number) => `${v}일` },
     { title: '총시간', dataIndex: 'totalHours', key: 'totalHours', render: (v: number) => `${v}h` },
   ]
@@ -1154,6 +1186,14 @@ export function CreateSchedulePage() {
               <Space>
                 <Button type="text" size="small" icon={<EyeOutlined />} onClick={() => handleMgView(schedule)}>
                   상세
+                </Button>
+                <Button
+                  size="small"
+                  icon={<EyeOutlined />}
+                  disabled={!mgViewingSchedule || mgViewingSchedule.id !== schedule.id}
+                  onClick={() => setMemoDrawerOpen(true)}
+                >
+                  메모
                 </Button>
                 {isAdmin && (
                   <Popconfirm
@@ -1210,6 +1250,27 @@ export function CreateSchedulePage() {
           </Flex>
         )}
       </Drawer>
+
+      <Drawer
+        title={`메모 모아보기 — ${mgViewingSchedule?.name ?? ''}`}
+        open={memoDrawerOpen}
+        onClose={() => setMemoDrawerOpen(false)}
+        placement="right"
+        width={360}
+      >
+        {allMemos.length === 0 ? (
+          <Text type="secondary">등록된 메모가 없습니다.</Text>
+        ) : (
+          <Flex vertical gap={8}>
+            {allMemos.map((m, i) => (
+              <div key={i} style={{ padding: '8px 12px', border: '1px solid #f0f0f0', borderRadius: 8 }}>
+                <Text type="secondary" style={{ fontSize: 11 }}>{m.date} · {m.employeeName} · {m.shiftTypeName}</Text>
+                <div style={{ marginTop: 4 }}><Text>{m.note}</Text></div>
+              </div>
+            ))}
+          </Flex>
+        )}
+      </Drawer>
     </Flex>
   )
 
@@ -1254,7 +1315,7 @@ export function CreateSchedulePage() {
                 <Flex vertical>
                   <Flex gap={8} align="center">
                     <Text strong style={{ fontSize: 13 }}>{emp.name}</Text>
-                    <Tag color={emp.role === '정직원' ? 'blue' : 'orange'} style={{ fontSize: 11 }}>{emp.role}</Tag>
+                    <Tag color={getShiftColor(emp.role as '정직원' | '알바', 0, 1)} style={{ fontSize: 11 }}>{emp.role}</Tag>
                   </Flex>
                   <Text type="secondary" style={{ fontSize: 11 }}>
                     {availableNames

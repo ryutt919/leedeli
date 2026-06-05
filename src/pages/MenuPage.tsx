@@ -24,6 +24,7 @@ import { loadPreps } from '../storage/prepsRepo'
 import { deleteMenuItem, loadMenuItems, upsertMenuItem } from '../storage/menuItemsRepo'
 import { newId } from '../utils/id'
 import { round2, safeNumber } from '../utils/money'
+import { calcMenuCalories } from '../utils/calorieCalc'
 
 export function MenuPage() {
   const [tick, setTick] = useState(0)
@@ -47,6 +48,15 @@ export function MenuPage() {
 
   const ingredientById = useMemo(() => new Map(ingredients.map((x) => [x.id, x])), [ingredients])
   const prepById = useMemo(() => new Map(preps.map((x) => [x.id, x])), [preps])
+
+  const menuCaloriesMap = useMemo(() => {
+    const m = new Map<string, number>()
+    for (const menu of menuItems) {
+      const kcal = calcMenuCalories(menu, ingredientById, prepById)
+      if (kcal > 0) m.set(menu.id, kcal)
+    }
+    return m
+  }, [menuItems, ingredientById, prepById])
 
   // 메뉴 카테고리는 menuItems에서만 파생 (독립)
   const allCategories = useMemo(() => {
@@ -244,6 +254,9 @@ export function MenuPage() {
                       )}
                       <Typography.Text type="secondary">
                         단가 {cost}원
+                        {menuCaloriesMap.get(m.id) != null
+                          ? ` · ${menuCaloriesMap.get(m.id)}kcal`
+                          : ''}
                       </Typography.Text>
                     </Space>
                   }

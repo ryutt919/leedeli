@@ -95,6 +95,7 @@ export type Ingredient = {
   unitLabel?: string
   /** @deprecated (구버전) */
   unitType?: 'g' | 'ea'
+  caloriesPer100g?: number
   updatedAtISO: string
   category?: string
 }
@@ -114,6 +115,8 @@ export type Prep = {
   category?: string
   yieldAmount?: number
   yieldUnit?: string
+  targetQuantity?: number
+  targetUnit?: string
 }
 
 // Supabase restock_history 테이블에 대응하는 보충 이력 레코드 타입
@@ -123,6 +126,7 @@ export type RestockRecord = {
   user_email: string
   restock_date: string // YYYY-MM-DD
   created_at: string
+  memo?: string
 }
 
 
@@ -215,6 +219,15 @@ export type ScheduleV3 = {
   shiftTypes: ShiftType[]                    // 생성 시점 근무유형 스냅샷
   createdAtISO: string
   updatedAtISO: string
+}
+
+export type VacationRecord = {
+  id: string
+  employee_id: string
+  date: string // YYYY-MM-DD
+  type: string // 연차, 반차, 병가 등
+  note?: string
+  created_at: string
 }
 
 export type WeekPreset = {

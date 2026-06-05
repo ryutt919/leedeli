@@ -1,0 +1,43 @@
+RALPH SESSION: leedeli-enhance-2026-06-05
+STARTED: 2026-06-05
+PLAN: .omc/plans/leedeli-enhance-plan.md
+
+=== BASELINE ===
+- npm run build: PASS (node v22.22.2, chunk size warning only)
+- tsc errors: 0
+
+=== ITERATION 1 ===
+COMPLETED: PR1 (C1 색상+C2 정렬+C3 메모)
+
+C1 - src/utils/shiftColors.ts 신규: getShiftColor(role, shiftIndex, totalShifts)
+     hue 210(정직원)/30(알바), saturation 40-80% interpolated, lightness 45
+     CreateSchedulePage.tsx: lines 809/1109/1257 color logic 교체
+C2 - CreateSchedulePage.tsx: sortedDayEntries 정렬 (정직원→알바, startTime localeCompare)
+C3 - CreateSchedulePage.tsx: memoDrawerOpen state, allMemos useMemo, Drawer component
+     e2e/mock/schedule-memo.spec.ts 신규
+BUILD: PASS (tsc 0 errors, built in 3.49s)
+
+=== ITERATION 2 ===
+COMPLETED: PR2 (C5 프렙총량+C7 칼로리)
+
+C5 - types.ts Prep: targetQuantity?: number, targetUnit?: string 추가
+     PrepsPage.tsx: PrepTargetEdit 컴포넌트 (인라인 편집), prepCaloriesMap useMemo
+     Form 필드: 목표 총량/단위 추가
+C7 - types.ts Ingredient: caloriesPer100g?: number 추가
+     src/utils/calorieCalc.ts: calcPrepCalories, calcMenuCalories export
+     IngredientsPage.tsx: kcal/100g 입력 필드
+     PrepsPage.tsx: prepCaloriesMap useMemo → kcal 표시
+     MenuPage.tsx: menuCaloriesMap useMemo → kcal 표시
+BUILD: PASS (tsc 0 errors, built in 3.61s)
+
+=== ITERATION 3 ===
+Current: PR3 (014 commit + 016 migration + C6 보충메모/이력)
+
+PATTERNS FOUND:
+- 014_security_fix_rls.sql: untracked → git 추가 필요
+- 016_restock_memo.sql: 신규 생성 → MCP apply_migration 필요
+- RestockRecord.memo?: string 추가 필요
+- restockRepo.ts: memo 파라미터 추가 필요
+- PrepsPage.tsx line 921: {r.user_email} 보충 → 제거 필요
+- PrepsPage.tsx: 수정 모달 첫 탭이 보충 이력 (탭 구조 추가)
+- 캘린더 날짜 클릭 → 다중 선택 모달 (현재는 prepsOnDate > 0인 경우만 모달 오픈)

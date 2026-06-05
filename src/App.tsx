@@ -5,6 +5,7 @@ import { CreateSchedulePage } from './pages/CreateSchedulePage'
 import { IngredientsPage } from './pages/IngredientsPage'
 import { MenuPage } from './pages/MenuPage'
 import { PrepsPage } from './pages/PrepsPage'
+import { VacationPage } from './pages/VacationPage'
 import { UnauthorizedPage } from './pages/UnauthorizedPage'
 import { UserManagementPage } from './pages/UserManagementPage'
 import { RequireAuth } from './components/RequireAuth'
@@ -24,6 +25,7 @@ export default function App() {
         <Route path="/ingredients" element={<RequireAuth><IngredientsPage /></RequireAuth>} />
         <Route path="/preps" element={<RequireAuth><PrepsPage /></RequireAuth>} />
         <Route path="/menu" element={<RequireAuth><MenuPage /></RequireAuth>} />
+        <Route path="/vacation" element={<RequireAuth><VacationPage /></RequireAuth>} />
         <Route path="/unauthorized" element={<UnauthorizedPage />} />
         <Route
           path="/users"
