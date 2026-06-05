@@ -52,7 +52,7 @@
     "runtime": null
   },
   "build": {
-    "buildCommand": "npm run build 2>&1 | tail -15",
+    "buildCommand": "npm run build 2>&1 | grep -E \"error|Error|✓\" | head -10",
     "testCommand": null,
     "lintCommand": "npm run lint",
     "devCommand": "npm run dev",
@@ -265,26 +265,44 @@
   "hotPaths": [
     {
       "path": "src/pages/CreateSchedulePage.tsx",
-      "accessCount": 45,
-      "lastAccessed": 1780676704997,
+      "accessCount": 68,
+      "lastAccessed": 1780678930865,
       "type": "file"
     },
     {
       "path": "src/pages/PrepsPage.tsx",
-      "accessCount": 38,
-      "lastAccessed": 1780676355549,
+      "accessCount": 51,
+      "lastAccessed": 1780679051135,
       "type": "file"
     },
     {
       "path": "src/domain/types.ts",
-      "accessCount": 15,
-      "lastAccessed": 1780676187478,
+      "accessCount": 22,
+      "lastAccessed": 1780679782841,
       "type": "file"
     },
     {
       "path": "src/pages/MenuPage.tsx",
       "accessCount": 14,
       "lastAccessed": 1780676946193,
+      "type": "file"
+    },
+    {
+      "path": "src/pages/VacationPage.tsx",
+      "accessCount": 14,
+      "lastAccessed": 1780679835423,
+      "type": "file"
+    },
+    {
+      "path": "src/utils/calorieCalc.ts",
+      "accessCount": 7,
+      "lastAccessed": 1780678647095,
+      "type": "file"
+    },
+    {
+      "path": "src/utils/shiftColors.ts",
+      "accessCount": 7,
+      "lastAccessed": 1780678667525,
       "type": "file"
     },
     {
@@ -297,18 +315,6 @@
       "path": "src/App.tsx",
       "accessCount": 5,
       "lastAccessed": 1780675509777,
-      "type": "file"
-    },
-    {
-      "path": "src/utils/shiftColors.ts",
-      "accessCount": 5,
-      "lastAccessed": 1780676589619,
-      "type": "file"
-    },
-    {
-      "path": "src/pages/VacationPage.tsx",
-      "accessCount": 5,
-      "lastAccessed": 1780676668591,
       "type": "file"
     },
     {
@@ -330,27 +336,21 @@
       "type": "file"
     },
     {
-      "path": "src/utils/calorieCalc.ts",
+      "path": "src/storage/vacationRepo.ts",
       "accessCount": 4,
-      "lastAccessed": 1780676920429,
+      "lastAccessed": 1780679094843,
+      "type": "file"
+    },
+    {
+      "path": "supabase/migrations/015_vacation_records.sql",
+      "accessCount": 3,
+      "lastAccessed": 1780677758453,
       "type": "file"
     },
     {
       "path": "supabase/migrations/014_security_fix_rls.sql",
       "accessCount": 2,
       "lastAccessed": 1780648483792,
-      "type": "file"
-    },
-    {
-      "path": "src/storage/vacationRepo.ts",
-      "accessCount": 2,
-      "lastAccessed": 1780649068798,
-      "type": "file"
-    },
-    {
-      "path": "supabase/migrations/015_vacation_records.sql",
-      "accessCount": 2,
-      "lastAccessed": 1780649072078,
       "type": "file"
     },
     {
@@ -363,6 +363,30 @@
       "path": "src/storage/prepsRepo.ts",
       "accessCount": 2,
       "lastAccessed": 1780676154736,
+      "type": "file"
+    },
+    {
+      "path": "supabase/migrations/011_employees.sql",
+      "accessCount": 2,
+      "lastAccessed": 1780677758332,
+      "type": "file"
+    },
+    {
+      "path": "src/storage/employeesRepo.ts",
+      "accessCount": 2,
+      "lastAccessed": 1780677763354,
+      "type": "file"
+    },
+    {
+      "path": "supabase/migrations/017_menu_restock.sql",
+      "accessCount": 2,
+      "lastAccessed": 1780679629837,
+      "type": "file"
+    },
+    {
+      "path": "supabase/migrations/018_leave_grants.sql",
+      "accessCount": 2,
+      "lastAccessed": 1780679776985,
       "type": "file"
     },
     {
@@ -396,12 +420,6 @@
       "type": "file"
     },
     {
-      "path": "src/storage/employeesRepo.ts",
-      "accessCount": 1,
-      "lastAccessed": 1780644947430,
-      "type": "file"
-    },
-    {
       "path": "src/storage/schedulesRepo.ts",
       "accessCount": 1,
       "lastAccessed": 1780644947618,
@@ -414,12 +432,6 @@
       "type": "file"
     },
     {
-      "path": "supabase/migrations/011_employees.sql",
-      "accessCount": 1,
-      "lastAccessed": 1780646108146,
-      "type": "file"
-    },
-    {
       "path": "e2e/mock/schedule-memo.spec.ts",
       "accessCount": 1,
       "lastAccessed": 1780647928334,
@@ -429,12 +441,6 @@
       "path": "src/pages/ManageSchedulesPage.tsx",
       "accessCount": 1,
       "lastAccessed": 1780675513551,
-      "type": "file"
-    },
-    {
-      "path": "supabase/migrations/017_menu_restock.sql",
-      "accessCount": 1,
-      "lastAccessed": 1780676201015,
       "type": "file"
     },
     {
@@ -471,6 +477,60 @@
       "path": "harness/specs/S14T6_vacation_tab_migration.yaml",
       "accessCount": 1,
       "lastAccessed": 1780676822159,
+      "type": "file"
+    },
+    {
+      "path": "src/storage/leaveGrantsRepo.ts",
+      "accessCount": 1,
+      "lastAccessed": 1780679107045,
+      "type": "file"
+    },
+    {
+      "path": "src/storage/leavePoliciesRepo.ts",
+      "accessCount": 1,
+      "lastAccessed": 1780679110147,
+      "type": "file"
+    },
+    {
+      "path": "feature_list.json",
+      "accessCount": 1,
+      "lastAccessed": 1780679273554,
+      "type": "file"
+    },
+    {
+      "path": "harness/specs/S15T1_calorie_calc_fix.yaml",
+      "accessCount": 1,
+      "lastAccessed": 1780679284522,
+      "type": "file"
+    },
+    {
+      "path": "harness/specs/S15T2_preps_ui_cleanup.yaml",
+      "accessCount": 1,
+      "lastAccessed": 1780679291188,
+      "type": "file"
+    },
+    {
+      "path": "harness/specs/S15T3_leave_infra.yaml",
+      "accessCount": 1,
+      "lastAccessed": 1780679296062,
+      "type": "file"
+    },
+    {
+      "path": "harness/specs/S15T4_vacation_ui.yaml",
+      "accessCount": 1,
+      "lastAccessed": 1780679303472,
+      "type": "file"
+    },
+    {
+      "path": "harness/specs/S15T5_schedule_highlight.yaml",
+      "accessCount": 1,
+      "lastAccessed": 1780679319633,
+      "type": "file"
+    },
+    {
+      "path": "harness/specs/S15T6_shift_palette.yaml",
+      "accessCount": 1,
+      "lastAccessed": 1780679320550,
       "type": "file"
     }
   ],
