@@ -1,0 +1,35 @@
+id: S16T3
+title: "VacationPage: monthly/yearly/interval 모든 규칙 자동부여"
+category: ui
+status: implemented
+
+description: |
+  자동부여 useEffect를 monthly 전용에서 세 타입 모두 처리하도록 확장.
+
+  monthly:
+    grantMonth = YYYY-MM, rule_id 포함 UNIQUE 체크 후 미부여 시 insert
+
+  yearly:
+    today.month+1 === trigger_month 인 경우만 실행
+    grantMonth = YYYY, rule_id 포함 UNIQUE 체크
+
+  interval (n일마다):
+    해당 rule_id의 기존 grants를 grant_month asc 정렬
+    grants 없음 → 오늘 최초 부여
+    grants 있음 → startDate = 첫 grant 날짜
+                  expected = floor((today - startDate) / interval_days) + 1
+                  누락분(expected - existing) 만큼 순차 부여
+
+  handleBulkGrant → "자동 부여 재실행" 버튼으로 변경 (all types, interval 제외)
+  안내 문구: "월마다·년마다·n일마다 규칙은 앱 접속 시 자동으로 부여됩니다."
+
+implementation_targets:
+  - src/pages/VacationPage.tsx
+
+acceptance_criteria:
+  - npm run build 성공
+  - 자동부여 useEffect에 monthly/yearly/interval 세 타입 분기 존재
+  - interval 처리 시 startDate 기반 expected 계산 로직 존재
+  - 버튼 텍스트 "자동 부여 재실행" 존재
+
+test_command: "npm run build"

@@ -1,0 +1,22 @@
+id: S16T2
+title: "leaveGrantsRepo: rule_id 지원 + loadLeaveGrantsByRule"
+category: storage
+status: implemented
+
+description: |
+  LeaveGrant 타입에 rule_id?: string 추가.
+  addLeaveGrant(employeeId, amount, grantMonth, note?, ruleId?) — 선택적 ruleId 추가.
+  loadLeaveGrantsByRule(employeeId, ruleId): Promise<LeaveGrant[]> 신규 함수 추가.
+    → interval 자동부여 시 경과 횟수 계산에 사용.
+
+implementation_targets:
+  - src/domain/types.ts
+  - src/storage/leaveGrantsRepo.ts
+
+acceptance_criteria:
+  - npm run build 성공
+  - LeaveGrant 타입에 rule_id 필드 존재
+  - addLeaveGrant 5번째 인자 ruleId 지원
+  - loadLeaveGrantsByRule 함수 export
+
+test_command: "npm run build"

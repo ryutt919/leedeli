@@ -244,7 +244,8 @@ export type LeaveGrant = {
   id: string
   employee_id: string
   amount: number
-  grant_month: string   // 'YYYY-MM'
+  grant_month: string   // 'YYYY-MM' | 'YYYY' | 'YYYY-MM-DD' | 'adj-...'
+  rule_id?: string      // 발행한 규칙 ID (수동 조정은 null)
   note?: string
   created_at: string
 }

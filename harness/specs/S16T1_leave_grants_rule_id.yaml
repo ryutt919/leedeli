@@ -1,0 +1,21 @@
+id: S16T1
+title: "leave_grants rule_id 컬럼 추가 + UNIQUE 제약 변경"
+category: db
+status: implemented
+
+description: |
+  leave_grants 테이블에 rule_id(uuid, FK→leave_policies) 컬럼 추가.
+  기존 UNIQUE(employee_id, grant_month) 제약을 제거하고
+  rule_id가 NOT NULL인 경우만 UNIQUE(employee_id, grant_month, rule_id) 인덱스 적용.
+  수동 조정(rule_id=null)은 중복 제약 없음.
+  Supabase MCP apply_migration으로 적용 완료.
+
+implementation_targets:
+  - supabase/migrations/019_leave_grants_rule_id.sql
+
+acceptance_criteria:
+  - Supabase leave_grants에 rule_id 컬럼 존재
+  - leave_grants_rule_unique 인덱스 존재 (WHERE rule_id IS NOT NULL)
+  - 019_leave_grants_rule_id.sql 파일 존재
+
+test_command: "npm run build"

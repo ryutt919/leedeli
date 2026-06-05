@@ -1,4 +1,4 @@
-import { DeleteOutlined, PlusOutlined } from '@ant-design/icons'
+import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons'
 import {
   Button,
   Card,
@@ -19,7 +19,7 @@ import {
   message,
 } from 'antd'
 import dayjs from 'dayjs'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { Employee, LeaveGrant, LeavePolicy, VacationRecord } from '../domain/types'
 import { MobileShell } from '../layouts/MobileShell'
 import { loadEmployees } from '../storage/employeesRepo'
@@ -32,6 +32,7 @@ const VACATION_TYPES = ['연차', '반차(오전)', '반차(오후)', '병가', 
 export function VacationTabContent() {
   const [tick, setTick] = useState(0)
   const refresh = () => setTick((t) => t + 1)
+  const autoGranted = useRef(false)
 
   const [employees, setEmployees] = useState<Employee[]>([])
   const [allVacations, setAllVacations] = useState<VacationRecord[]>([])
@@ -42,10 +43,13 @@ export function VacationTabContent() {
   const [loading, setLoading] = useState(false)
   const [grantLoading, setGrantLoading] = useState(false)
 
-  const [policyModalOpen, setPolicyModalOpen] = useState(false)
-  const [editingPolicy, setEditingPolicy] = useState<LeavePolicy | null>(null)
-  const [policyForm] = Form.useForm()
-  const policyType = Form.useWatch('type', policyForm)
+  // 잔여 휴가 인라인 편집
+  const [editingBalance, setEditingBalance] = useState<{ empId: string; value: number } | null>(null)
+
+  const [ruleModalOpen, setRuleModalOpen] = useState(false)
+  const [editingRule, setEditingRule] = useState<LeavePolicy | null>(null)
+  const [ruleForm] = Form.useForm()
+  const ruleType = Form.useWatch('type', ruleForm)
 
   const [form] = Form.useForm()
 
@@ -59,6 +63,62 @@ export function VacationTabContent() {
       })
       .catch((e) => console.error('데이터 로드 실패:', e))
   }, [tick])
+
+  // 자동 휴가 부여 (모든 활성 규칙 타입: monthly / yearly / interval)
+  useEffect(() => {
+    if (autoGranted.current) return
+    if (employees.length === 0 || leavePolicies.length === 0) return
+
+    const activePolicies = leavePolicies.filter((p) => p.is_active)
+    if (activePolicies.length === 0) { autoGranted.current = true; return }
+
+    autoGranted.current = true
+    const today = dayjs()
+    const pending: Promise<unknown>[] = []
+
+    for (const p of activePolicies) {
+      for (const emp of employees) {
+        if (p.type === 'monthly') {
+          const grantMonth = today.format('YYYY-MM')
+          const has = leaveGrants.some(
+            (g) => g.employee_id === emp.id && g.grant_month === grantMonth && g.rule_id === p.id
+          )
+          if (!has) pending.push(addLeaveGrant(emp.id, p.amount, grantMonth, undefined, p.id).catch(() => {}))
+
+        } else if (p.type === 'yearly') {
+          if (today.month() + 1 !== p.trigger_month) continue
+          const grantMonth = today.format('YYYY')
+          const has = leaveGrants.some(
+            (g) => g.employee_id === emp.id && g.grant_month === grantMonth && g.rule_id === p.id
+          )
+          if (!has) pending.push(addLeaveGrant(emp.id, p.amount, grantMonth, undefined, p.id).catch(() => {}))
+
+        } else if (p.type === 'interval' && p.interval_days) {
+          const empGrants = leaveGrants
+            .filter((g) => g.employee_id === emp.id && g.rule_id === p.id)
+            .sort((a, b) => a.grant_month.localeCompare(b.grant_month))
+
+          if (empGrants.length === 0) {
+            pending.push(addLeaveGrant(emp.id, p.amount, today.format('YYYY-MM-DD'), undefined, p.id).catch(() => {}))
+          } else {
+            const startDate = dayjs(empGrants[0].grant_month)
+            const expected = Math.floor(today.diff(startDate, 'day') / p.interval_days) + 1
+            for (let i = empGrants.length; i < expected; i++) {
+              const grantDate = startDate.add(i * p.interval_days, 'day').format('YYYY-MM-DD')
+              pending.push(addLeaveGrant(emp.id, p.amount, grantDate, undefined, p.id).catch(() => {}))
+            }
+          }
+        }
+      }
+    }
+
+    if (pending.length > 0) {
+      Promise.all(pending).then(() => {
+        message.success('활성 규칙에 따라 휴가가 자동으로 부여되었습니다.')
+        refresh()
+      })
+    }
+  }, [employees, leavePolicies, leaveGrants])
 
   useEffect(() => {
     if (!selectedEmployeeId) { setRecords([]); return }
@@ -113,66 +173,126 @@ export function VacationTabContent() {
     const grantedDays = leaveGrants
       .filter((g) => g.employee_id === emp.id)
       .reduce((sum, g) => sum + g.amount, 0)
-    const remaining = grantedDays - usedDays
+    const remaining = Math.round((grantedDays - usedDays) * 10) / 10
     return { key: emp.id, name: emp.name, role: emp.role, grantedDays, usedDays, remaining }
   })
 
+  // 잔여 휴가 직접 수정 (조정 grant 추가)
+  const handleBalanceEdit = async (empId: string, desiredRemaining: number) => {
+    const row = balanceData.find((r) => r.key === empId)
+    if (!row) return
+    const adjustment = Math.round((desiredRemaining - row.remaining) * 10) / 10
+    if (adjustment === 0) { setEditingBalance(null); return }
+    try {
+      const adjKey = `adj-${dayjs().format('YYYYMMDDHHmmss')}-${empId.slice(0, 6)}`
+      await addLeaveGrant(empId, adjustment, adjKey, `수동 조정 (잔여 ${row.remaining}→${desiredRemaining}일)`)
+      setEditingBalance(null)
+      refresh()
+      message.success('잔여 휴가가 수정되었습니다.')
+    } catch (e) {
+      message.error('수정 실패: ' + (e instanceof Error ? e.message : String(e)))
+    }
+  }
+
   const balanceColumns = [
-    { title: '직원', dataIndex: 'name', key: 'name', render: (v: string, row: typeof balanceData[0]) => (
-      <Space size={4}>
-        <span style={{ fontSize: 13 }}>{v}</span>
-        <Tag style={{ fontSize: 10 }}>{row.role}</Tag>
-      </Space>
-    )},
+    {
+      title: '직원',
+      dataIndex: 'name',
+      key: 'name',
+      render: (v: string, row: typeof balanceData[0]) => (
+        <Space size={4}>
+          <span style={{ fontSize: 13, fontWeight: row.key === selectedEmployeeId ? 600 : 400 }}>{v}</span>
+          <Tag style={{ fontSize: 10 }}>{row.role}</Tag>
+        </Space>
+      ),
+    },
     { title: '부여', dataIndex: 'grantedDays', key: 'granted', render: (v: number) => `${v}일` },
     { title: '사용', dataIndex: 'usedDays', key: 'used', render: (v: number) => `${v}일` },
-    { title: '잔여', dataIndex: 'remaining', key: 'remaining', render: (v: number) => (
-      <Typography.Text type={v < 0 ? 'danger' : v === 0 ? 'secondary' : undefined} strong={v < 0}>
-        {v}일
-      </Typography.Text>
-    )},
+    {
+      title: '잔여',
+      dataIndex: 'remaining',
+      key: 'remaining',
+      render: (v: number, row: typeof balanceData[0]) => {
+        if (editingBalance?.empId === row.key) {
+          return (
+            <InputNumber
+              size="small"
+              defaultValue={v}
+              step={0.5}
+              style={{ width: 72 }}
+              autoFocus
+              onBlur={(e) => void handleBalanceEdit(row.key, parseFloat(e.target.value) || v)}
+              onPressEnter={(e) => void handleBalanceEdit(row.key, parseFloat((e.target as HTMLInputElement).value) || v)}
+            />
+          )
+        }
+        return (
+          <Flex align="center" gap={4}>
+            <Typography.Text type={v < 0 ? 'danger' : v === 0 ? 'secondary' : undefined} strong={v < 0}>
+              {v}일
+            </Typography.Text>
+            <Button
+              type="text"
+              size="small"
+              icon={<EditOutlined />}
+              style={{ padding: 0, height: 16, fontSize: 11 }}
+              onClick={(e) => { e.stopPropagation(); setEditingBalance({ empId: row.key, value: v }) }}
+            />
+          </Flex>
+        )
+      },
+    },
   ]
 
-  // 월차 일괄 부여
+  // 자동 부여 재실행 (누락된 경우 수동으로 강제 적용)
   const handleBulkGrant = async () => {
-    const activeMonthly = leavePolicies.filter((p) => p.is_active && p.type === 'monthly')
-    if (activeMonthly.length === 0) {
-      message.warning('활성 월차 규칙이 없습니다.')
-      return
-    }
-    const totalAmount = activeMonthly.reduce((sum, p) => sum + p.amount, 0)
-    const currentMonth = dayjs().format('YYYY-MM')
+    const activePolicies = leavePolicies.filter((p) => p.is_active)
+    if (activePolicies.length === 0) { message.warning('활성 규칙이 없습니다.'); return }
     setGrantLoading(true)
+    autoGranted.current = false  // 재실행 허용
+    const today = dayjs()
     let added = 0, skipped = 0
-    for (const emp of employees) {
-      try {
-        await addLeaveGrant(emp.id, totalAmount, currentMonth)
-        added++
-      } catch {
-        skipped++
+    for (const p of activePolicies) {
+      for (const emp of employees) {
+        let grantMonth: string
+        if (p.type === 'monthly') {
+          grantMonth = today.format('YYYY-MM')
+        } else if (p.type === 'yearly') {
+          if (today.month() + 1 !== p.trigger_month) continue
+          grantMonth = today.format('YYYY')
+        } else {
+          continue  // interval은 useEffect 자동 처리
+        }
+        const has = leaveGrants.some(
+          (g) => g.employee_id === emp.id && g.grant_month === grantMonth && g.rule_id === p.id
+        )
+        if (has) { skipped++; continue }
+        try { await addLeaveGrant(emp.id, p.amount, grantMonth, undefined, p.id); added++ }
+        catch { skipped++ }
       }
     }
     setGrantLoading(false)
-    message.success(`${added}명 부여 완료${skipped > 0 ? `, ${skipped}명은 이미 부여됨` : ''}`)
     refresh()
+    if (added > 0) message.success(`${added}건 부여 완료${skipped > 0 ? `, ${skipped}건 건너뜀` : ''}`)
+    else message.info('새로 부여할 항목이 없습니다.')
   }
 
   // 규칙 저장
-  const handlePolicySave = async () => {
+  const handleRuleSave = async () => {
     try {
-      const v = await policyForm.validateFields()
+      const v = await ruleForm.validateFields()
       await upsertLeavePolicy({
-        id: editingPolicy?.id,
+        id: editingRule?.id,
         label: v.label as string,
         type: v.type as 'monthly' | 'yearly' | 'interval',
         amount: v.amount as number,
         trigger_month: v.type === 'yearly' ? (v.trigger_month as number) : undefined,
         interval_days: v.type === 'interval' ? (v.interval_days as number) : undefined,
-        is_active: v.is_active as boolean ?? true,
+        is_active: (v.is_active as boolean) ?? true,
       })
-      setPolicyModalOpen(false)
-      setEditingPolicy(null)
-      policyForm.resetFields()
+      setRuleModalOpen(false)
+      setEditingRule(null)
+      ruleForm.resetFields()
       refresh()
       message.success('규칙을 저장했습니다.')
     } catch (e) {
@@ -180,7 +300,7 @@ export function VacationTabContent() {
     }
   }
 
-  const handlePolicyDelete = async (id: string) => {
+  const handleRuleDelete = async (id: string) => {
     try {
       await deleteLeavePolicy(id)
       refresh()
@@ -190,26 +310,41 @@ export function VacationTabContent() {
     }
   }
 
-  const openPolicyModal = (policy?: LeavePolicy) => {
-    setEditingPolicy(policy ?? null)
-    policyForm.setFieldsValue(
-      policy
-        ? { label: policy.label, type: policy.type, amount: policy.amount, trigger_month: policy.trigger_month, interval_days: policy.interval_days, is_active: policy.is_active }
+  const openRuleModal = (rule?: LeavePolicy) => {
+    setEditingRule(rule ?? null)
+    ruleForm.setFieldsValue(
+      rule
+        ? { label: rule.label, type: rule.type, amount: rule.amount, trigger_month: rule.trigger_month, interval_days: rule.interval_days, is_active: rule.is_active }
         : { label: '', type: 'monthly', amount: 1, is_active: true }
     )
-    setPolicyModalOpen(true)
+    setRuleModalOpen(true)
   }
 
   return (
     <>
-      {/* ── 직원별 휴가 현황 ─────────────────────────── */}
-      <Card size="small" title="직원별 휴가 현황" style={{ marginBottom: 12 }}>
+      {/* ── 직원별 휴가 현황 (클릭으로 직원 선택) ──── */}
+      <Card
+        size="small"
+        title="직원별 휴가 현황"
+        style={{ marginBottom: 12 }}
+        extra={<Typography.Text type="secondary" style={{ fontSize: 11 }}>행 클릭 → 이력 관리</Typography.Text>}
+      >
         <Table
           dataSource={balanceData}
           columns={balanceColumns}
           pagination={false}
           size="small"
           locale={{ emptyText: '직원이 없습니다.' }}
+          onRow={(row) => ({
+            onClick: () => {
+              if (editingBalance) return
+              setSelectedEmployeeId((prev) => prev === row.key ? null : row.key)
+            },
+            style: {
+              cursor: 'pointer',
+              background: row.key === selectedEmployeeId ? '#e6f4ff' : undefined,
+            },
+          })}
         />
       </Card>
 
@@ -219,12 +354,7 @@ export function VacationTabContent() {
         title="휴가 부여 규칙"
         style={{ marginBottom: 12 }}
         extra={
-          <Button
-            type="dashed"
-            size="small"
-            icon={<PlusOutlined />}
-            onClick={() => openPolicyModal()}
-          >
+          <Button type="dashed" size="small" icon={<PlusOutlined />} onClick={() => openRuleModal()}>
             규칙 추가
           </Button>
         }
@@ -248,8 +378,8 @@ export function VacationTabContent() {
                   </Typography.Text>
                 </Space>
                 <Space size={4}>
-                  <Button type="text" size="small" onClick={() => openPolicyModal(p)}>편집</Button>
-                  <Popconfirm title="삭제할까요?" okText="삭제" cancelText="취소" onConfirm={() => void handlePolicyDelete(p.id)}>
+                  <Button type="text" size="small" onClick={() => openRuleModal(p)}>편집</Button>
+                  <Popconfirm title="삭제할까요?" okText="삭제" cancelText="취소" onConfirm={() => void handleRuleDelete(p.id)}>
                     <Button danger type="text" size="small" icon={<DeleteOutlined />} />
                   </Popconfirm>
                 </Space>
@@ -258,37 +388,23 @@ export function VacationTabContent() {
           </Flex>
         )}
         <Button
-          type="primary"
+          type="default"
           block
           style={{ marginTop: 12 }}
           loading={grantLoading}
           onClick={() => void handleBulkGrant()}
         >
-          이번 달({dayjs().format('YYYY-MM')}) 활성 월차 일괄 부여
+          자동 부여 재실행 (누락 보완)
         </Button>
+        <Typography.Text type="secondary" style={{ fontSize: 11, display: 'block', marginTop: 4, textAlign: 'center' }}>
+          월마다·년마다·n일마다 규칙은 앱 접속 시 자동으로 부여됩니다.
+        </Typography.Text>
       </Card>
 
-      {/* ── 직원 선택 + 개인 이력 ────────────────────── */}
-      <Card size="small" style={{ marginBottom: 12 }}>
-        <Select
-          placeholder="직원 선택"
-          value={selectedEmployeeId}
-          onChange={(v) => setSelectedEmployeeId(v)}
-          allowClear
-          onClear={() => setSelectedEmployeeId(null)}
-          style={{ width: '100%' }}
-          options={employees.map((e) => ({
-            value: e.id,
-            label: `${e.name} (${e.role})`,
-          }))}
-          showSearch
-          optionFilterProp="label"
-        />
-      </Card>
-
+      {/* ── 선택된 직원 이력 관리 ────────────────────── */}
       {selectedEmployeeId && (
         <>
-          <Card size="small" title="휴가 추가" style={{ marginBottom: 12 }}>
+          <Card size="small" title={`${selectedEmployee?.name ?? ''} 휴가 추가`} style={{ marginBottom: 12 }}>
             <Form form={form} layout="vertical">
               <Space direction="vertical" style={{ width: '100%' }}>
                 <Form.Item name="date" label="날짜" rules={[{ required: true, message: '날짜를 선택하세요' }]} style={{ marginBottom: 0 }}>
@@ -357,19 +473,19 @@ export function VacationTabContent() {
 
       {!selectedEmployeeId && (
         <Typography.Text type="secondary" style={{ display: 'block', textAlign: 'center', marginTop: 24 }}>
-          위에서 직원을 선택하면 개인 휴가 이력을 확인하고 추가할 수 있습니다.
+          위 표에서 직원을 클릭하면 휴가 이력을 확인하고 추가할 수 있습니다.
         </Typography.Text>
       )}
 
       {/* ── 규칙 편집 모달 ───────────────────────────── */}
       <Modal
-        open={policyModalOpen}
-        title={editingPolicy ? '규칙 편집' : '규칙 추가'}
-        onCancel={() => { setPolicyModalOpen(false); setEditingPolicy(null); policyForm.resetFields() }}
-        onOk={() => void handlePolicySave()}
+        open={ruleModalOpen}
+        title={editingRule ? '규칙 편집' : '규칙 추가'}
+        onCancel={() => { setRuleModalOpen(false); setEditingRule(null); ruleForm.resetFields() }}
+        onOk={() => void handleRuleSave()}
         okText="저장"
       >
-        <Form form={policyForm} layout="vertical">
+        <Form form={ruleForm} layout="vertical">
           <Form.Item name="label" label="규칙 이름" rules={[{ required: true, message: '이름을 입력하세요' }]}>
             <Input placeholder="예) 월차" />
           </Form.Item>
@@ -383,15 +499,15 @@ export function VacationTabContent() {
           <Form.Item name="amount" label="부여 일수" rules={[{ required: true }]}>
             <InputNumber min={0.5} step={0.5} style={{ width: '100%' }} />
           </Form.Item>
-          {policyType === 'yearly' && (
+          {ruleType === 'yearly' && (
             <Form.Item name="trigger_month" label="부여 월" rules={[{ required: true, message: '월을 선택하세요' }]}>
               <Select
                 options={Array.from({ length: 12 }, (_, i) => ({ value: i + 1, label: `${i + 1}월` }))}
               />
             </Form.Item>
           )}
-          {policyType === 'interval' && (
-            <Form.Item name="interval_days" label="부여 간격 (일)" rules={[{ required: true, message: '간격을 입력하세요' }]}>
+          {ruleType === 'interval' && (
+            <Form.Item name="interval_days" label="부여 간격" rules={[{ required: true, message: '간격을 입력하세요' }]}>
               <InputNumber min={1} style={{ width: '100%' }} addonAfter="일마다" />
             </Form.Item>
           )}
