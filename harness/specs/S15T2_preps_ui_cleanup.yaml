@@ -1,0 +1,26 @@
+id: S15T2
+title: "PrepsPage: user_email 제거, 목표총량 제거, n일 이내 예상 보충 섹션"
+category: ui
+status: implemented
+
+description: |
+  세 가지 UI 개선:
+  1. 보충이력 Tag에서 · {r.user_email} 텍스트 제거 → 날짜만 표시
+  2. PrepTargetEdit 컴포넌트 및 관련 폼 필드(목표 총량/단위) 제거
+  3. 달력 아래 "다음 보충 예정" 카드 추가
+     - InputNumber로 n일 수 조절 (localStorage에 저장)
+     - nextRestockISO 기반 필터
+     - D-day 색상(오늘/내일=red, 3일 이내=orange, 그 외=blue)
+
+implementation_targets:
+  - src/pages/PrepsPage.tsx
+
+acceptance_criteria:
+  - npm run build 성공
+  - 이력 Tag에 user_email 렌더 없음
+  - PrepTargetEdit 컴포넌트 정의 없음
+  - 폼에 목표 총량 Form.Item 없음
+  - upcomingDays 상태와 nextRestockISO 필터 로직 존재
+  - localStorage.setItem('preps_upcoming_days') 저장 코드 존재
+
+test_command: "npm run build"

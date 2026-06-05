@@ -1,0 +1,23 @@
+id: S15T5
+title: "스케줄 캘린더: 직원 하이라이트 필터 버튼"
+category: ui
+status: implemented
+
+description: |
+  ScheduleCalendar 컴포넌트 달력 위에 직원 이름 Tag 버튼 추가.
+  - 클릭: 해당 직원 opacity 1, 나머지 0.15
+  - 재클릭 또는 "전체 보기" 버튼: 필터 해제
+  - 직원 버튼 비선택 시 opacity 0.45
+  - 엔트리 Tag에 transition: 'opacity 0.15s' 적용
+  - highlightEmp 상태는 ScheduleCalendar 내부 state로 관리
+
+implementation_targets:
+  - src/pages/CreateSchedulePage.tsx
+
+acceptance_criteria:
+  - npm run build 성공
+  - highlightEmp 상태 존재
+  - scheduleEmpNames useMemo 존재
+  - 달력 엔트리 Tag에 dimmed 조건부 opacity 적용
+
+test_command: "npm run build"

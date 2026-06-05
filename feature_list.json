@@ -856,10 +856,70 @@
         "HomePage에 /vacation 링크 없음"
       ]
     }
+    ,{
+      "id": "S15T1",
+      "sprint": 15,
+      "category": "engine",
+      "priority": 1,
+      "name": "칼로리 계산: g 단위 제한 제거, 개/장 단위 비율 계산",
+      "status": "implemented",
+      "test_command": "npm run build",
+      "acceptance_criteria": ["npm run build 성공", "calorieCalc.ts에 unit !== 'g' 스킵 코드 없음"]
+    },
+    {
+      "id": "S15T2",
+      "sprint": 15,
+      "category": "ui",
+      "priority": 2,
+      "name": "PrepsPage: user_email 제거, 목표총량 제거, n일 이내 예상 보충 섹션",
+      "status": "implemented",
+      "test_command": "npm run build",
+      "acceptance_criteria": ["npm run build 성공", "이력 Tag에 user_email 없음", "PrepTargetEdit 컴포넌트 없음", "upcomingDays 상태 존재"]
+    },
+    {
+      "id": "S15T3",
+      "sprint": 15,
+      "category": "db",
+      "priority": 3,
+      "name": "휴가 인프라: leave_grants + leave_policies 테이블, 타입, Repo",
+      "status": "implemented",
+      "test_command": "npm run build",
+      "acceptance_criteria": ["npm run build 성공", "018_leave_grants.sql 존재", "LeaveGrant/LeavePolicy 타입 존재", "leaveGrantsRepo.ts/leavePoliciesRepo.ts 존재"]
+    },
+    {
+      "id": "S15T4",
+      "sprint": 15,
+      "category": "ui",
+      "priority": 4,
+      "name": "VacationPage: 직원별 현황 테이블 + 부여 규칙 설정 + 일괄 부여",
+      "status": "implemented",
+      "test_command": "npm run build",
+      "acceptance_criteria": ["npm run build 성공", "직원별 현황 Table 존재", "정책 추가/편집 Modal 존재", "이번 달 일괄 부여 버튼 존재"]
+    },
+    {
+      "id": "S15T5",
+      "sprint": 15,
+      "category": "ui",
+      "priority": 5,
+      "name": "스케줄 캘린더: 직원 하이라이트 필터 버튼",
+      "status": "implemented",
+      "test_command": "npm run build",
+      "acceptance_criteria": ["npm run build 성공", "highlightEmp 상태 존재", "직원 이름 Tag 목록 + opacity 적용"]
+    },
+    {
+      "id": "S15T6",
+      "sprint": 15,
+      "category": "ui",
+      "priority": 6,
+      "name": "스케줄 색상: 고정 팔레트 (정직원 파랑 1,2,6,3,4,5 / 알바 주황 1~6)",
+      "status": "implemented",
+      "test_command": "npm run build",
+      "acceptance_criteria": ["npm run build 성공", "FULL_TIME_PALETTE/PART_TIME_PALETTE 배열 존재", "getShiftPaletteColor 함수 export"]
+    }
   ],
   "progress": {
-    "total": 41,
-    "completed": 41,
+    "total": 47,
+    "completed": 47,
     "passing": 38,
     "failing": 0,
     "pending": 0

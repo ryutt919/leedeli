@@ -44,48 +44,6 @@ import { normalizeUnitLabel, parseAmountAndUnit } from '../utils/unit'
 import { downloadXlsx } from '../utils/xlsxExport'
 import { parseXlsxFileToAOA } from '../utils/xlsxImport'
 
-type PrepTargetEditProps = {
-  prep: Prep
-  onSave: (qty: number | undefined, unit: string | undefined) => Promise<void>
-}
-
-function PrepTargetEdit({ prep, onSave }: PrepTargetEditProps) {
-  const [qty, setQty] = useState<number | undefined>(prep.targetQuantity)
-  const [unit, setUnit] = useState<string>(prep.targetUnit ?? 'g')
-
-  useEffect(() => {
-    setQty(prep.targetQuantity)
-    setUnit(prep.targetUnit ?? 'g')
-  }, [prep.targetQuantity, prep.targetUnit])
-
-  return (
-    <Space size={4} onClick={(e) => e.stopPropagation()}>
-      <Typography.Text type="secondary" style={{ fontSize: 12 }}>목표</Typography.Text>
-      <InputNumber
-        size="small"
-        min={0}
-        placeholder="-"
-        value={qty}
-        style={{ width: 72 }}
-        onChange={(v) => setQty(v ?? undefined)}
-        onBlur={() => void onSave(qty, unit)}
-      />
-      <Select
-        size="small"
-        value={unit}
-        style={{ width: 64 }}
-        onChange={(v) => { setUnit(v); void onSave(qty, v) }}
-        options={[
-          { value: 'g', label: 'g' },
-          { value: '개', label: '개' },
-          { value: '장', label: '장' },
-          { value: 'ml', label: 'ml' },
-        ]}
-      />
-    </Space>
-  )
-}
-
 export function PrepsPage() {
   const [tick, setTick] = useState(0)
   const [ingredients, setIngredients] = useState<Ingredient[]>([])
@@ -97,6 +55,9 @@ export function PrepsPage() {
 
   const [search, setSearch] = useState('')
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null)
+  const [upcomingDays, setUpcomingDays] = useState<number>(
+    () => parseInt(localStorage.getItem('preps_upcoming_days') ?? '7', 10)
+  )
 
   const allCategories = useMemo(() => {
     const cats = new Set<string>()
@@ -634,6 +595,74 @@ export function PrepsPage() {
         />
       </Card>
 
+      <Card
+        size="small"
+        style={{ marginBottom: 16 }}
+        title={
+          <Flex align="center" gap={8}>
+            <span>다음 보충 예정</span>
+            <InputNumber
+              size="small"
+              min={1}
+              max={60}
+              value={upcomingDays}
+              style={{ width: 60 }}
+              addonAfter="일"
+              onChange={(v) => {
+                const n = v ?? 7
+                setUpcomingDays(n)
+                localStorage.setItem('preps_upcoming_days', String(n))
+              }}
+            />
+            <Typography.Text type="secondary" style={{ fontSize: 12 }}>이내</Typography.Text>
+          </Flex>
+        }
+      >
+        {(() => {
+          const today = dayjs()
+          const upcoming = preps
+            .map((p) => ({ p, next: nextRestockISO(p.restockDatesISO) }))
+            .filter(({ next }) => {
+              if (!next) return false
+              const diff = dayjs(next).diff(today, 'day')
+              return diff >= 0 && diff <= upcomingDays
+            })
+            .sort((a, b) => (a.next ?? '').localeCompare(b.next ?? ''))
+          if (upcoming.length === 0) {
+            return (
+              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                {upcomingDays}일 이내 예정 없음
+              </Typography.Text>
+            )
+          }
+          return (
+            <Space direction="vertical" size={4} style={{ width: '100%' }}>
+              {upcoming.map(({ p, next }) => {
+                const diff = dayjs(next).diff(today, 'day')
+                const label = diff === 0 ? '오늘' : diff === 1 ? '내일' : `${diff}일 후`
+                return (
+                  <Flex
+                    key={p.id}
+                    justify="space-between"
+                    align="center"
+                    style={{ cursor: 'pointer', padding: '4px 0' }}
+                    onClick={() => openUpdate(p)}
+                  >
+                    <Typography.Text style={{ fontSize: 13 }}>{p.name}</Typography.Text>
+                    <Space size={6}>
+                      <Tag color={diff <= 1 ? 'red' : diff <= 3 ? 'orange' : 'blue'} style={{ fontSize: 11 }}>
+                        {label}
+                      </Tag>
+                      <Typography.Text type="secondary" style={{ fontSize: 11 }}>{next}</Typography.Text>
+                    </Space>
+                  </Flex>
+                )
+              })}
+            </Space>
+          )
+        })()}
+      </Card>
+
       <Card size="small">
         <Flex gap={8} wrap style={{ marginBottom: 12 }}>
           <Input.Search
@@ -700,13 +729,6 @@ export function PrepsPage() {
                           ? ` · ${prepCaloriesMap.get(p.id)}kcal`
                           : ''}
                       </Typography.Text>
-                      <PrepTargetEdit
-                        prep={p}
-                        onSave={async (qty, unit) => {
-                          await upsertPrep({ ...p, targetQuantity: qty, targetUnit: unit, updatedAtISO: new Date().toISOString() })
-                          refresh()
-                        }}
-                      />
                     </Space>
                   }
                 />
@@ -816,7 +838,7 @@ export function PrepsPage() {
                             } catch (e) { console.error(e); message.error('삭제 실패') }
                           }}
                         >
-                          {r.restock_date} · {r.user_email}
+                          {r.restock_date}
                         </Tag>
                       ))}
                     </Space>
@@ -863,17 +885,6 @@ export function PrepsPage() {
                       <InputNumber min={0} placeholder="예) 500" style={{ width: '100%' }} />
                     </Form.Item>
                     <Form.Item name="yieldUnit" label="생산 단위" style={{ width: 120 }}>
-                      <Select allowClear placeholder="단위" options={[
-                        { value: 'g', label: 'g' }, { value: '개', label: '개' },
-                        { value: '장', label: '장' }, { value: 'ml', label: 'ml' },
-                      ]} />
-                    </Form.Item>
-                  </Flex>
-                  <Flex gap={12} style={{ marginBottom: 0 }}>
-                    <Form.Item name="targetQuantity" label="목표 총량" style={{ flex: 1 }}>
-                      <InputNumber min={0} placeholder="예) 1000" style={{ width: '100%' }} />
-                    </Form.Item>
-                    <Form.Item name="targetUnit" label="목표 단위" style={{ width: 120 }}>
                       <Select allowClear placeholder="단위" options={[
                         { value: 'g', label: 'g' }, { value: '개', label: '개' },
                         { value: '장', label: '장' }, { value: 'ml', label: 'ml' },

@@ -1,0 +1,25 @@
+id: S15T3
+title: "휴가 인프라: leave_grants + leave_policies 테이블, 타입, Repo"
+category: db
+status: implemented
+
+description: |
+  leave_grants 테이블: 직원별 월차/연차 부여 이력 (UNIQUE employee_id + grant_month)
+  leave_policies 테이블: 앱 전역 부여 규칙 (monthly/yearly, amount, trigger_month)
+  LeaveGrant, LeavePolicy 타입 추가 (domain/types.ts)
+  leaveGrantsRepo.ts: loadLeaveGrants, addLeaveGrant, deleteLeaveGrant
+  leavePoliciesRepo.ts: loadLeavePolicies, upsertLeavePolicy, deleteLeavePolicy
+
+implementation_targets:
+  - supabase/migrations/018_leave_grants.sql
+  - src/domain/types.ts
+  - src/storage/leaveGrantsRepo.ts
+  - src/storage/leavePoliciesRepo.ts
+
+acceptance_criteria:
+  - npm run build 성공
+  - supabase/migrations/018_leave_grants.sql 존재
+  - types.ts에 LeaveGrant, LeavePolicy 타입 존재
+  - leaveGrantsRepo.ts, leavePoliciesRepo.ts 파일 존재 + 함수 export
+
+test_command: "npm run build"

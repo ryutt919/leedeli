@@ -1,0 +1,30 @@
+id: S15T6
+title: "스케줄 색상: 고정 팔레트 (정직원 파랑 1,2,6,3,4,5 / 알바 주황 1~6)"
+category: ui
+status: implemented
+
+description: |
+  shiftColors.ts 전면 교체:
+    - FULL_TIME_PALETTE: 정직원 파란 계열 6색 (이미지 순서 1,2,6,3,4,5)
+    - PART_TIME_PALETTE: 알바 주황 계열 6색 (이미지 순서 1~6)
+    - getShiftPaletteColor(index, isPartTime): { bg, text } 반환
+
+  CreateSchedulePage.tsx:
+    - shiftColorMap useMemo: schedule.shiftTypes 기반 이름→색상 매핑
+      (targetRole='알바' → PART_TIME, 그 외 → FULL_TIME, 배열 순서로 인덱스 결정)
+    - 달력 엔트리 Tag: color 프롭 → style.backgroundColor + style.color 로 교체
+    - 요약 테이블 역할, 직원 목록 역할 Tag: FULL_TIME_PALETTE[0]/PART_TIME_PALETTE[0]
+    - 설정탭 근무유형 리스트: 역할에 따라 팔레트 첫 번째 색상으로 표시
+
+implementation_targets:
+  - src/utils/shiftColors.ts
+  - src/pages/CreateSchedulePage.tsx
+
+acceptance_criteria:
+  - npm run build 성공
+  - shiftColors.ts에 FULL_TIME_PALETTE, PART_TIME_PALETTE 배열 존재
+  - getShiftPaletteColor(index, isPartTime) 함수 export
+  - CreateSchedulePage.tsx에 stringToHue/구 getShiftColor(name) 없음
+  - 달력 엔트리 Tag가 style.backgroundColor 방식으로 색상 적용
+
+test_command: "npm run build"

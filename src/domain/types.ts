@@ -240,6 +240,25 @@ export type VacationRecord = {
   created_at: string
 }
 
+export type LeaveGrant = {
+  id: string
+  employee_id: string
+  amount: number
+  grant_month: string   // 'YYYY-MM'
+  note?: string
+  created_at: string
+}
+
+export type LeavePolicy = {
+  id: string
+  label: string
+  type: 'monthly' | 'yearly'
+  amount: number
+  trigger_month?: number   // yearly 전용: 1~12
+  is_active: boolean
+  created_at: string
+}
+
 export type WeekPreset = {
   id: Id
   name: string

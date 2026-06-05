@@ -1,0 +1,28 @@
+id: S15T4
+title: "VacationPage: 직원별 현황 테이블 + 부여 규칙 설정 + 일괄 부여"
+category: ui
+status: implemented
+
+description: |
+  VacationTabContent 상단에 세 섹션 추가:
+  1. 직원별 휴가 현황 테이블 (Ant Design Table)
+     - 컬럼: 직원, 부여일, 사용일, 잔여일
+     - 잔여 < 0 → red 강조
+  2. 휴가 부여 규칙 카드
+     - 정책 추가/편집 Modal (이름, 유형: 월마다/년마다, 부여일수, 활성 여부)
+     - 년마다 선택 시 trigger_month 표시
+  3. "이번 달 활성 월차 일괄 부여" 버튼
+     - 활성 monthly 정책 합산 → 전 직원에 addLeaveGrant
+     - UNIQUE 중복 건 = skip (already granted)
+
+implementation_targets:
+  - src/pages/VacationPage.tsx
+
+acceptance_criteria:
+  - npm run build 성공
+  - loadLeaveGrants, loadLeavePolicies import 존재
+  - 직원별 현황 Table 렌더 코드 존재
+  - 정책 추가/편집 Modal 존재
+  - 이번 달 일괄 부여 버튼 및 handleBulkGrant 존재
+
+test_command: "npm run build"

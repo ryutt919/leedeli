@@ -1,0 +1,21 @@
+id: S15T1
+title: "칼로리 계산: g 단위 제한 제거, 개/장 단위 비율 계산"
+category: engine
+status: implemented
+
+description: |
+  기존 calcPrepCalories / calcMenuCalories에서 g 단위 재료만 칼로리를 계산하는
+  if (unit !== 'g') continue 로직을 제거.
+  단위별 계산:
+    - g, ml → caloriesPer100g * amount / 100
+    - 그 외(개, 장 등) → caloriesPer100g * amount (단위당 칼로리 직접 곱)
+
+implementation_targets:
+  - src/utils/calorieCalc.ts
+
+acceptance_criteria:
+  - npm run build 성공
+  - calorieCalc.ts에 unit !== 'g'로 건너뛰는 코드 없음
+  - g/ml vs 기타 단위 분기 처리 존재
+
+test_command: "npm run build"

@@ -1,24 +1,29 @@
-// ShiftType 이름 기반 고유 색상 배정
-// 같은 이름 → 항상 같은 색, 오픈/미들/마감 등 서로 다른 색
+export type ShiftPaletteColor = { bg: string; text: string }
 
-function hslToHex(h: number, s: number, l: number): string {
-  const sNorm = s / 100
-  const lNorm = l / 100
-  const a = sNorm * Math.min(lNorm, 1 - lNorm)
-  const f = (n: number) => {
-    const k = (n + h / 30) % 12
-    const color = lNorm - a * Math.max(Math.min(k - 3, 9 - k, 1), -1)
-    return Math.round(255 * color).toString(16).padStart(2, '0')
-  }
-  return `#${f(0)}${f(8)}${f(4)}`
-}
+// 정직원용 파란 계열 — 이미지 순서: 1,2,6,3,4,5
+export const FULL_TIME_PALETTE: ShiftPaletteColor[] = [
+  { bg: '#DBEAFE', text: '#1D4ED8' },
+  { bg: '#E0F2FE', text: '#0369A1' },
+  { bg: '#F0FDFA', text: '#0F766E' },
+  { bg: '#E0E7FF', text: '#4338CA' },
+  { bg: '#CCFBF1', text: '#0F766E' },
+  { bg: '#D1FAE5', text: '#047857' },
+]
 
-function stringToHue(name: string): number {
-  let h = 5381
-  for (const c of name) h = ((h << 5) + h) ^ c.charCodeAt(0)
-  return ((h % 360) + 360) % 360
-}
+// 알바용 주황 계열 — 이미지 순서: 1,2,3,4,5,6
+export const PART_TIME_PALETTE: ShiftPaletteColor[] = [
+  { bg: '#FFEDD5', text: '#C2410C' },
+  { bg: '#FEF3C7', text: '#B45309' },
+  { bg: '#FFE4E6', text: '#BE123C' },
+  { bg: '#FEE2E2', text: '#B91C1C' },
+  { bg: '#FFF7ED', text: '#EA580C' },
+  { bg: '#FDE68A', text: '#92400E' },
+]
 
-export function getShiftColor(shiftName: string): string {
-  return hslToHex(stringToHue(shiftName), 65, 42)
+export function getShiftPaletteColor(
+  shiftIndex: number,
+  isPartTime: boolean
+): ShiftPaletteColor {
+  const palette = isPartTime ? PART_TIME_PALETTE : FULL_TIME_PALETTE
+  return palette[shiftIndex % palette.length]
 }

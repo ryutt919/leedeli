@@ -41,7 +41,7 @@ import {
   upsertWeekPreset,
   deleteWeekPreset,
 } from '../storage/weekPresetsRepo'
-import { getShiftColor } from '../utils/shiftColors'
+import { FULL_TIME_PALETTE, PART_TIME_PALETTE, getShiftPaletteColor, type ShiftPaletteColor } from '../utils/shiftColors'
 import { VacationTabContent } from './VacationPage'
 
 const { Text } = Typography
@@ -709,8 +709,24 @@ export function ScheduleCalendar({
   onCellClick?: (dateISO: string) => void
 }) {
   const { token } = theme.useToken()
+  const [highlightEmp, setHighlightEmp] = useState<string | null>(null)
+
   const empRoleMap = useMemo(
     () => new Map(schedule.employees.map((e) => [e.id, e.role])),
+    [schedule.employees]
+  )
+
+  const shiftColorMap = useMemo(() => {
+    const fullShifts = schedule.shiftTypes.filter((s) => s.targetRole !== '알바')
+    const partShifts = schedule.shiftTypes.filter((s) => s.targetRole === '알바')
+    const map = new Map<string, ShiftPaletteColor>()
+    fullShifts.forEach((s, i) => map.set(s.name, getShiftPaletteColor(i, false)))
+    partShifts.forEach((s, i) => map.set(s.name, getShiftPaletteColor(i, true)))
+    return map
+  }, [schedule.shiftTypes])
+
+  const scheduleEmpNames = useMemo(
+    () => schedule.employees.map((e) => e.name).sort((a, b) => a.localeCompare(b)),
     [schedule.employees]
   )
   const start = new Date(schedule.startDateISO + 'T00:00:00')
@@ -734,7 +750,43 @@ export function ScheduleCalendar({
   }
 
   return (
-    <div style={{ overflowX: 'auto' }}>
+    <div>
+      {scheduleEmpNames.length > 0 && (
+        <Flex wrap="wrap" gap={4} style={{ marginBottom: 8 }}>
+          {scheduleEmpNames.map((name) => {
+            const emp = schedule.employees.find((e) => e.name === name)
+            const isPartTime = emp?.role === '알바'
+            const c = isPartTime ? PART_TIME_PALETTE[0] : FULL_TIME_PALETTE[0]
+            const isActive = highlightEmp === name
+            return (
+              <Tag
+                key={name}
+                style={{
+                  cursor: 'pointer',
+                  backgroundColor: isActive ? c.bg : undefined,
+                  color: isActive ? c.text : undefined,
+                  borderColor: isActive ? c.bg : undefined,
+                  opacity: highlightEmp && !isActive ? 0.45 : 1,
+                  transition: 'all 0.15s',
+                  userSelect: 'none',
+                }}
+                onClick={() => setHighlightEmp((prev) => (prev === name ? null : name))}
+              >
+                {name}
+              </Tag>
+            )
+          })}
+          {highlightEmp && (
+            <Tag
+              style={{ cursor: 'pointer' }}
+              onClick={() => setHighlightEmp(null)}
+            >
+              전체 보기
+            </Tag>
+          )}
+        </Flex>
+      )}
+      <div style={{ overflowX: 'auto' }}>
       <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 420 }}>
         <thead>
           <tr>
@@ -813,21 +865,29 @@ export function ScheduleCalendar({
                       </Tag>
                     ) : (
                       sortedDayEntries.map((entry) => {
-                        const tagColor = getShiftColor(entry.shiftTypeName ?? entry.employeeName ?? '')
+                        const role = empRoleMap.get(entry.employeeId) ?? '알바'
+                        const isPartTime = role === '알바'
+                        const fallback = isPartTime ? PART_TIME_PALETTE[0] : FULL_TIME_PALETTE[0]
+                        const c = (entry.shiftTypeName ? shiftColorMap.get(entry.shiftTypeName) : undefined) ?? fallback
                         const label = entry.shiftTypeName
                           ? `${entry.employeeName} · ${entry.shiftTypeName}`
                           : entry.employeeName
+                        const dimmed = highlightEmp !== null && entry.employeeName !== highlightEmp
                         return (
                           <Tag
                             key={entry.id}
-                            color={tagColor}
                             style={{
+                              backgroundColor: c.bg,
+                              color: c.text,
+                              borderColor: c.bg,
                               fontSize: 10,
                               fontWeight: 500,
                               padding: '0 3px',
                               marginBottom: 2,
                               display: 'block',
                               marginInlineEnd: 0,
+                              opacity: dimmed ? 0.15 : 1,
+                              transition: 'opacity 0.15s',
                             }}
                           >
                             {label}
@@ -842,6 +902,7 @@ export function ScheduleCalendar({
           ))}
         </tbody>
       </table>
+      </div>
     </div>
   )
 }
@@ -1132,7 +1193,7 @@ export function CreateSchedulePage() {
 
   const mgWorkSummaryColumns = [
     { title: '직원', dataIndex: 'name', key: 'name' },
-    { title: '역할', dataIndex: 'role', key: 'role', render: (v: string) => <Tag color={getShiftColor(v)}>{v}</Tag> },
+    { title: '역할', dataIndex: 'role', key: 'role', render: (v: string) => { const c = v === '알바' ? PART_TIME_PALETTE[0] : FULL_TIME_PALETTE[0]; return <Tag style={{ backgroundColor: c.bg, color: c.text, borderColor: c.bg }}>{v}</Tag> } },
     { title: '근무일', dataIndex: 'totalDays', key: 'totalDays', render: (v: number) => `${v}일` },
     { title: '총시간', dataIndex: 'totalHours', key: 'totalHours', render: (v: number) => `${v}h` },
   ]
@@ -1277,10 +1338,15 @@ export function CreateSchedulePage() {
         </Flex>
         <Flex vertical gap={8}>
           {shiftTypes.length === 0 && <Text type="secondary" style={{ fontSize: 12 }}>근무유형을 추가해주세요 (예: 오픈 09:00-18:00)</Text>}
-          {shiftTypes.map((st) => (
+          {shiftTypes.map((st) => {
+            const isPartTime = st.targetRole === '알바'
+            const c = isPartTime ? PART_TIME_PALETTE[0] : FULL_TIME_PALETTE[0]
+            return (
             <Flex key={st.id} justify="space-between" align="center" style={{ padding: '8px 12px', border: '1px solid #f0f0f0', borderRadius: 8, background: '#fafafa' }}>
               <Flex vertical>
-                <Text strong style={{ fontSize: 13 }}>{st.name}</Text>
+                <Flex gap={6} align="center">
+                  <Tag style={{ backgroundColor: c.bg, color: c.text, borderColor: c.bg, fontSize: 11, margin: 0 }}>{st.name}</Tag>
+                </Flex>
                 <Text type="secondary" style={{ fontSize: 11 }}>
                   {st.startTime}–{st.endTime} 휴식{st.breakMinutes}분 / 필요인원 {st.staffCount}명
                   {st.targetRole && st.targetRole !== '전체' && ` / ${st.targetRole}전용`}
@@ -1291,7 +1357,8 @@ export function CreateSchedulePage() {
                 <Button danger type="text" size="small" icon={<DeleteOutlined />} onClick={() => handleStDelete(st.id)} />
               </Space>
             </Flex>
-          ))}
+          )
+          })}
         </Flex>
       </div>
 
@@ -1309,7 +1376,7 @@ export function CreateSchedulePage() {
                 <Flex vertical>
                   <Flex gap={8} align="center">
                     <Text strong style={{ fontSize: 13 }}>{emp.name}</Text>
-                    <Tag color={getShiftColor(emp.role)} style={{ fontSize: 11 }}>{emp.role}</Tag>
+                    <Tag style={{ fontSize: 11, backgroundColor: (emp.role === '알바' ? PART_TIME_PALETTE[0] : FULL_TIME_PALETTE[0]).bg, color: (emp.role === '알바' ? PART_TIME_PALETTE[0] : FULL_TIME_PALETTE[0]).text, borderColor: (emp.role === '알바' ? PART_TIME_PALETTE[0] : FULL_TIME_PALETTE[0]).bg }}>{emp.role}</Tag>
                   </Flex>
                   <Text type="secondary" style={{ fontSize: 11 }}>
                     {availableNames

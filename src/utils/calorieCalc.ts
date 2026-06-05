@@ -9,8 +9,10 @@ export function calcPrepCalories(
     const ing = ingredientById.get(item.ingredientId)
     if (!ing?.caloriesPer100g) continue
     const unit = ing.unitLabel ?? (ing.unitType === 'ea' ? '개' : 'g')
-    if (unit !== 'g') continue
-    total += (ing.caloriesPer100g * item.amount) / 100
+    const isWeightVolume = unit === 'g' || unit === 'ml'
+    total += isWeightVolume
+      ? (ing.caloriesPer100g * item.amount) / 100
+      : ing.caloriesPer100g * item.amount
   }
   return Math.round(total)
 }
@@ -25,8 +27,10 @@ export function calcMenuCalories(
     const ing = ingredientById.get(item.ingredientId)
     if (!ing?.caloriesPer100g) continue
     const unit = ing.unitLabel ?? (ing.unitType === 'ea' ? '개' : 'g')
-    if (unit !== 'g') continue
-    total += (ing.caloriesPer100g * item.amount) / 100
+    const isWeightVolume = unit === 'g' || unit === 'ml'
+    total += isWeightVolume
+      ? (ing.caloriesPer100g * item.amount) / 100
+      : ing.caloriesPer100g * item.amount
   }
   for (const pt of menu.prepItems) {
     const prep = prepById.get(pt.prepId)
