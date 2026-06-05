@@ -26,8 +26,25 @@ import { loadEmployees } from '../storage/employeesRepo'
 import { addLeaveGrant, loadLeaveGrants } from '../storage/leaveGrantsRepo'
 import { deleteLeavePolicy, loadLeavePolicies, upsertLeavePolicy } from '../storage/leavePoliciesRepo'
 import { addVacation, deleteVacation, getVacations } from '../storage/vacationRepo'
+import { FULL_TIME_PALETTE, PART_TIME_PALETTE } from '../utils/shiftColors'
 
 const VACATION_TYPES = ['연차', '반차(오전)', '반차(오후)', '병가', '경조사', '공가', '기타']
+
+function sortEmployeesForVacation(a: Employee, b: Employee): number {
+  if (a.role !== b.role) return a.role === '정직원' ? -1 : 1
+  return a.name.localeCompare(b.name)
+}
+
+function roleTagColor(role: Employee['role']) {
+  return role === '알바' ? PART_TIME_PALETTE[0] : FULL_TIME_PALETTE[0]
+}
+
+function policyTypeLabel(policy?: LeavePolicy): string {
+  if (!policy) return '조정'
+  if (policy.type === 'monthly') return '월마다'
+  if (policy.type === 'yearly') return '년마다'
+  return `${policy.interval_days ?? '?'}일마다`
+}
 
 export function VacationTabContent() {
   const [tick, setTick] = useState(0)
@@ -56,7 +73,7 @@ export function VacationTabContent() {
   useEffect(() => {
     Promise.all([loadEmployees(), getVacations(), loadLeaveGrants(), loadLeavePolicies()])
       .then(([emps, vacs, grants, policies]) => {
-        setEmployees(emps.sort((a, b) => a.name.localeCompare(b.name)))
+        setEmployees([...emps].sort(sortEmployeesForVacation))
         setAllVacations(vacs)
         setLeaveGrants(grants)
         setLeavePolicies(policies)
@@ -165,6 +182,14 @@ export function VacationTabContent() {
     return sum + 1
   }, 0)
 
+  const policyById = new Map(leavePolicies.map((p) => [p.id, p]))
+  const selectedGrantRecords = selectedEmployeeId
+    ? leaveGrants
+        .filter((g) => g.employee_id === selectedEmployeeId)
+        .sort((a, b) => b.grant_month.localeCompare(a.grant_month) || b.created_at.localeCompare(a.created_at))
+    : []
+  const selectedGrantedDays = selectedGrantRecords.reduce((sum, g) => sum + g.amount, 0)
+
   // 직원별 현황 계산
   const balanceData = employees.map((emp) => {
     const usedDays = allVacations
@@ -199,12 +224,15 @@ export function VacationTabContent() {
       title: '직원',
       dataIndex: 'name',
       key: 'name',
-      render: (v: string, row: typeof balanceData[0]) => (
-        <Space size={4}>
-          <span style={{ fontSize: 13, fontWeight: row.key === selectedEmployeeId ? 600 : 400 }}>{v}</span>
-          <Tag style={{ fontSize: 10 }}>{row.role}</Tag>
-        </Space>
-      ),
+      render: (v: string, row: typeof balanceData[0]) => {
+        const c = roleTagColor(row.role)
+        return (
+          <Space size={4}>
+            <span style={{ fontSize: 13, fontWeight: row.key === selectedEmployeeId ? 600 : 400 }}>{v}</span>
+            <Tag style={{ fontSize: 10, backgroundColor: c.bg, color: c.text, borderColor: c.bg }}>{row.role}</Tag>
+          </Space>
+        )
+      },
     },
     { title: '부여', dataIndex: 'grantedDays', key: 'granted', render: (v: number) => `${v}일` },
     { title: '사용', dataIndex: 'usedDays', key: 'used', render: (v: number) => `${v}일` },
@@ -466,6 +494,49 @@ export function VacationTabContent() {
                   />
                 </List.Item>
               )}
+            />
+          </Card>
+
+          <Card
+            size="small"
+            title={
+              <Space>
+                <span>{selectedEmployee?.name} 휴가 부여 기록</span>
+                <Tag color="green">{selectedGrantedDays}일 부여</Tag>
+              </Space>
+            }
+            style={{ marginTop: 12 }}
+          >
+            <List
+              dataSource={selectedGrantRecords}
+              locale={{ emptyText: '휴가 부여 기록이 없습니다.' }}
+              renderItem={(g) => {
+                const policy = g.rule_id ? policyById.get(g.rule_id) : undefined
+                const sourceLabel = policy?.label ?? (g.rule_id ? '알 수 없는 규칙' : '수동 조정')
+                return (
+                  <List.Item>
+                    <List.Item.Meta
+                      title={
+                        <Space size={6} wrap>
+                          <span>{g.grant_month}</span>
+                          <Tag color={g.amount < 0 ? 'red' : 'green'} style={{ fontSize: 11 }}>
+                            {g.amount}일
+                          </Tag>
+                          <Tag color={g.rule_id ? 'blue' : 'default'} style={{ fontSize: 11 }}>
+                            {sourceLabel}
+                          </Tag>
+                          <Tag color="default" style={{ fontSize: 11 }}>
+                            {policyTypeLabel(policy)}
+                          </Tag>
+                        </Space>
+                      }
+                      description={g.note ? (
+                        <Typography.Text type="secondary" style={{ fontSize: 12 }}>{g.note}</Typography.Text>
+                      ) : undefined}
+                    />
+                  </List.Item>
+                )
+              }}
             />
           </Card>
         </>
