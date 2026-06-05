@@ -422,10 +422,10 @@ export function VacationTabContent() {
           loading={grantLoading}
           onClick={() => void handleBulkGrant()}
         >
-          자동 부여 재실행 (누락 보완)
+          자동 부여 재실행
         </Button>
-        <Typography.Text type="secondary" style={{ fontSize: 11, display: 'block', marginTop: 4, textAlign: 'center' }}>
-          월마다·년마다·n일마다 규칙은 앱 접속 시 자동으로 부여됩니다.
+        <Typography.Text type="secondary" style={{ fontSize: 16, display: 'block', marginTop: 4, textAlign: 'center' }}>
+          월마다·년마다·n일마다 자동으로 부여됩니다.
         </Typography.Text>
       </Card>
 
