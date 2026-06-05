@@ -137,7 +137,7 @@ export function VacationTabContent() {
   const handleBulkGrant = async () => {
     const activeMonthly = leavePolicies.filter((p) => p.is_active && p.type === 'monthly')
     if (activeMonthly.length === 0) {
-      message.warning('활성 월차 정책이 없습니다.')
+      message.warning('활성 월차 규칙이 없습니다.')
       return
     }
     const totalAmount = activeMonthly.reduce((sum, p) => sum + p.amount, 0)
@@ -157,23 +157,24 @@ export function VacationTabContent() {
     refresh()
   }
 
-  // 정책 저장
+  // 규칙 저장
   const handlePolicySave = async () => {
     try {
       const v = await policyForm.validateFields()
       await upsertLeavePolicy({
         id: editingPolicy?.id,
         label: v.label as string,
-        type: v.type as 'monthly' | 'yearly',
+        type: v.type as 'monthly' | 'yearly' | 'interval',
         amount: v.amount as number,
         trigger_month: v.type === 'yearly' ? (v.trigger_month as number) : undefined,
+        interval_days: v.type === 'interval' ? (v.interval_days as number) : undefined,
         is_active: v.is_active as boolean ?? true,
       })
       setPolicyModalOpen(false)
       setEditingPolicy(null)
       policyForm.resetFields()
       refresh()
-      message.success('정책을 저장했습니다.')
+      message.success('규칙을 저장했습니다.')
     } catch (e) {
       if (e instanceof Error) message.error(`저장 실패: ${e.message}`)
     }
@@ -193,7 +194,7 @@ export function VacationTabContent() {
     setEditingPolicy(policy ?? null)
     policyForm.setFieldsValue(
       policy
-        ? { ...policy }
+        ? { label: policy.label, type: policy.type, amount: policy.amount, trigger_month: policy.trigger_month, interval_days: policy.interval_days, is_active: policy.is_active }
         : { label: '', type: 'monthly', amount: 1, is_active: true }
     )
     setPolicyModalOpen(true)
@@ -224,13 +225,13 @@ export function VacationTabContent() {
             icon={<PlusOutlined />}
             onClick={() => openPolicyModal()}
           >
-            정책 추가
+            규칙 추가
           </Button>
         }
       >
         {leavePolicies.length === 0 ? (
           <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-            정책이 없습니다. 추가 버튼으로 월차·연차 규칙을 만드세요.
+            규칙이 없습니다. 추가 버튼으로 월차·연차 규칙을 만드세요.
           </Typography.Text>
         ) : (
           <Flex vertical gap={6}>
@@ -238,7 +239,7 @@ export function VacationTabContent() {
               <Flex key={p.id} justify="space-between" align="center">
                 <Space size={6}>
                   <Tag color={p.is_active ? 'blue' : 'default'}>
-                    {p.type === 'monthly' ? '월차' : '연차'}
+                    {p.type === 'monthly' ? '월마다' : p.type === 'yearly' ? '년마다' : `${p.interval_days ?? '?'}일마다`}
                   </Tag>
                   <Typography.Text style={{ fontSize: 13 }}>{p.label}</Typography.Text>
                   <Typography.Text type="secondary" style={{ fontSize: 12 }}>
@@ -360,20 +361,24 @@ export function VacationTabContent() {
         </Typography.Text>
       )}
 
-      {/* ── 정책 편집 모달 ───────────────────────────── */}
+      {/* ── 규칙 편집 모달 ───────────────────────────── */}
       <Modal
         open={policyModalOpen}
-        title={editingPolicy ? '정책 편집' : '정책 추가'}
+        title={editingPolicy ? '규칙 편집' : '규칙 추가'}
         onCancel={() => { setPolicyModalOpen(false); setEditingPolicy(null); policyForm.resetFields() }}
         onOk={() => void handlePolicySave()}
         okText="저장"
       >
         <Form form={policyForm} layout="vertical">
-          <Form.Item name="label" label="정책 이름" rules={[{ required: true, message: '이름을 입력하세요' }]}>
+          <Form.Item name="label" label="규칙 이름" rules={[{ required: true, message: '이름을 입력하세요' }]}>
             <Input placeholder="예) 월차" />
           </Form.Item>
           <Form.Item name="type" label="유형" rules={[{ required: true }]}>
-            <Select options={[{ value: 'monthly', label: '월마다' }, { value: 'yearly', label: '년마다' }]} />
+            <Select options={[
+              { value: 'monthly', label: '월마다' },
+              { value: 'yearly', label: '년마다' },
+              { value: 'interval', label: 'n일마다 (사용자 지정)' },
+            ]} />
           </Form.Item>
           <Form.Item name="amount" label="부여 일수" rules={[{ required: true }]}>
             <InputNumber min={0.5} step={0.5} style={{ width: '100%' }} />
@@ -383,6 +388,11 @@ export function VacationTabContent() {
               <Select
                 options={Array.from({ length: 12 }, (_, i) => ({ value: i + 1, label: `${i + 1}월` }))}
               />
+            </Form.Item>
+          )}
+          {policyType === 'interval' && (
+            <Form.Item name="interval_days" label="부여 간격 (일)" rules={[{ required: true, message: '간격을 입력하세요' }]}>
+              <InputNumber min={1} style={{ width: '100%' }} addonAfter="일마다" />
             </Form.Item>
           )}
           <Form.Item name="is_active" label="활성" valuePropName="checked">

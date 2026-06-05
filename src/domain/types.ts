@@ -252,9 +252,10 @@ export type LeaveGrant = {
 export type LeavePolicy = {
   id: string
   label: string
-  type: 'monthly' | 'yearly'
+  type: 'monthly' | 'yearly' | 'interval'
   amount: number
   trigger_month?: number   // yearly 전용: 1~12
+  interval_days?: number   // interval 전용: n일마다
   is_active: boolean
   created_at: string
 }

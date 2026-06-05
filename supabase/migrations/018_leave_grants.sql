@@ -13,13 +13,14 @@ CREATE POLICY "auth read"   ON leave_grants FOR SELECT USING (auth.role() = 'aut
 CREATE POLICY "auth insert" ON leave_grants FOR INSERT WITH CHECK (auth.role() = 'authenticated');
 CREATE POLICY "auth delete" ON leave_grants FOR DELETE USING (auth.role() = 'authenticated');
 
--- 휴가 부여 정책 (앱 전역 규칙 설정)
+-- 휴가 부여 규칙 (앱 전역 규칙 설정)
 CREATE TABLE IF NOT EXISTS leave_policies (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   label text NOT NULL,
-  type text NOT NULL CHECK (type IN ('monthly', 'yearly')),
+  type text NOT NULL CHECK (type IN ('monthly', 'yearly', 'interval')),
   amount numeric(4,1) NOT NULL DEFAULT 1,
   trigger_month integer,   -- yearly 전용: 몇 월에 부여 (1~12)
+  interval_days integer,   -- interval 전용: 몇 일마다 부여
   is_active boolean DEFAULT true,
   created_at timestamptz DEFAULT now()
 );
