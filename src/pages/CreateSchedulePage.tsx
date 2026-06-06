@@ -41,6 +41,7 @@ import {
   upsertWeekPreset,
   deleteWeekPreset,
 } from '../storage/weekPresetsRepo'
+import { compareEmployeesByRole } from '../utils/employees'
 import { FULL_TIME_PALETTE, PART_TIME_PALETTE, getShiftPaletteColor, type ShiftPaletteColor } from '../utils/shiftColors'
 import { VacationTabContent } from './VacationPage'
 
@@ -1369,7 +1370,7 @@ export function CreateSchedulePage() {
         </Flex>
         <Flex vertical gap={8}>
           {employees.length === 0 && <Text type="secondary" style={{ fontSize: 12 }}>직원을 추가해주세요</Text>}
-          {employees.map((emp) => {
+          {[...employees].sort(compareEmployeesByRole).map((emp) => {
             const availableNames = emp.availableShiftIds.map((id) => shiftTypes.find((s) => s.id === id)?.name).filter(Boolean).join(', ')
             return (
               <Flex key={emp.id} justify="space-between" align="center" style={{ padding: '8px 12px', border: '1px solid #f0f0f0', borderRadius: 8, background: '#fafafa' }}>

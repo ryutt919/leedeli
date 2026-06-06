@@ -5,16 +5,28 @@ Describe the current state of each component. Update in-place during work.
 Do not duplicate content.
 
 ### Vacation Management Tab
-- **Current value/logic**: The vacation tab loads employees, vacation usage records, leave grants, and leave policies. Employee rows are sorted with 정직원 first, then 알바, and then name ascending within each role.
-- **Implementation**: `VacationTabContent` renders an employee balance table, leave policy management, selected employee usage entry form, usage history, and grant history management.
-- **Related files**: `src/pages/VacationPage.tsx`, `src/storage/vacationRepo.ts`, `src/storage/leaveGrantsRepo.ts`, `src/storage/leavePoliciesRepo.ts`
+- **Current value/logic**: The vacation tab loads employees, vacation usage records, and leave grants (leave policy loading/auto-grant removed). Employee rows are sorted with 정직원 first, then 알바, and then name ascending within each role — same comparator now shared with the schedule settings tab via `compareEmployeesByRole`.
+- **Implementation**: `VacationTabContent` renders an employee balance table, a "휴가 일괄 부여" card (bulk-grant button + modal), selected employee usage entry form (with free-typeable vacation type), usage history, and grant history management.
+- **Related files**: `src/pages/VacationPage.tsx`, `src/storage/vacationRepo.ts`, `src/storage/leaveGrantsRepo.ts`, `src/utils/employees.ts`
 - **Rationale**: Vacation balance is calculated as granted days minus used days, while grant history remains visible so managers can audit when and why leave was awarded.
 
+### Leave Grant Rules → Bulk Grant (removed rule engine)
+- **Current value/logic**: The old `LeavePolicy`-based automatic grant system (월/년/n일 주기 규칙 + 자동 부여 재실행) has been fully removed. In its place, an admin manually clicks "전체 정직원에게 월차·연차 부여", enters 월차/연차 day amounts in a modal, and the app grants those amounts to every 정직원 for the current month (월차, `grant_month='YYYY-MM'`) / current year (연차, `grant_month='YYYY'`), skipping anyone already granted for that period.
+- **Implementation**: `handleBulkGrantToFullTime` in `VacationPage.tsx` iterates `employees.filter(e => e.role === '정직원')`, checks `leaveGrants` for an existing record with the same `employee_id + leave_type + grant_month` before calling `addLeaveGrant(..., leaveType)`. The new `leave_type` column (added via migration `020_leave_grants_leave_type.sql`, `LeaveGrant.leave_type?: string`) records whether a grant is 월차/연차/etc. so the UI no longer depends on `rule_id`/`leave_policies`.
+- **Related files**: `src/pages/VacationPage.tsx`, `src/domain/types.ts`, `src/storage/leaveGrantsRepo.ts`, `supabase/migrations/020_leave_grants_leave_type.sql`
+- **Rationale**: User explicitly requested removing the rule engine ("규칙은 필요없어") in favor of a simple manual bulk-grant action with directly-entered day counts. DB cleanup was scoped to code only — the `leave_policies` table and `leave_grants.rule_id` column remain in the DB (legacy data still renders as "알 수 없는 규칙" if `rule_id` is present with no `leave_type`), but `leavePoliciesRepo.ts` was deleted and `LeavePolicy` removed from `domain/types.ts`.
+
 ### Leave Grant History
-- **Current value/logic**: Selected employee grant records are filtered from `leave_grants` and displayed by `grant_month`, amount, policy label, and optional note. Records with no `rule_id` are displayed as manual adjustments.
-- **Implementation**: Grant records are matched to loaded `leave_policies` in the UI. Deleted or unavailable policies are shown as unknown rules. Individual grants can be deleted, and all selected employee grant records can be initialized after a warning that the remaining vacation balance will be reduced.
+- **Current value/logic**: Selected employee grant records are filtered from `leave_grants` and displayed with a human-readable period (`formatGrantPeriod`), amount, source label, and optional note. Source label resolves as `leave_type ?? (rule_id ? '알 수 없는 규칙' : '수동 조정')`.
+- **Implementation**: `formatGrantPeriod(grantMonth, createdAt)` converts `grant_month` into display text based on its format — `YYYY-MM-DD` shown as-is, `YYYY-MM` → `"YYYY년 M월"`, `YYYY` → `"YYYY년"`, and any other internal key (e.g. legacy manual-adjustment keys like `adj-20260606140359-268e71`) falls back to `created_at` formatted as `"YYYY-MM-DD 부여"`. This fixed a display bug where raw internal adjustment keys leaked into the UI. Individual grants can be deleted, and all selected employee grant records can be initialized after a warning that the remaining vacation balance will be reduced.
 - **Related files**: `src/pages/VacationPage.tsx`, `src/domain/types.ts`, `src/storage/leaveGrantsRepo.ts`
-- **Rationale**: Existing persisted grant data is sufficient for audit display, so no schema change is required.
+- **Rationale**: Existing persisted grant data (including legacy rows with garbled `grant_month` keys) needed a presentation-layer fix without any data migration.
+
+### Vacation Type Entry
+- **Current value/logic**: The "휴가 추가" type field is no longer a fixed `VACATION_TYPES` list — it always offers 월차/연차 plus any type previously used, and also accepts free-typed custom values.
+- **Implementation**: `vacationTypeOptions = Array.from(new Set(['월차', '연차', ...allVacations.map(v => v.type)]))` feeds an antd `Select` with `mode="tags" maxCount={1}`; since tags-mode returns an array, `onAdd` extracts the single value via `Array.isArray(rawType) ? rawType[0] : rawType`.
+- **Related files**: `src/pages/VacationPage.tsx`
+- **Rationale**: User wanted 월차/연차 to always be selectable and the ability to type new vacation type names directly, without maintaining a separate types table.
 
 ### Role Color Display
 - **Current value/logic**: Vacation employee role tags use the same full-time and part-time palette colors as the schedule settings page.
@@ -31,3 +43,4 @@ Record only deltas. Do not repeat content already in Component Status.
 |-----------|------|----------------|
 | 2026-06-06 02:45 | Vacation grant audit display | vacation tab → usage-only selected employee history → usage history plus read-only grant history; employee balance table → name-only sort/default role tag → role-first sort and shared role palette colors |
 | 2026-06-06 03:01 | Vacation grant deletion controls | grant history display → policy type tags removed; grant records → individual delete and selected employee full reset with balance reduction warning; manual balance edit → zero value accepted |
+| 2026-06-06 (이번 세션) | 휴가 부여 규칙 제거 + 일괄 부여 전환, 표시 버그 수정 | "휴가 부여 규칙" 카드/자동 부여 useEffect/`LeavePolicy` 전체 제거 → "휴가 일괄 부여" 카드 + `handleBulkGrantToFullTime`(모달에서 일수 입력 → 정직원 전원에게 월차/연차 부여, 중복 건너뜀) 신설; `leave_grants`에 `leave_type` 컬럼 추가(`020_leave_grants_leave_type.sql`)로 부여 출처를 직접 기록; 부여 기록 표시 → `formatGrantPeriod`로 `grant_month`를 사람이 읽을 수 있는 기간으로 변환(내부 키 `adj-...` 노출 버그 수정), `sourceLabel`을 `leave_type` 기반으로 변경; "휴가 추가" 유형 선택 → 고정 `VACATION_TYPES` 제거, `Select mode="tags" maxCount={1}`로 월차/연차 상시 노출 + 직접 입력 가능; 직원 정렬 비교 함수를 `src/utils/employees.ts`의 `compareEmployeesByRole`로 추출해 `CreateSchedulePage.tsx` 설정 탭과 공유(정직원이 항상 알바 위에 표시); `leavePoliciesRepo.ts` 삭제, `LeavePolicy` 타입 제거(DB의 `leave_policies` 테이블·`rule_id` 컬럼은 유지) |

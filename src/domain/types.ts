@@ -245,19 +245,9 @@ export type LeaveGrant = {
   employee_id: string
   amount: number
   grant_month: string   // 'YYYY-MM' | 'YYYY' | 'YYYY-MM-DD' | 'adj-...'
-  rule_id?: string      // 발행한 규칙 ID (수동 조정은 null)
+  rule_id?: string      // 레거시: 과거 휴가 부여 규칙 ID (더 이상 새로 기록되지 않음)
+  leave_type?: string   // 부여 유형 (월차/연차/수동 조정 등)
   note?: string
-  created_at: string
-}
-
-export type LeavePolicy = {
-  id: string
-  label: string
-  type: 'monthly' | 'yearly' | 'interval'
-  amount: number
-  trigger_month?: number   // yearly 전용: 1~12
-  interval_days?: number   // interval 전용: n일마다
-  is_active: boolean
   created_at: string
 }
 
