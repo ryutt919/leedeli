@@ -316,7 +316,7 @@ export function VacationTabContent() {
             setBulkGrantType('월차')
           }}
         >
-          전체 월차 부여
+          정직원 월차 부여
         </Button>
         <Button
           size="small"
@@ -327,7 +327,7 @@ export function VacationTabContent() {
             setBulkGrantType('연차')
           }}
         >
-          전체 연차 부여
+          정직원 연차 부여
         </Button>
         <Popconfirm
           title="전체 직원의 휴가 부여 기록을 초기화할까요?"
@@ -348,7 +348,7 @@ export function VacationTabContent() {
           onConfirm={() => void handleResetAllUsage()}
         >
           <Button size="small" danger loading={allResetLoading} disabled={allVacations.length === 0}>
-            사용 기록 초기화
+            휴가 사용 기록 초기화
           </Button>
         </Popconfirm>
       </Space>

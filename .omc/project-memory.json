@@ -52,7 +52,7 @@
     "runtime": null
   },
   "build": {
-    "buildCommand": "npx tsc --noEmit 2>&1 | tail -30 && echo \"=== TSC OK ===\" && npm run build 2>&1 | tail -15",
+    "buildCommand": "npx tsc --noEmit 2>&1 | tail -10 && echo \"=== TSC OK ===\" && npm run build 2>&1 | tail -6 && rm -rf dist",
     "testCommand": null,
     "lintCommand": "npm run lint",
     "devCommand": "npm run dev",
@@ -265,20 +265,20 @@
   "hotPaths": [
     {
       "path": "src/pages/CreateSchedulePage.tsx",
-      "accessCount": 75,
-      "lastAccessed": 1780725980481,
+      "accessCount": 76,
+      "lastAccessed": 1780728215780,
+      "type": "file"
+    },
+    {
+      "path": "src/pages/VacationPage.tsx",
+      "accessCount": 72,
+      "lastAccessed": 1780729669485,
       "type": "file"
     },
     {
       "path": "src/pages/PrepsPage.tsx",
       "accessCount": 51,
       "lastAccessed": 1780679051135,
-      "type": "file"
-    },
-    {
-      "path": "src/pages/VacationPage.tsx",
-      "accessCount": 43,
-      "lastAccessed": 1780726988187,
       "type": "file"
     },
     {
