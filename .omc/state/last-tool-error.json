@@ -1,7 +1,0 @@
-{
-  "tool_name": "Read",
-  "tool_input_preview": "{\"file_path\":\"/Users/ryutt/.claude/projects/-Users-ryutt-Desktop-mini-ryutt-LeeDeli/memory/MEMORY.md\"}",
-  "error": "File does not exist. Note: your current working directory is /Users/ryutt/Desktop/mini_ryutt/LeeDeli.",
-  "timestamp": "2026-06-06T07:18:51.135Z",
-  "retry_count": 1
-}

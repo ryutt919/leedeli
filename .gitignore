@@ -29,8 +29,6 @@ harness/reports/run_*.md
 harness/reports/run_*/
 harness/logs/*.log
 harness/logs/run_*/
-.omc/*
 .omc/
-.omc/project-memory.json
 test/
 test-results/
