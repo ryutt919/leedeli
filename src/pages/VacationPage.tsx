@@ -57,6 +57,7 @@ export function VacationTabContent() {
   const [loading, setLoading] = useState(false)
   const [grantLoading, setGrantLoading] = useState(false)
   const [grantDeleteLoading, setGrantDeleteLoading] = useState(false)
+  const [allResetLoading, setAllResetLoading] = useState(false)
 
   // 잔여 휴가 인라인 편집
   const [editingBalance, setEditingBalance] = useState<{ empId: string; value: number } | null>(null)
@@ -270,6 +271,38 @@ export function VacationTabContent() {
     }
   }
 
+  // 전체 직원의 휴가 부여 기록 초기화
+  const handleResetAllGrants = async () => {
+    if (leaveGrants.length === 0) return
+    setAllResetLoading(true)
+    try {
+      await Promise.all(leaveGrants.map((g) => deleteLeaveGrant(g.id)))
+      refresh()
+      message.success('전체 직원의 휴가 부여 기록을 초기화했습니다.')
+    } catch (e) {
+      message.error('초기화 실패: ' + (e instanceof Error ? e.message : String(e)))
+    } finally {
+      setAllResetLoading(false)
+    }
+  }
+
+  // 전체 직원의 휴가 사용 기록 초기화
+  const handleResetAllUsage = async () => {
+    if (allVacations.length === 0) return
+    setAllResetLoading(true)
+    try {
+      await Promise.all(allVacations.map((v) => deleteVacation(v.id)))
+      refresh()
+      message.success('전체 직원의 휴가 사용 기록을 초기화했습니다.')
+    } catch (e) {
+      message.error('초기화 실패: ' + (e instanceof Error ? e.message : String(e)))
+    } finally {
+      setAllResetLoading(false)
+    }
+  }
+
+  const totalGrantedDays = leaveGrants.reduce((sum, g) => sum + g.amount, 0)
+
   return (
     <>
       {/* ── 직원별 휴가 현황 (클릭으로 직원 선택) ──── */}
@@ -326,6 +359,37 @@ export function VacationTabContent() {
         </Space>
         <Typography.Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 6, textAlign: 'center' }}>
           입력한 일수만큼 모든 정직원에게 이번 달(월차)·올해(연차) 기준으로 부여합니다. 이미 부여된 직원은 건너뜁니다.
+        </Typography.Text>
+      </Card>
+
+      {/* ── 전체 직원 휴가 초기화 ────────────────────── */}
+      <Card size="small" title="전체 직원 휴가 초기화" style={{ marginBottom: 12 }}>
+        <Space orientation="vertical" style={{ width: '100%' }} size={8}>
+          <Popconfirm
+            title="전체 직원의 휴가 부여 기록을 초기화할까요?"
+            description={`부여 기록 ${leaveGrants.length}건(총 ${totalGrantedDays}일)이 삭제되며, 각 직원의 잔여 휴가가 그만큼 줄어듭니다.`}
+            okText="초기화"
+            cancelText="취소"
+            onConfirm={() => void handleResetAllGrants()}
+          >
+            <Button danger block loading={allResetLoading} disabled={leaveGrants.length === 0}>
+              전체 직원 부여 기록 초기화
+            </Button>
+          </Popconfirm>
+          <Popconfirm
+            title="전체 직원의 휴가 사용 기록을 초기화할까요?"
+            description={`사용 기록 ${allVacations.length}건이 삭제되며, 각 직원의 잔여 휴가가 그만큼 늘어납니다.`}
+            okText="초기화"
+            cancelText="취소"
+            onConfirm={() => void handleResetAllUsage()}
+          >
+            <Button danger block loading={allResetLoading} disabled={allVacations.length === 0}>
+              전체 직원 사용 기록 초기화
+            </Button>
+          </Popconfirm>
+        </Space>
+        <Typography.Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 6, textAlign: 'center' }}>
+          전체 직원을 대상으로 한 번에 초기화합니다. 되돌릴 수 없으니 신중히 사용하세요.
         </Typography.Text>
       </Card>
 
