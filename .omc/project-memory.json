@@ -52,7 +52,7 @@
     "runtime": null
   },
   "build": {
-    "buildCommand": "python3 -c \"\nimport json\nwith open('feature_list.json') as f:\n    d = json.load(f)\n\nnew_features = [\n    {\n        'id': 'S16T1', 'sprint': 16, 'category': 'db', 'priority': 1,\n        'name': 'leave_grants rule_id 컬럼 추가 + UNIQUE 제약 변경',\n        'status': 'implemented', 'test_command': 'npm run build',\n        'acceptance_criteria': ['Supabase leave_grants에 rule_id 컬럼 존재', '019_leave_grants_rule_id.sql 존재']\n    },\n    {\n        'id': 'S16T2', 'sprint': 16, 'category': 'storage', 'priority': 2,\n        'name': 'leaveGrantsRepo: rule_id 지원 + loadLeaveGrantsByRule',\n        'status': 'implemented', 'test_command': 'npm run build',\n        'acceptance_criteria': ['addLeaveGrant에 ruleId 매개변수 존재', 'loadLeaveGrantsByRule 함수 export', 'LeaveGrant 타입에 rule_id 필드']\n    },\n    {\n        'id': 'S16T3', 'sprint': 16, 'category': 'ui', 'priority': 3,\n        'name': 'VacationPage: monthly/yearly/interval 모든 규칙 자동부여',\n        'status': 'implemented', 'test_command': 'npm run build',\n        'acceptance_criteria': ['자동부여 useEffect가 세 타입 모두 처리', 'interval: 경과 간격 계산으로 누락분 자동 추가', '버튼 텍스트 자동 부여 재실행으로 변경']\n    }\n]\nexisting_ids = {f['id'] for f in d['features']}\nfor feat in new_features:\n    if feat['id'] not in existing_ids:\n        d['features'].append(feat)\nd['progress']['total'] = len(d['features'])\nwith open('feature_list.json', 'w', encoding='utf-8') as f:\n    json.dump(d, f, ensure_ascii=False, indent=2)\nprint('Done. Total:', len(d['features']))\n\"\n",
+    "buildCommand": "npm run build 2>&1 | tail -40",
     "testCommand": null,
     "lintCommand": "npm run lint",
     "devCommand": "npm run dev",
@@ -265,8 +265,8 @@
   "hotPaths": [
     {
       "path": "src/pages/CreateSchedulePage.tsx",
-      "accessCount": 68,
-      "lastAccessed": 1780678930865,
+      "accessCount": 70,
+      "lastAccessed": 1780723377930,
       "type": "file"
     },
     {
@@ -342,6 +342,12 @@
       "type": "file"
     },
     {
+      "path": "src/index.css",
+      "accessCount": 4,
+      "lastAccessed": 1780723636946,
+      "type": "file"
+    },
+    {
       "path": "supabase/migrations/015_vacation_records.sql",
       "accessCount": 3,
       "lastAccessed": 1780677758453,
@@ -351,6 +357,12 @@
       "path": "src/storage/leaveGrantsRepo.ts",
       "accessCount": 3,
       "lastAccessed": 1780680881357,
+      "type": "file"
+    },
+    {
+      "path": "src/App.css",
+      "accessCount": 3,
+      "lastAccessed": 1780723429156,
       "type": "file"
     },
     {
@@ -396,6 +408,18 @@
       "type": "file"
     },
     {
+      "path": "src/v2/v2-style.css",
+      "accessCount": 2,
+      "lastAccessed": 1780723269944,
+      "type": "file"
+    },
+    {
+      "path": "e2e/mock/schedule-memo.spec.ts",
+      "accessCount": 2,
+      "lastAccessed": 1780723669736,
+      "type": "file"
+    },
+    {
       "path": "src/types.ts",
       "accessCount": 1,
       "lastAccessed": 1780644780899,
@@ -414,18 +438,6 @@
       "type": "file"
     },
     {
-      "path": "src/App.css",
-      "accessCount": 1,
-      "lastAccessed": 1780644928188,
-      "type": "file"
-    },
-    {
-      "path": "src/v2/v2-style.css",
-      "accessCount": 1,
-      "lastAccessed": 1780644928386,
-      "type": "file"
-    },
-    {
       "path": "src/storage/schedulesRepo.ts",
       "accessCount": 1,
       "lastAccessed": 1780644947618,
@@ -435,12 +447,6 @@
       "path": "src/domain/scheduleEngineV3.ts",
       "accessCount": 1,
       "lastAccessed": 1780644954540,
-      "type": "file"
-    },
-    {
-      "path": "e2e/mock/schedule-memo.spec.ts",
-      "accessCount": 1,
-      "lastAccessed": 1780647928334,
       "type": "file"
     },
     {

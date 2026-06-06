@@ -218,3 +218,16 @@ a {
 .ant-picker input {
   caret-color: transparent !important;
 }
+
+/* 모바일에서 RangePicker(기간 선택) 캘린더가 화면 밖으로 잘리는 문제 방지 */
+/* 기본은 두 달력이 가로로 나란히 배치되어 폭이 ~600px → 모바일 화면을 넘어감 */
+@media (max-width: 599px) {
+  .ant-picker-dropdown-range .ant-picker-panels {
+    flex-direction: column;
+  }
+
+  .ant-picker-dropdown-range .ant-picker-panel-container {
+    max-width: calc(100vw - 16px);
+    overflow-x: auto;
+  }
+}
