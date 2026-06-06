@@ -42,7 +42,7 @@ function formatGrantPeriod(grantMonth: string, createdAt: string): string {
   if (/^\d{4}-\d{2}-\d{2}$/.test(grantMonth)) return grantMonth
   if (/^\d{4}-\d{2}$/.test(grantMonth)) return dayjs(grantMonth, 'YYYY-MM').format('YYYY년 M월')
   if (/^\d{4}$/.test(grantMonth)) return `${grantMonth}년`
-  return dayjs(createdAt).format('YYYY-MM-DD 부여')
+  return dayjs(createdAt).format('YYYY-MM-DD')
 }
 
 export function VacationTabContent() {
@@ -61,7 +61,7 @@ export function VacationTabContent() {
   // 잔여 휴가 인라인 편집
   const [editingBalance, setEditingBalance] = useState<{ empId: string; value: number } | null>(null)
 
-  const [bulkGrantModalOpen, setBulkGrantModalOpen] = useState(false)
+  const [bulkGrantType, setBulkGrantType] = useState<'월차' | '연차' | null>(null)
   const [bulkGrantForm] = Form.useForm()
 
   const [form] = Form.useForm()
@@ -242,34 +242,25 @@ export function VacationTabContent() {
     },
   ]
 
-  // 전체 정직원에게 월차·연차 일괄 부여
-  const handleBulkGrantToFullTime = async () => {
+  // 전체 정직원에게 월차 또는 연차 일괄 부여
+  const handleBulkGrantByType = async (type: '월차' | '연차') => {
     try {
       const v = await bulkGrantForm.validateFields()
-      const monthlyAmount = v.monthlyAmount as number
-      const yearlyAmount = v.yearlyAmount as number
+      const amount = v.amount as number
       const fullTimeEmployees = employees.filter((e) => e.role === '정직원')
       if (fullTimeEmployees.length === 0) { message.warning('정직원이 없습니다.'); return }
 
       setGrantLoading(true)
       const today = dayjs()
-      const grantMonth = today.format('YYYY-MM')
-      const grantYear = today.format('YYYY')
+      const grantMonth = type === '월차' ? today.format('YYYY-MM') : today.format('YYYY')
       let granted = 0, skipped = 0
       for (const emp of fullTimeEmployees) {
-        if (monthlyAmount > 0) {
-          const has = leaveGrants.some((g) => g.employee_id === emp.id && g.leave_type === '월차' && g.grant_month === grantMonth)
-          if (has) skipped++
-          else { await addLeaveGrant(emp.id, monthlyAmount, grantMonth, '월차 일괄 부여', '월차'); granted++ }
-        }
-        if (yearlyAmount > 0) {
-          const has = leaveGrants.some((g) => g.employee_id === emp.id && g.leave_type === '연차' && g.grant_month === grantYear)
-          if (has) skipped++
-          else { await addLeaveGrant(emp.id, yearlyAmount, grantYear, '연차 일괄 부여', '연차'); granted++ }
-        }
+        const has = leaveGrants.some((g) => g.employee_id === emp.id && g.leave_type === type && g.grant_month === grantMonth)
+        if (has) skipped++
+        else { await addLeaveGrant(emp.id, amount, grantMonth, `${type} 일괄 부여`, type); granted++ }
       }
       setGrantLoading(false)
-      setBulkGrantModalOpen(false)
+      setBulkGrantType(null)
       bulkGrantForm.resetFields()
       refresh()
       message.success(`${granted}건 부여 완료${skipped > 0 ? `, ${skipped}건 건너뜀(이미 부여됨)` : ''}`)
@@ -309,19 +300,32 @@ export function VacationTabContent() {
 
       {/* ── 휴가 일괄 부여 ───────────────────────────── */}
       <Card size="small" title="휴가 일괄 부여" style={{ marginBottom: 12 }}>
-        <Button
-          type="primary"
-          block
-          loading={grantLoading}
-          onClick={() => {
-            bulkGrantForm.setFieldsValue({ monthlyAmount: 1, yearlyAmount: 15 })
-            setBulkGrantModalOpen(true)
-          }}
-        >
-          전체 정직원에게 월차·연차 부여
-        </Button>
+        <Space orientation="vertical" style={{ width: '100%' }} size={8}>
+          <Button
+            type="primary"
+            block
+            loading={grantLoading}
+            onClick={() => {
+              bulkGrantForm.setFieldsValue({ amount: 1 })
+              setBulkGrantType('월차')
+            }}
+          >
+            전체 정직원에게 월차 부여
+          </Button>
+          <Button
+            type="primary"
+            block
+            loading={grantLoading}
+            onClick={() => {
+              bulkGrantForm.setFieldsValue({ amount: 15 })
+              setBulkGrantType('연차')
+            }}
+          >
+            전체 정직원에게 연차 부여
+          </Button>
+        </Space>
         <Typography.Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 6, textAlign: 'center' }}>
-          입력한 일수만큼 모든 정직원에게 이번 달/올해 기준으로 부여합니다. 이미 부여된 항목은 건너뜁니다.
+          입력한 일수만큼 모든 정직원에게 이번 달(월차)·올해(연차) 기준으로 부여합니다. 이미 부여된 직원은 건너뜁니다.
         </Typography.Text>
       </Card>
 
@@ -476,23 +480,20 @@ export function VacationTabContent() {
 
       {/* ── 전체 정직원 일괄 부여 모달 ───────────────── */}
       <Modal
-        open={bulkGrantModalOpen}
-        title="전체 정직원에게 월차·연차 부여"
-        onCancel={() => { setBulkGrantModalOpen(false); bulkGrantForm.resetFields() }}
-        onOk={() => void handleBulkGrantToFullTime()}
+        open={bulkGrantType !== null}
+        title={`전체 정직원에게 ${bulkGrantType ?? ''} 부여`}
+        onCancel={() => { setBulkGrantType(null); bulkGrantForm.resetFields() }}
+        onOk={() => { if (bulkGrantType) void handleBulkGrantByType(bulkGrantType) }}
         okText="부여"
         cancelText="취소"
         confirmLoading={grantLoading}
       >
         <Form form={bulkGrantForm} layout="vertical">
-          <Form.Item name="monthlyAmount" label="월차 부여 일수" rules={[{ required: true, message: '일수를 입력하세요' }]}>
-            <InputNumber min={0} step={0.5} style={{ width: '100%' }} suffix="일" />
-          </Form.Item>
-          <Form.Item name="yearlyAmount" label="연차 부여 일수" rules={[{ required: true, message: '일수를 입력하세요' }]}>
+          <Form.Item name="amount" label={`${bulkGrantType ?? ''} 부여 일수`} rules={[{ required: true, message: '일수를 입력하세요' }]}>
             <InputNumber min={0} step={0.5} style={{ width: '100%' }} suffix="일" />
           </Form.Item>
           <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-            이번 달(월차)·올해(연차) 기준으로 이미 부여된 정직원은 건너뜁니다. 0을 입력하면 해당 유형은 부여하지 않습니다.
+            {bulkGrantType === '월차' ? '이번 달' : '올해'} 기준으로 이미 부여된 정직원은 건너뜁니다.
           </Typography.Text>
         </Form>
       </Modal>
