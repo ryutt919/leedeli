@@ -305,6 +305,54 @@ export function VacationTabContent() {
 
   return (
     <>
+      {/* ── 휴가 빠른 작업 (전체 부여 / 전체 초기화) ──── */}
+      <Space wrap size={8} style={{ marginBottom: 12 }}>
+        <Button
+          size="small"
+          type="primary"
+          loading={grantLoading}
+          onClick={() => {
+            bulkGrantForm.setFieldsValue({ amount: 1 })
+            setBulkGrantType('월차')
+          }}
+        >
+          전체 월차 부여
+        </Button>
+        <Button
+          size="small"
+          type="primary"
+          loading={grantLoading}
+          onClick={() => {
+            bulkGrantForm.setFieldsValue({ amount: 15 })
+            setBulkGrantType('연차')
+          }}
+        >
+          전체 연차 부여
+        </Button>
+        <Popconfirm
+          title="전체 직원의 휴가 부여 기록을 초기화할까요?"
+          description={`부여 기록 ${leaveGrants.length}건(총 ${totalGrantedDays}일)이 삭제되며, 각 직원의 잔여 휴가가 그만큼 줄어듭니다.`}
+          okText="초기화"
+          cancelText="취소"
+          onConfirm={() => void handleResetAllGrants()}
+        >
+          <Button size="small" danger loading={allResetLoading} disabled={leaveGrants.length === 0}>
+            부여 기록 초기화
+          </Button>
+        </Popconfirm>
+        <Popconfirm
+          title="전체 직원의 휴가 사용 기록을 초기화할까요?"
+          description={`사용 기록 ${allVacations.length}건이 삭제되며, 각 직원의 잔여 휴가가 그만큼 늘어납니다.`}
+          okText="초기화"
+          cancelText="취소"
+          onConfirm={() => void handleResetAllUsage()}
+        >
+          <Button size="small" danger loading={allResetLoading} disabled={allVacations.length === 0}>
+            사용 기록 초기화
+          </Button>
+        </Popconfirm>
+      </Space>
+
       {/* ── 직원별 휴가 현황 (클릭으로 직원 선택) ──── */}
       <Card
         size="small"
@@ -329,68 +377,6 @@ export function VacationTabContent() {
             },
           })}
         />
-      </Card>
-
-      {/* ── 휴가 일괄 부여 ───────────────────────────── */}
-      <Card size="small" title="휴가 일괄 부여" style={{ marginBottom: 12 }}>
-        <Space orientation="vertical" style={{ width: '100%' }} size={8}>
-          <Button
-            type="primary"
-            block
-            loading={grantLoading}
-            onClick={() => {
-              bulkGrantForm.setFieldsValue({ amount: 1 })
-              setBulkGrantType('월차')
-            }}
-          >
-            전체 정직원에게 월차 부여
-          </Button>
-          <Button
-            type="primary"
-            block
-            loading={grantLoading}
-            onClick={() => {
-              bulkGrantForm.setFieldsValue({ amount: 15 })
-              setBulkGrantType('연차')
-            }}
-          >
-            전체 정직원에게 연차 부여
-          </Button>
-        </Space>
-        <Typography.Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 6, textAlign: 'center' }}>
-          입력한 일수만큼 모든 정직원에게 이번 달(월차)·올해(연차) 기준으로 부여합니다. 이미 부여된 직원은 건너뜁니다.
-        </Typography.Text>
-      </Card>
-
-      {/* ── 전체 직원 휴가 초기화 ────────────────────── */}
-      <Card size="small" title="전체 직원 휴가 초기화" style={{ marginBottom: 12 }}>
-        <Space orientation="vertical" style={{ width: '100%' }} size={8}>
-          <Popconfirm
-            title="전체 직원의 휴가 부여 기록을 초기화할까요?"
-            description={`부여 기록 ${leaveGrants.length}건(총 ${totalGrantedDays}일)이 삭제되며, 각 직원의 잔여 휴가가 그만큼 줄어듭니다.`}
-            okText="초기화"
-            cancelText="취소"
-            onConfirm={() => void handleResetAllGrants()}
-          >
-            <Button danger block loading={allResetLoading} disabled={leaveGrants.length === 0}>
-              전체 직원 부여 기록 초기화
-            </Button>
-          </Popconfirm>
-          <Popconfirm
-            title="전체 직원의 휴가 사용 기록을 초기화할까요?"
-            description={`사용 기록 ${allVacations.length}건이 삭제되며, 각 직원의 잔여 휴가가 그만큼 늘어납니다.`}
-            okText="초기화"
-            cancelText="취소"
-            onConfirm={() => void handleResetAllUsage()}
-          >
-            <Button danger block loading={allResetLoading} disabled={allVacations.length === 0}>
-              전체 직원 사용 기록 초기화
-            </Button>
-          </Popconfirm>
-        </Space>
-        <Typography.Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 6, textAlign: 'center' }}>
-          전체 직원을 대상으로 한 번에 초기화합니다. 되돌릴 수 없으니 신중히 사용하세요.
-        </Typography.Text>
       </Card>
 
       {/* ── 선택된 직원 이력 관리 ────────────────────── */}
