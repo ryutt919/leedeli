@@ -12,8 +12,8 @@ export const FULL_TIME_PALETTE: ShiftPaletteColor[] = [
 
 // 알바용 주황 계열 — 이미지 순서: 1,2,3,4,5,6
 export const PART_TIME_PALETTE: ShiftPaletteColor[] = [
-  { bg: '#ffeed7d2', text: '#C2410C' },
   { bg: '#FEF3C7', text: '#B45309' },
+  { bg: '#fff6ead2', text: '#c0572e' },
   { bg: '#FFE4E6', text: '#BE123C' },
   { bg: '#FEE2E2', text: '#B91C1C' },
   { bg: '#FFF7ED', text: '#EA580C' },
