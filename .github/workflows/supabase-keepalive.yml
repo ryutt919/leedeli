@@ -1,0 +1,36 @@
+name: Supabase Keepalive
+
+# Supabase 무료 플랜은 7일간 API 요청이 없으면 프로젝트가 자동 일시정지됨.
+# 3일마다 가벼운 핑을 보내 활성 상태를 유지한다.
+on:
+  schedule:
+    - cron: '0 3 */3 * *' # 매 3일마다 UTC 03:00 (KST 12:00)
+  workflow_dispatch: {} # 수동 실행 버튼
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase REST endpoint
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "SUPABASE_URL 또는 SUPABASE_ANON_KEY 시크릿이 설정되지 않았습니다." >&2
+            exit 1
+          fi
+
+          status=$(curl -s -o /dev/null -w "%{http_code}" \
+            "$SUPABASE_URL/rest/v1/" \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            -H "Authorization: Bearer $SUPABASE_ANON_KEY")
+
+          echo "Supabase REST endpoint responded with status: $status"
+
+          if [ "$status" -ge 200 ] && [ "$status" -lt 500 ]; then
+            echo "Keepalive ping 성공 (프로젝트 활성 상태 확인됨)"
+          else
+            echo "Keepalive ping 실패" >&2
+            exit 1
+          fi
