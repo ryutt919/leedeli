@@ -1,10 +1,10 @@
 name: Supabase Keepalive
 
 # Supabase 무료 플랜은 7일간 API 요청이 없으면 프로젝트가 자동 일시정지됨.
-# 3일마다 가벼운 핑을 보내 활성 상태를 유지한다.
+# 하루 1번 가벼운 핑을 보내 활성 상태를 유지한다 (실패 1~2회가 있어도 7일 내 여유 확보).
 on:
   schedule:
-    - cron: '0 3 */3 * *' # 매 3일마다 UTC 03:00 (KST 12:00)
+    - cron: '0 3 * * *' # 매일 UTC 03:00 (KST 12:00)
   workflow_dispatch: {} # 수동 실행 버튼
 
 jobs:
@@ -21,8 +21,11 @@ jobs:
             exit 1
           fi
 
+          # 루트(/rest/v1/)는 게이트웨이 단계에서 바로 401을 반환하며 DB까지 도달하지
+          # 않아 Supabase의 비활성 감지(auto-pause) 카운터가 리셋되지 않는다.
+          # 실제 테이블을 조회해야 DB 활동으로 집계된다.
           status=$(curl -s -o /dev/null -w "%{http_code}" \
-            "$SUPABASE_URL/rest/v1/" \
+            "$SUPABASE_URL/rest/v1/shift_types?select=id&limit=1" \
             -H "apikey: $SUPABASE_ANON_KEY" \
             -H "Authorization: Bearer $SUPABASE_ANON_KEY")
 
